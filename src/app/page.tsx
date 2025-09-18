@@ -8,13 +8,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Logo } from "@/components/icons/logo";
 import { auth } from "@/lib/firebase/firebase";
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(true);
+  const { toast } = useToast();
 
   React.useEffect(() => {
+    // onAuthStateChanged can take a moment to determine the user's state
+    // so we show a loading indicator initially.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         router.push("/dashboard");
@@ -30,7 +33,7 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      router.push("/dashboard");
+      // The onAuthStateChanged listener will handle the redirect to dashboard
     } catch (error) {
       console.error("Error signing in with Google: ", error);
       toast({
