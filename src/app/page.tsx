@@ -2,83 +2,131 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Logo } from "@/components/icons/logo";
-import { getFirebaseAuth } from "@/lib/firebase/firebase";
-import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  onAuthStateChanged,
-  type Auth
-} from "firebase/auth";
-import { useToast } from "@/hooks/use-toast";
+import type { Student } from "@/lib/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Header } from "@/components/dashboard/header";
+import { Overview } from "@/components/dashboard/overview";
+import { StudentList } from "@/components/dashboard/student-list";
+import { AssessmentList } from "@/components/dashboard/assessment-list";
+import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
+import { students as initialStudents, assessments } from "@/lib/mock-data";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = React.useState(true);
-  const { toast } = useToast();
-  const [auth, setAuth] = React.useState<Auth | null>(null);
+export default function DashboardPage() {
+  const [students, setStudents] = React.useState<Student[]>([]);
+  const [isMounted, setIsMounted] = React.useState(false);
+  const nextStudentIdCounter = React.useRef(0);
 
   React.useEffect(() => {
-    const authInstance = getFirebaseAuth();
-    setAuth(authInstance);
+    setIsMounted(true);
+  }, []);
 
-    const unsubscribe = onAuthStateChanged(authInstance, (user) => {
-      if (user) {
-        router.push("/dashboard");
-      } else {
-        setIsLoading(false);
+  // Load students from localStorage on initial mount
+  React.useEffect(() => {
+    if (isMounted) {
+      try {
+        const storedStudents = localStorage.getItem("students");
+        if (storedStudents) {
+          const parsedStudents = JSON.parse(storedStudents).map((s: Student) => ({
+            ...s,
+            dateOfBirth: new Date(s.dateOfBirth),
+          }));
+          setStudents(parsedStudents);
+        } else {
+          setStudents(initialStudents);
+        }
+      } catch (error) {
+        console.error("Failed to load students from localStorage", error);
+        setStudents(initialStudents);
       }
-    });
-
-    return () => unsubscribe();
-  }, [router]);
-
-  const handleGoogleSignIn = async () => {
-    if (!auth) return;
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      // The onAuthStateChanged listener will handle the redirect to dashboard
-    } catch (error) {
-      console.error("Error signing in with Google: ", error);
-      toast({
-        variant: "destructive",
-        title: "Authentication Failed",
-        description: "Could not sign you in with Google. Please try again.",
-      });
     }
+  }, [isMounted]);
+  
+  // Save students to localStorage whenever the list changes
+  React.useEffect(() => {
+    if (isMounted) {
+      try {
+        localStorage.setItem("students", JSON.stringify(students));
+        const maxId = students.reduce((max, s) => {
+            const idNum = parseInt(s.studentId.replace('stu', ''), 10);
+            return idNum > max ? idNum : max;
+        }, 1831);
+        nextStudentIdCounter.current = maxId + 1;
+      } catch (error) {
+        console.error("Failed to save students to localStorage", error);
+      }
+    }
+  }, [students, isMounted]);
+
+  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
+    const studentWithDetails: Student = {
+      ...newStudent,
+      studentId: `stu${nextStudentIdCounter.current}`,
+      avatarUrl: newStudent.avatarUrl || `https://picsum.photos/seed/${students.length + 1}/100/100`,
+    };
+    setStudents(prevStudents => [...prevStudents, studentWithDetails]);
   };
 
-  if (isLoading) {
-    return (
-        <div className="flex min-h-screen w-full items-center justify-center bg-background">
-            <p>Loading...</p>
-        </div>
+  const handleUpdateStudent = (studentId: string, updatedData: Partial<Student>) => {
+    setStudents(prevStudents =>
+      prevStudents.map(student =>
+        student.studentId === studentId ? { ...student, ...updatedData } : student
+      )
     );
+  };
+
+  const handleImportStudents = (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
+    let currentId = nextStudentIdCounter.current;
+    const newStudents = importedStudents.map((s, index) => {
+        const student: Student = {
+            ...s,
+            studentId: `stu${currentId + index}`,
+            avatarUrl: `https://picsum.photos/seed/${students.length + index + 1}/100/100`,
+        };
+        return student;
+    });
+    setStudents(prev => [...prev, ...newStudents]);
+  };
+
+  if (!isMounted) {
+    return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading...</div>;
   }
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex justify-center">
-            <Logo className="h-10 w-10 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">Welcome to CampusConnect</CardTitle>
-          <CardDescription>
-            Please sign in with Google to continue.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
-                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 62.9l-67.7 67.7C313.6 114.5 283.5 104 248 104c-83.2 0-150.2 67.2-150.2 152s67 152 150.2 152c97.2 0 130.2-74.8 134.7-109.8H248v-85.3h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"></path></svg>
-                Sign in with Google
-            </Button>
-        </CardContent>
-      </Card>
-    </main>
+    <div className="flex min-h-screen w-full flex-col bg-background">
+      <Header user={null} />
+      <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
+        <Tabs defaultValue="dashboard" className="flex flex-col gap-4">
+          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-4 self-start">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="students">Students</TabsTrigger>
+            <TabsTrigger value="assessments">Assessments</TabsTrigger>
+            <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard">
+            <Overview />
+          </TabsContent>
+
+          <TabsContent value="students">
+            <StudentList 
+              students={students} 
+              onUpdateStudent={handleUpdateStudent}
+              onImportStudents={handleImportStudents}
+            />
+          </TabsContent>
+
+          <TabsContent value="assessments">
+            <AssessmentList
+              assessments={assessments}
+              students={students}
+            />
+          </TabsContent>
+
+          <TabsContent value="enrollment">
+            <EnrollmentForm onEnroll={handleEnrollStudent} nextStudentId={nextStudentIdCounter.current} />
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
   );
 }
