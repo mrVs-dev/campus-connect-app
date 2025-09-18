@@ -8,6 +8,8 @@ export type Guardian = {
 
 export interface Student {
   studentId: string;
+  serialNumber?: string;
+  enrollmentDate?: Date;
   firstName: string;
   middleName?: string;
   lastName: string;
