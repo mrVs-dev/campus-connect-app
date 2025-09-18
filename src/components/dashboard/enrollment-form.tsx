@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,6 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { communes, getVillagesByCommune } from "@/lib/address-data";
 
 const guardianSchema = z.object({
   relation: z.string().min(1, "Relation is required"),
@@ -64,6 +66,7 @@ const formSchema = z.object({
     commune: z.string().min(1, "Commune is required"),
     village: z.string().min(1, "Village is required"),
     street: z.string().optional(),
+    house: z.string().optional(),
   }),
   guardians: z.array(guardianSchema).min(1, "At least one guardian is required"),
   mediaConsent: z.boolean().default(false),
@@ -85,6 +88,13 @@ export function EnrollmentForm() {
       guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""] }],
       placeOfBirth: "Siem Reap",
       nationality: "Cambodian",
+      address: {
+        district: "Krong Siem Reap",
+        commune: "",
+        village: "",
+        street: "",
+        house: "",
+      }
     },
   });
 
@@ -92,6 +102,14 @@ export function EnrollmentForm() {
     control: form.control,
     name: "guardians",
   });
+  
+  const selectedCommune = form.watch("address.commune");
+  const villages = React.useMemo(() => getVillagesByCommune(selectedCommune), [selectedCommune]);
+
+  React.useEffect(() => {
+    form.resetField("address.village", { defaultValue: "" });
+  }, [selectedCommune, form]);
+
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     const newStudentData = {
@@ -318,15 +336,15 @@ export function EnrollmentForm() {
 
             {/* Address Information */}
             <h3 className="text-lg font-semibold border-b pb-2">Address</h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <FormField
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 <FormField
                     control={form.control}
-                    name="address.village"
+                    name="address.district"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Village</FormLabel>
+                        <FormLabel>District / Khan</FormLabel>
                         <FormControl>
-                        <Input {...field} />
+                           <Input {...field} disabled />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -338,21 +356,56 @@ export function EnrollmentForm() {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Commune / Sangkat</FormLabel>
-                        <FormControl>
-                        <Input {...field} />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a commune" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {communes.map((commune) => (
+                              <SelectItem key={commune.id} value={commune.name}>
+                                {commune.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                     </FormItem>
                     )}
                 />
                 <FormField
+                  control={form.control}
+                  name="address.village"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Village</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCommune}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a village" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {villages.map((village) => (
+                            <SelectItem key={village} value={village}>
+                              {village}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
                     control={form.control}
-                    name="address.district"
+                    name="address.house"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>District / Khan</FormLabel>
+                        <FormLabel>House No.</FormLabel>
                         <FormControl>
-                        <Input {...field} />
+                        <Input placeholder="Optional" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -363,7 +416,7 @@ export function EnrollmentForm() {
                     name="address.street"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Street</FormLabel>
+                        <FormLabel>Street No.</FormLabel>
                         <FormControl>
                         <Input placeholder="Optional" {...field} />
                         </FormControl>
@@ -390,77 +443,7 @@ export function EnrollmentForm() {
               </div>
               <div className="space-y-6">
                 {fields.map((field, index) => (
-                  <div key={field.id} className="p-4 border rounded-md relative space-y-4">
-                     {fields.length > 1 && (
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-2 right-2 h-6 w-6"
-                            onClick={() => remove(index)}
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        control={form.control}
-                        name={`guardians.${index}.relation`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Relation</FormLabel>
-                            <FormControl><Input placeholder="e.g., Father" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`guardians.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Full Name</FormLabel>
-                            <FormControl><Input placeholder="Guardian's full name" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`guardians.${index}.occupation`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Occupation</FormLabel>
-                            <FormControl><Input placeholder="e.g., Teacher" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`guardians.${index}.workplace`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Workplace</FormLabel>
-                            <FormControl><Input placeholder="e.g., Local School" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name={`guardians.${index}.mobiles`}
-                      render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Mobile Number(s)</FormLabel>
-                            <FormControl><Input placeholder="012 345 678" {...field} /></FormControl>
-                            <FormDescription>You can add multiple numbers later.</FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <GuardianCard key={field.id} guardianIndex={index} remove={remove} />
                 ))}
               </div>
             </div>
@@ -536,3 +519,119 @@ export function EnrollmentForm() {
     </Form>
   );
 }
+
+
+// Helper component for Guardian card to manage its own field array for mobiles
+function GuardianCard({ guardianIndex, remove }: { guardianIndex: number, remove: (index: number) => void }) {
+  const { control, formState: { errors } } = useFormContext();
+  const { fields, append, remove: removeMobile } = useFieldArray({
+    control,
+    name: `guardians.${guardianIndex}.mobiles`,
+  });
+  
+  const guardians = useFieldArray({
+    control,
+    name: "guardians",
+  });
+  
+  return (
+    <div className="p-4 border rounded-md relative space-y-4">
+      {guardians.fields.length > 1 && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute top-2 right-2 h-6 w-6"
+          onClick={() => remove(guardianIndex)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <FormField
+          control={control}
+          name={`guardians.${guardianIndex}.relation`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Relation</FormLabel>
+              <FormControl><Input placeholder="e.g., Father" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`guardians.${guardianIndex}.name`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Full Name</FormLabel>
+              <FormControl><Input placeholder="Guardian's full name" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`guardians.${guardianIndex}.occupation`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Occupation</FormLabel>
+              <FormControl><Input placeholder="e.g., Teacher" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name={`guardians.${guardianIndex}.workplace`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Workplace</FormLabel>
+              <FormControl><Input placeholder="e.g., Local School" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <div>
+        <FormLabel>Mobile Number(s)</FormLabel>
+        <div className="space-y-2 mt-2">
+            {fields.map((field, mobileIndex) => (
+                <div key={field.id} className="flex items-center gap-2">
+                <FormField
+                    control={control}
+                    name={`guardians.${guardianIndex}.mobiles.${mobileIndex}`}
+                    render={({ field }) => (
+                    <FormItem className="flex-1">
+                        <FormControl>
+                        <Input placeholder="012 345 678" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 {fields.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeMobile(mobileIndex)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                 )}
+                </div>
+            ))}
+        </div>
+        <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => append("")}
+        >
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Mobile
+        </Button>
+      </div>
+
+    </div>
+  );
+}
+
+    

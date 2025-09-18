@@ -1,3 +1,4 @@
+
 export type Guardian = {
   relation: string;
   name: string;
@@ -30,6 +31,7 @@ export interface Student {
     commune: string;
     village: string;
     street?: string;
+    house?: string;
   };
   guardians: Guardian[];
   mediaConsent: boolean;
@@ -75,3 +77,5 @@ export interface Assessment {
   totalMarks: number;
   scores: Record<string, number>; // { [studentId]: rawScore }
 }
+
+    
