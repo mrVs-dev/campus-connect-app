@@ -2,6 +2,8 @@ export interface Student {
   studentId: string;
   firstName: string;
   lastName: string;
+  khmerFirstName: string;
+  khmerLastName: string;
   sex: 'Male' | 'Female' | 'Other';
   dateOfBirth: Date;
   nationality: string;

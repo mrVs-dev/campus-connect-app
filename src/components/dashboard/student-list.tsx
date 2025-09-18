@@ -72,7 +72,7 @@ export function StudentList({ students }: { students: Student[] }) {
                           {student.firstName} {student.lastName}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {student.studentEmail}
+                          {student.khmerLastName} {student.khmerFirstName}
                         </p>
                       </div>
                     </div>
