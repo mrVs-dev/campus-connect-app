@@ -11,37 +11,12 @@ import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { students as initialStudents, assessments } from "@/lib/mock-data";
-import { getFirebaseAuth } from "@/lib/firebase/firebase";
-import { onAuthStateChanged, type User } from "firebase/auth";
-import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [isMounted, setIsMounted] = React.useState(false);
   const nextStudentIdCounter = React.useRef(0);
-  const [user, setUser] = React.useState<User | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const router = useRouter();
-
-  React.useEffect(() => {
-    const auth = getFirebaseAuth();
-    if (!auth) {
-        setLoading(false);
-        router.push("/");
-        return;
-    }
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-      } else {
-        router.push("/");
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
-
 
   React.useEffect(() => {
     setIsMounted(true);
@@ -147,13 +122,13 @@ export default function DashboardPage() {
     });
   };
 
-  if (loading || !isMounted || !user) {
+  if (!isMounted) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading...</div>;
   }
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
-      <Header user={user} />
+      <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
         <Tabs defaultValue="dashboard" className="flex flex-col gap-4">
           <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-5 self-start">
