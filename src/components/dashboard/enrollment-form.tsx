@@ -5,6 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
 import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
+import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -57,12 +58,7 @@ const formSchema = z.object({
   }),
   placeOfBirth: z.string().min(1, "Place of birth is required"),
   nationality: z.string().min(1, "Nationality is required"),
-  nationalId: z.string().min(1, "National ID is required"),
-  program: z.string().min(1, "Program is required"),
-  admissionYear: z.coerce.number().min(1900, "Invalid year"),
-  currentGradeLevel: z.string().min(1, "Grade level is required"),
-  status: z.enum(["Active", "Inactive", "Graduated"]),
-  previousSchool: z.string().optional(),
+  nationalId: z.string().optional(),
   address: z.object({
     district: z.string().min(1, "District is required"),
     commune: z.string().min(1, "Commune is required"),
@@ -79,14 +75,16 @@ const formSchema = z.object({
 
 export function EnrollmentForm() {
   const { toast } = useToast();
+  const [nextStudentId, setNextStudentId] = React.useState(1832);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      admissionYear: new Date().getFullYear(),
-      status: "Active",
       sex: "Male",
       mediaConsent: false,
       guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""] }],
+      placeOfBirth: "Siem Reap",
+      nationality: "Cambodian",
     },
   });
 
@@ -97,15 +95,16 @@ export function EnrollmentForm() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     const newStudentData = {
-      studentId: `stu${1832 + Math.floor(Math.random() * 1000)}`, // Placeholder for incrementing ID
+      studentId: `stu${nextStudentId}`, 
       enrollmentDate: new Date(),
       ...values,
     };
     console.log("New Student Enrolled:", newStudentData);
     toast({
       title: "Enrollment Successful",
-      description: "New student data has been logged to the console.",
+      description: `${values.firstName}'s data has been logged to the console.`,
     });
+    setNextStudentId(prevId => prevId + 1);
     form.reset();
   }
 
@@ -123,6 +122,13 @@ export function EnrollmentForm() {
             {/* Personal Information */}
             <h3 className="text-lg font-semibold border-b pb-2">Personal Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FormItem>
+                <FormLabel>Student ID</FormLabel>
+                <FormControl>
+                  <Input value={`stu${nextStudentId}`} disabled />
+                </FormControl>
+                <FormDescription>This ID is auto-generated.</FormDescription>
+              </FormItem>
               <FormField
                 control={form.control}
                 name="serialNumber"
@@ -253,6 +259,9 @@ export function EnrollmentForm() {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
+                          captionLayout="dropdown-buttons"
+                          fromYear={1950}
+                          toYear={new Date().getFullYear()}
                           disabled={(date) =>
                             date > new Date() || date < new Date("1900-01-01")
                           }
@@ -295,95 +304,14 @@ export function EnrollmentForm() {
                 name="nationalId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>National ID</FormLabel>
+                    <FormLabel>National ID / Passport</FormLabel>
                     <FormControl>
-                      <Input placeholder="123456789" {...field} />
+                      <Input placeholder="Optional" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
-
-            <Separator className="my-6" />
-            
-            {/* Academic Information */}
-            <h3 className="text-lg font-semibold border-b pb-2">Academic Information</h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <FormField
-                    control={form.control}
-                    name="program"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Program</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., Science" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="admissionYear"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Admission Year</FormLabel>
-                        <FormControl>
-                        <Input type="number" placeholder="2024" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="currentGradeLevel"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Current Grade Level</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., 10" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Active">Active</SelectItem>
-                          <SelectItem value="Inactive">Inactive</SelectItem>
-                          <SelectItem value="Graduated">Graduated</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                    control={form.control}
-                    name="previousSchool"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Previously Attended School</FormLabel>
-                        <FormControl>
-                        <Input placeholder="Optional" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
             </div>
             
             <Separator className="my-6" />
@@ -597,7 +525,11 @@ export function EnrollmentForm() {
         </Card>
 
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => form.reset()}>Reset Form</Button>
+            <Button type="button" variant="outline" onClick={() => {
+              form.reset();
+              // Also reset the ID counter if you want a fresh start after reset
+              // setNextStudentId(1832); 
+            }}>Reset Form</Button>
             <Button type="submit">Enroll Student</Button>
         </div>
       </form>

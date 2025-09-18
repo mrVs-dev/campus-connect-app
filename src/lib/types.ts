@@ -19,7 +19,7 @@ export interface Student {
   dateOfBirth: Date;
   placeOfBirth: string;
   nationality: string;
-  nationalId: string;
+  nationalId?: string;
   program: string;
   admissionYear: number;
   currentGradeLevel: string;
