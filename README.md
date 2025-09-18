@@ -4,30 +4,44 @@ This is a School Gradebook and Dashboard Application built with Next.js and Fire
 
 ## Getting Started
 
-To get started, take a look at `src/app/page.tsx`.
+To get started with the development server, run:
+
+```bash
+npm run dev
+```
 
 ## Setup
 
-The application uses the Gemini API for its AI features. To use these features, you'll need to provide an API key.
+The application uses Firebase for authentication and the Gemini API for its AI features. To use these features, you'll need to provide API keys.
+
+1.  Create a new file named `.env.local` in the root of the project.
+2.  Add the following lines to the `.env.local` file.
+
+```
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY="YOUR_API_KEY"
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="YOUR_AUTH_DOMAIN"
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="YOUR_PROJECT_ID"
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="YOUR_STORAGE_BUCKET"
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="YOUR_MESSAGING_SENDER_ID"
+NEXT_PUBLIC_FIREBASE_APP_ID="YOUR_APP_ID"
+
+# Gemini API Key
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+```
+
+### Finding your Firebase Configuration
+
+1.  Go to the [Firebase Console](https://console.firebase.google.com/).
+2.  Create a new Firebase project or select an existing one.
+3.  In your project's dashboard, click the **</>** icon to add a web app.
+4.  Follow the on-screen instructions to register your app.
+5.  After registering, you will see your Firebase configuration details (`apiKey`, `authDomain`, etc.). Copy and paste these values into your `.env.local` file.
+6.  In the Firebase console, go to **Authentication** > **Sign-in method** and enable the **Google** provider.
+
+### Finding your Gemini API Key
 
 1.  Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-2.  Create a new file named `.env.local` in the root of the project.
-3.  Add the following line to the `.env.local` file, replacing `YOUR_API_KEY` with your actual key:
+2.  Copy the key and paste it as the value for `GEMINI_API_KEY` in your `.env.local` file.
 
-```
-GEMINI_API_KEY=YOUR_API_KEY
-```
-
-After adding the key, you'll need to restart your development server for the changes to take effect.
-
-## Deployment (Coming Soon)
-
-Currently, this application is running in a local development environment. The data is stored in your browser's `localStorage`, which means it is only accessible on your machine.
-
-To make the application "live" and accessible to other users, the following steps are typically required:
-
-1.  **Database Setup**: Replace the current `localStorage` solution with a cloud database (like Firebase Firestore) to store and manage data centrally.
-2.  **Authentication**: Implement a user authentication system (like Firebase Authentication) to manage user accounts and secure access.
-3.  **Hosting**: Deploy the application to a hosting provider (like Firebase Hosting) to make it accessible on the internet.
-
-These features are planned for a future update.
+After adding the keys, you'll need to restart your development server for the changes to take effect.
