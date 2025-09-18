@@ -83,18 +83,29 @@ export function EnrollmentForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      serialNumber: "",
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      khmerFirstName: "",
+      khmerLastName: "",
       sex: "Male",
-      mediaConsent: false,
-      guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""] }],
       placeOfBirth: "Siem Reap",
       nationality: "Cambodian",
+      nationalId: "",
       address: {
         district: "Krong Siem Reap",
         commune: "",
         village: "",
         street: "",
         house: "",
-      }
+      },
+      guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""] }],
+      mediaConsent: false,
+      emergencyContact: {
+        name: "",
+        phone: "",
+      },
     },
   });
 
