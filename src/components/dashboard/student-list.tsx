@@ -41,9 +41,10 @@ export function StudentList({ students }: { students: Student[] }) {
               <TableRow>
                 <TableHead>Student</TableHead>
                 <TableHead>Program</TableHead>
+                <TableHead className="hidden md:table-cell">Grade</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
-                <TableHead className="hidden md:table-cell">Admission Year</TableHead>
                 <TableHead className="hidden lg:table-cell">Contact</TableHead>
+                <TableHead className="hidden lg:table-cell">Parent/Guardian</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -78,10 +79,13 @@ export function StudentList({ students }: { students: Student[] }) {
                   </TableCell>
                   <TableCell>{student.program}</TableCell>
                    <TableCell className="hidden md:table-cell">
+                    {student.currentGradeLevel}
+                  </TableCell>
+                   <TableCell className="hidden md:table-cell">
                     <Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {student.admissionYear}
+                  <TableCell className="hidden lg:table-cell">
+                    {student.studentPhone}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     {student.parentGuardianName} ({student.parentGuardianPhone})
