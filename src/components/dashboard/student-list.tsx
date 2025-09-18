@@ -31,6 +31,10 @@ export function StudentList({ students }: { students: Student[] }) {
   );
   const [isImportOpen, setIsImportOpen] = React.useState(false);
 
+  const formatAddress = (address: Student["address"]) => {
+    return `${address.village}, ${address.commune}, ${address.district}`;
+  }
+
   return (
     <>
       <Card>
@@ -64,9 +68,9 @@ export function StudentList({ students }: { students: Student[] }) {
                 <TableHead>Program</TableHead>
                 <TableHead className="hidden md:table-cell">Grade</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
-                <TableHead className="hidden lg:table-cell">Contact</TableHead>
+                <TableHead className="hidden lg:table-cell">Address</TableHead>
                 <TableHead className="hidden lg:table-cell">
-                  Parent/Guardian
+                  Guardian
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -114,10 +118,10 @@ export function StudentList({ students }: { students: Student[] }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {student.studentPhone}
+                    {formatAddress(student.address)}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {student.parentGuardianName} ({student.parentGuardianPhone})
+                    {student.guardians[0]?.name} ({student.guardians[0]?.mobiles[0]})
                   </TableCell>
                 </TableRow>
               ))}

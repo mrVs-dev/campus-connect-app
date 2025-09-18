@@ -1,24 +1,40 @@
+export type Guardian = {
+  relation: string;
+  name: string;
+  occupation: string;
+  workplace: string;
+  mobiles: string[];
+};
+
 export interface Student {
   studentId: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
   khmerFirstName: string;
   khmerLastName: string;
   sex: 'Male' | 'Female' | 'Other';
   dateOfBirth: Date;
+  placeOfBirth: string;
   nationality: string;
   nationalId: string;
   program: string;
   admissionYear: number;
   currentGradeLevel: string;
   status: 'Active' | 'Inactive' | 'Graduated';
-  address: string;
-  studentEmail: string;
-  studentPhone: string;
-  parentGuardianName: string;
-  parentGuardianPhone: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
+  previousSchool?: string;
+  address: {
+    district: string;
+    commune: string;
+    village: string;
+    street?: string;
+  };
+  guardians: Guardian[];
+  mediaConsent: boolean;
+  emergencyContact: {
+    name: string;
+    phone: string;
+  };
   avatarUrl?: string;
 }
 
