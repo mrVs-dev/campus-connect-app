@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "student-avatar-1",
+      "description": "Avatar for Liam Johnson",
+      "imageUrl": "https://picsum.photos/seed/1/100/100",
+      "imageHint": "student portrait"
+    },
+    {
+      "id": "student-avatar-2",
+      "description": "Avatar for Olivia Smith",
+      "imageUrl": "https://picsum.photos/seed/2/100/100",
+      "imageHint": "student portrait"
+    },
+    {
+      "id": "student-avatar-3",
+      "description": "Avatar for Noah Williams",
+      "imageUrl": "https://picsum.photos/seed/3/100/100",
+      "imageHint": "student portrait"
+    },
+    {
+      "id": "student-avatar-4",
+      "description": "Avatar for Emma Brown",
+      "imageUrl": "https://picsum.photos/seed/4/100/100",
+      "imageHint": "student portrait"
+    },
+    {
+      "id": "student-avatar-5",
+      "description": "Avatar for Ava Jones",
+      "imageUrl": "https://picsum.photos/seed/5/100/100",
+      "imageHint": "student portrait"
+    },
+    {
+      "id": "student-avatar-6",
+      "description": "Avatar for Isabella Miller",
+      "imageUrl": "https://picsum.photos/seed/6/100/100",
+      "imageHint": "student portrait"
+    },
+    {
+      "id": "student-avatar-7",
+      "description": "Avatar for Sophia Wilson",
+      "imageUrl": "https://picsum.photos/seed/7/100/100",
+      "imageHint": "student portrait"
+    },
+    {
+      "id": "student-avatar-8",
+      "description": "Avatar for Mia Davis",
+      "imageUrl": "https://picsum.photos/seed/8/100/100",
+      "imageHint": "student portrait"
+    }
+  ]
 }
