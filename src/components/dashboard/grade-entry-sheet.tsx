@@ -61,7 +61,7 @@ export function GradeEntrySheet({
                     <TableCell>
                        <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
-                           <AvatarImage src={student.avatarUrl} alt="Avatar" />
+                           <AvatarImage src={student.avatarUrl} alt="Avatar" className="object-cover" />
                            <AvatarFallback>{student.firstName[0]}{student.lastName[0]}</AvatarFallback>
                          </Avatar>
                         <div className="font-medium">{student.firstName} {student.lastName}</div>

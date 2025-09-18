@@ -94,6 +94,7 @@ export function StudentList({
                           src={student.avatarUrl}
                           alt={`${student.firstName} ${student.lastName}`}
                           data-ai-hint="student portrait"
+                          className="object-cover"
                         />
                         <AvatarFallback>
                           {student.firstName[0]}
