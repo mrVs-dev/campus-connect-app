@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop, pixelCropToPercentCrop } from 'react-image-crop';
 
 import {
   Dialog,
@@ -47,28 +48,29 @@ export function ImageCropDialog({
   onOpenChange,
 }: ImageCropDialogProps) {
   const [crop, setCrop] = React.useState<Crop>();
+  const [completedCrop, setCompletedCrop] = React.useState<Crop | null>(null);
   const imgRef = React.useRef<HTMLImageElement>(null);
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { width, height } = e.currentTarget;
     const initialCrop = centerAspectCrop(width, height, 1);
     setCrop(initialCrop);
+    setCompletedCrop(initialCrop);
   }
 
   const handleCrop = () => {
-    if (!crop || !imgRef.current) return;
+    if (!completedCrop || !imgRef.current) return;
     
     const image = imgRef.current;
     const canvas = document.createElement("canvas");
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
     
-    // For circular crop, we want the canvas to be square based on the crop selection
     const pixelCrop = {
-      x: Math.round(crop.x * scaleX),
-      y: Math.round(crop.y * scaleY),
-      width: Math.round(crop.width * scaleX),
-      height: Math.round(crop.height * scaleY),
+        x: completedCrop.x * scaleX,
+        y: completedCrop.y * scaleY,
+        width: completedCrop.width * scaleX,
+        height: completedCrop.height * scaleY,
     };
 
     canvas.width = pixelCrop.width;
@@ -106,6 +108,7 @@ export function ImageCropDialog({
             <ReactCrop
               crop={crop}
               onChange={(_, percentCrop) => setCrop(percentCrop)}
+              onComplete={(c) => setCompletedCrop(c)}
               aspect={1}
               circularCrop
             >
