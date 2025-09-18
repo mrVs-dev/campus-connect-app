@@ -8,7 +8,7 @@ let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 
 // This function ensures that Firebase is initialized only once and only on the client-side.
-function getFirebaseAuth() {
+function getFirebaseAuth(): Auth {
   if (typeof window !== 'undefined' && !auth) {
     // We are on the client and auth hasn't been initialized yet.
     
