@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase/firebase";
+import { getFirebaseAuth } from "@/lib/firebase/firebase";
 import type { Student } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const nextStudentIdCounter = React.useRef(0);
   const router = useRouter();
   const [user, setUser] = React.useState<any>(null); // Use a more specific type if possible
+  const auth = getFirebaseAuth();
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -30,7 +31,7 @@ export default function DashboardPage() {
       }
     });
     return () => unsubscribe();
-  }, [router]);
+  }, [router, auth]);
 
   // Load students from localStorage on initial mount
   React.useEffect(() => {

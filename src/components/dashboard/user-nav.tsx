@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { auth } from "@/lib/firebase/firebase";
+import { getFirebaseAuth } from "@/lib/firebase/firebase";
 import { signOut, User } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
@@ -26,6 +26,7 @@ interface UserNavProps {
 
 export function UserNav({ user }: UserNavProps) {
     const router = useRouter();
+    const auth = getFirebaseAuth();
 
     const handleSignOut = async () => {
         await signOut(auth);

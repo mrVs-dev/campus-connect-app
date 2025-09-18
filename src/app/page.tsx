@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/icons/logo";
-import { auth } from "@/lib/firebase/firebase";
+import { getFirebaseAuth } from "@/lib/firebase/firebase";
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
+  const auth = getFirebaseAuth();
 
   React.useEffect(() => {
     // onAuthStateChanged can take a moment to determine the user's state
@@ -26,7 +27,7 @@ export default function LoginPage() {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, auth]);
 
   const handleSignIn = async () => {
     const provider = new GoogleAuthProvider();

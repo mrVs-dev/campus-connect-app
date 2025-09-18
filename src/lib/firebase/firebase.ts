@@ -1,5 +1,5 @@
 // src/lib/firebase/firebase.ts
-"use client";
+'use client';
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
@@ -17,14 +17,22 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 
-// Initialize Firebase on the client side only.
-if (typeof window !== 'undefined' && !getApps().length) {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-} else if (typeof window !== 'undefined') {
-  app = getApp();
-  auth = getAuth(app);
+// This function ensures that Firebase is initialized only once and only on the client-side.
+function getFirebaseAuth() {
+  if (typeof window !== 'undefined') {
+    if (!auth) {
+      if (!getApps().length) {
+        app = initializeApp(firebaseConfig);
+      } else {
+        app = getApp();
+      }
+      auth = getAuth(app);
+    }
+  }
+  // On the server, we return a placeholder object.
+  // The actual auth logic will only run on the client.
+  // @ts-ignore
+  return auth;
 }
 
-// @ts-ignore
-export { app, auth };
+export { getFirebaseAuth };
