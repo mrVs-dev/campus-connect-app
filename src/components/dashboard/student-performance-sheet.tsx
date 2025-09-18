@@ -122,7 +122,7 @@ export function StudentPerformanceSheet({
             <div className="flex items-center gap-4">
               <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src={student.avatarUrl} alt={student.firstName} />
+                  <AvatarImage src={student.avatarUrl} alt={student.firstName} className="object-cover" />
                   <AvatarFallback>{student.firstName[0]}{student.lastName[0]}</AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex items-center justify-center rounded-full transition-opacity">

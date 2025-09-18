@@ -187,7 +187,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                       <FormControl>
                         <div className="flex items-center gap-4">
                            <Avatar className="h-24 w-24">
-                            <AvatarImage src={photoPreview || undefined} />
+                            <AvatarImage src={photoPreview || undefined} className="object-cover" />
                             <AvatarFallback>
                                <div className="h-full w-full flex items-center justify-center bg-muted text-muted-foreground">
                                 Photo
