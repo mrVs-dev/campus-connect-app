@@ -5,8 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray, useFormContext } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
+import { CalendarIcon, PlusCircle, Trash2, Upload } from "lucide-react";
 import * as React from "react";
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { communes, getVillagesByCommune } from "@/lib/address-data";
 import type { Student } from "@/lib/types";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 const guardianSchema = z.object({
   relation: z.string().min(1, "Relation is required"),
@@ -62,6 +64,7 @@ const formSchema = z.object({
   placeOfBirth: z.string().min(1, "Place of birth is required"),
   nationality: z.string().min(1, "Nationality is required"),
   nationalId: z.string().optional(),
+  avatarUrl: z.string().optional(),
   address: z.object({
     district: z.string().min(1, "District is required"),
     commune: z.string().min(1, "Commune is required"),
@@ -82,15 +85,19 @@ const formSchema = z.object({
   status: z.enum(["Active", "Inactive", "Graduated"]).default("Active"),
 });
 
+type EnrollmentFormValues = z.infer<typeof formSchema>;
+
 type EnrollmentFormProps = {
-  onEnroll: (student: Omit<Student, 'avatarUrl'>) => void;
+  onEnroll: (student: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => void;
 };
 
 export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const { toast } = useToast();
   const [nextStudentId, setNextStudentId] = React.useState(1832);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<EnrollmentFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       serialNumber: "",
@@ -103,6 +110,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
       placeOfBirth: "Siem Reap",
       nationality: "Cambodian",
       nationalId: "",
+      avatarUrl: "",
       address: {
         district: "Krong Siem Reap",
         commune: "",
@@ -131,20 +139,28 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     form.resetField("address.village", { defaultValue: "" });
   }, [selectedCommune, form]);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUri = reader.result as string;
+        setPhotoPreview(dataUri);
+        form.setValue("avatarUrl", dataUri);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const newStudentData: Omit<Student, 'avatarUrl'> = {
-      studentId: `stu${nextStudentId}`, 
-      enrollmentDate: new Date(),
-      ...values,
-    };
-    onEnroll(newStudentData);
+  function onSubmit(values: EnrollmentFormValues) {
+    onEnroll(values);
     toast({
       title: "Enrollment Successful",
       description: `${values.firstName} has been added to the roster.`,
     });
     setNextStudentId(prevId => prevId + 1);
     form.reset();
+    setPhotoPreview(null);
   }
 
   return (
@@ -160,7 +176,43 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
           <CardContent className="space-y-6">
             {/* Personal Information */}
             <h3 className="text-lg font-semibold border-b pb-2">Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+              <div className="lg:col-span-3">
+                 <FormField
+                  control={form.control}
+                  name="avatarUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profile Photo</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-4">
+                           <Avatar className="h-24 w-24">
+                            <AvatarImage src={photoPreview || undefined} />
+                            <AvatarFallback>
+                               <div className="h-full w-full flex items-center justify-center bg-muted text-muted-foreground">
+                                Photo
+                               </div>
+                            </AvatarFallback>
+                           </Avatar>
+                           <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                              <Upload className="mr-2 h-4 w-4"/>
+                              Upload Photo
+                           </Button>
+                           <input
+                              type="file"
+                              ref={fileInputRef}
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleFileChange}
+                           />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                 />
+              </div>
+
               <FormItem>
                 <FormLabel>Student ID</FormLabel>
                 <FormControl>
@@ -531,8 +583,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => {
               form.reset();
-              // Also reset the ID counter if you want a fresh start after reset
-              // setNextStudentId(1832); 
+              setPhotoPreview(null);
             }}>Reset Form</Button>
             <Button type="submit">Enroll Student</Button>
         </div>
@@ -544,7 +595,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
 
 // Helper component for Guardian card to manage its own field array for mobiles
 function GuardianCard({ guardianIndex, remove }: { guardianIndex: number, remove: (index: number) => void }) {
-  const { control } = useFormContext();
+  const { control } = useFormContext<EnrollmentFormValues>();
   const { fields, append, remove: removeMobile } = useFieldArray({
     control,
     name: `guardians.${guardianIndex}.mobiles`,

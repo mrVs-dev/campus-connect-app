@@ -13,12 +13,15 @@ import { students as initialStudents, assessments } from "@/lib/mock-data";
 export default function DashboardPage() {
   const [students, setStudents] = React.useState<Student[]>(initialStudents);
   
-  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl'>) => {
-    const studentWithAvatar: Student = {
+  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
+    const nextStudentId = `stu${1832 + students.filter(s => s.studentId.startsWith('stu')).length}`;
+    
+    const studentWithDetails: Student = {
       ...newStudent,
-      avatarUrl: `https://picsum.photos/seed/${students.length + 1}/100/100`,
+      studentId: nextStudentId,
+      avatarUrl: newStudent.avatarUrl || `https://picsum.photos/seed/${students.length + 1}/100/100`,
     };
-    setStudents(prevStudents => [...prevStudents, studentWithAvatar]);
+    setStudents(prevStudents => [...prevStudents, studentWithDetails]);
   };
 
   return (
