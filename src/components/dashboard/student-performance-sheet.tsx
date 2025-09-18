@@ -20,6 +20,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { ImageCropDialog } from "./image-crop-dialog";
+import 'react-image-crop/dist/ReactCrop.css'
 
 interface StudentPerformanceSheetProps {
   student: Student | null;
@@ -55,6 +57,7 @@ export function StudentPerformanceSheet({
   onUpdateStudent,
 }: StudentPerformanceSheetProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
   const { toast } = useToast();
 
   if (!student) return null;
@@ -65,17 +68,26 @@ export function StudentPerformanceSheet({
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && student) {
+    if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const dataUri = reader.result as string;
-        onUpdateStudent(student.studentId, { avatarUrl: dataUri });
-        toast({
-          title: "Photo Updated",
-          description: `${student.firstName}'s profile photo has been changed.`,
-        });
+        setPhotoToCrop(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePhotoCropped = (croppedDataUri: string) => {
+    if (student) {
+        onUpdateStudent(student.studentId, { avatarUrl: croppedDataUri });
+        toast({
+            title: "Photo Updated",
+            description: `${student.firstName}'s profile photo has been changed.`,
+        });
+    }
+    setPhotoToCrop(null); // Close the dialog
+    if (fileInputRef.current) {
+        fileInputRef.current.value = ""; // Reset file input
     }
   };
 
@@ -117,6 +129,11 @@ export function StudentPerformanceSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-2xl w-full flex flex-col">
+        <ImageCropDialog 
+            imageSrc={photoToCrop}
+            onCropComplete={handlePhotoCropped}
+            onOpenChange={(isOpen) => !isOpen && setPhotoToCrop(null)}
+        />
         <SheetHeader>
           <SheetTitle>
             <div className="flex items-center gap-4">

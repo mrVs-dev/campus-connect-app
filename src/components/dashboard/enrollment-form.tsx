@@ -41,6 +41,9 @@ import { useToast } from "@/hooks/use-toast";
 import { communes, getVillagesByCommune } from "@/lib/address-data";
 import type { Student } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { ImageCropDialog } from "./image-crop-dialog";
+import 'react-image-crop/dist/ReactCrop.css'
+
 
 const guardianSchema = z.object({
   relation: z.string().min(1, "Relation is required"),
@@ -95,6 +98,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const { toast } = useToast();
   const [nextStudentId, setNextStudentId] = React.useState(1832);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
 
   const form = useForm<EnrollmentFormValues>({
@@ -144,11 +148,18 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const dataUri = reader.result as string;
-        setPhotoPreview(dataUri);
-        form.setValue("avatarUrl", dataUri);
+        setPhotoToCrop(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePhotoCropped = (croppedDataUri: string) => {
+    setPhotoPreview(croppedDataUri);
+    form.setValue("avatarUrl", croppedDataUri);
+    setPhotoToCrop(null); // Close the dialog
+    if (fileInputRef.current) {
+        fileInputRef.current.value = ""; // Reset file input
     }
   };
 
@@ -166,6 +177,11 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <ImageCropDialog 
+            imageSrc={photoToCrop}
+            onCropComplete={handlePhotoCropped}
+            onOpenChange={(isOpen) => !isOpen && setPhotoToCrop(null)}
+        />
         <Card>
           <CardHeader>
             <CardTitle>Enroll New Student</CardTitle>
