@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import type { Student } from "@/lib/types";
+import { Upload } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -19,21 +21,40 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { StudentPerformanceSheet } from "./student-performance-sheet";
+import { StudentImportDialog } from "./student-import-dialog";
 
 export function StudentList({ students }: { students: Student[] }) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(
     null
   );
+  const [isImportOpen, setIsImportOpen] = React.useState(false);
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Class Roster</CardTitle>
-          <CardDescription>
-            A list of all students in your class. Click a student to view their performance.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Class Roster</CardTitle>
+              <CardDescription>
+                A list of all students in your class. Click a student to view
+                their performance.
+              </CardDescription>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1"
+              onClick={() => setIsImportOpen(true)}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                Import Students
+              </span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -44,7 +65,9 @@ export function StudentList({ students }: { students: Student[] }) {
                 <TableHead className="hidden md:table-cell">Grade</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
                 <TableHead className="hidden lg:table-cell">Contact</TableHead>
-                <TableHead className="hidden lg:table-cell">Parent/Guardian</TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  Parent/Guardian
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -78,11 +101,17 @@ export function StudentList({ students }: { students: Student[] }) {
                     </div>
                   </TableCell>
                   <TableCell>{student.program}</TableCell>
-                   <TableCell className="hidden md:table-cell">
+                  <TableCell className="hidden md:table-cell">
                     {student.currentGradeLevel}
                   </TableCell>
-                   <TableCell className="hidden md:table-cell">
-                    <Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge>
+                  <TableCell className="hidden md:table-cell">
+                    <Badge
+                      variant={
+                        student.status === "Active" ? "default" : "secondary"
+                      }
+                    >
+                      {student.status}
+                    </Badge>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     {student.studentPhone}
@@ -104,6 +133,10 @@ export function StudentList({ students }: { students: Student[] }) {
             setSelectedStudent(null);
           }
         }}
+      />
+      <StudentImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
       />
     </>
   );
