@@ -11,8 +11,41 @@ import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { students as initialStudents, assessments } from "@/lib/mock-data";
 
 export default function DashboardPage() {
-  const [students, setStudents] = React.useState<Student[]>(initialStudents);
+  const [students, setStudents] = React.useState<Student[]>([]);
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  // Load students from localStorage on initial mount
+  React.useEffect(() => {
+    setIsMounted(true);
+    try {
+      const storedStudents = localStorage.getItem("students");
+      if (storedStudents) {
+        // Must parse dates after retrieving from JSON
+        const parsedStudents = JSON.parse(storedStudents).map((s: Student) => ({
+          ...s,
+          dateOfBirth: new Date(s.dateOfBirth),
+        }));
+        setStudents(parsedStudents);
+      } else {
+        setStudents(initialStudents);
+      }
+    } catch (error) {
+      console.error("Failed to load students from localStorage", error);
+      setStudents(initialStudents);
+    }
+  }, []);
   
+  // Save students to localStorage whenever the list changes
+  React.useEffect(() => {
+    if (isMounted) {
+      try {
+        localStorage.setItem("students", JSON.stringify(students));
+      } catch (error) {
+        console.error("Failed to save students to localStorage", error);
+      }
+    }
+  }, [students, isMounted]);
+
   const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
     const nextStudentId = `stu${1832 + students.filter(s => s.studentId.startsWith('stu')).length}`;
     
@@ -23,6 +56,10 @@ export default function DashboardPage() {
     };
     setStudents(prevStudents => [...prevStudents, studentWithDetails]);
   };
+
+  if (!isMounted) {
+    return null; // or a loading spinner
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
