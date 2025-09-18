@@ -63,22 +63,30 @@ export function ImageCropDialog({
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
     
-    canvas.width = crop.width * scaleX;
-    canvas.height = crop.height * scaleY;
+    // For circular crop, we want the canvas to be square based on the crop selection
+    const pixelCrop = {
+      x: Math.round(crop.x * scaleX),
+      y: Math.round(crop.y * scaleY),
+      width: Math.round(crop.width * scaleX),
+      height: Math.round(crop.height * scaleY),
+    };
+
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     ctx.drawImage(
       image,
-      crop.x * scaleX,
-      crop.y * scaleY,
-      crop.width * scaleX,
-      crop.height * scaleY,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
       0,
       0,
-      crop.width * scaleX,
-      crop.height * scaleY
+      pixelCrop.width,
+      pixelCrop.height
     );
 
     onCropComplete(canvas.toDataURL("image/jpeg"));
