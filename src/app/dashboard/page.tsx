@@ -2,13 +2,14 @@
 "use client";
 
 import * as React from "react";
-import type { Student } from "@/lib/types";
+import type { Student, Admission } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/components/dashboard/overview";
 import { StudentList } from "@/components/dashboard/student-list";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
+import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { students as initialStudents, assessments } from "@/lib/mock-data";
 import { getFirebaseAuth } from "@/lib/firebase/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
@@ -16,6 +17,7 @@ import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const [students, setStudents] = React.useState<Student[]>([]);
+  const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [isMounted, setIsMounted] = React.useState(false);
   const nextStudentIdCounter = React.useRef(0);
   const [user, setUser] = React.useState<User | null>(null);
@@ -25,8 +27,6 @@ export default function DashboardPage() {
   React.useEffect(() => {
     const auth = getFirebaseAuth();
     if (!auth) {
-        // This can happen if Firebase is not initialized yet.
-        // We'll handle it by simply not setting a user.
         setLoading(false);
         router.push("/");
         return;
@@ -47,10 +47,11 @@ export default function DashboardPage() {
     setIsMounted(true);
   }, []);
 
-  // Load students from localStorage on initial mount
+  // Load data from localStorage on initial mount
   React.useEffect(() => {
     if (isMounted) {
       try {
+        // Load Students
         const storedStudents = localStorage.getItem("students");
         if (storedStudents) {
           const parsedStudents = JSON.parse(storedStudents).map((s: Student) => ({
@@ -61,14 +62,22 @@ export default function DashboardPage() {
         } else {
           setStudents(initialStudents);
         }
+
+        // Load Admissions
+        const storedAdmissions = localStorage.getItem("admissions");
+        if (storedAdmissions) {
+          setAdmissions(JSON.parse(storedAdmissions));
+        }
+
       } catch (error) {
-        console.error("Failed to load students from localStorage", error);
+        console.error("Failed to load data from localStorage", error);
         setStudents(initialStudents);
+        setAdmissions([]);
       }
     }
   }, [isMounted]);
   
-  // Save students to localStorage whenever the list changes
+  // Save students to localStorage
   React.useEffect(() => {
     if (isMounted) {
       try {
@@ -83,6 +92,17 @@ export default function DashboardPage() {
       }
     }
   }, [students, isMounted]);
+
+  // Save admissions to localStorage
+  React.useEffect(() => {
+    if (isMounted) {
+      try {
+        localStorage.setItem("admissions", JSON.stringify(admissions));
+      } catch (error) {
+        console.error("Failed to save admissions to localStorage", error);
+      }
+    }
+  }, [admissions, isMounted]);
 
   const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
     const studentWithDetails: Student = {
@@ -114,6 +134,19 @@ export default function DashboardPage() {
     setStudents(prev => [...prev, ...newStudents]);
   };
 
+  const handleSaveAdmission = (newAdmission: Admission) => {
+    setAdmissions(prev => {
+        const existingIndex = prev.findIndex(a => a.admissionId === newAdmission.admissionId);
+        if (existingIndex > -1) {
+            const updatedAdmissions = [...prev];
+            updatedAdmissions[existingIndex] = newAdmission;
+            return updatedAdmissions;
+        } else {
+            return [...prev, newAdmission];
+        }
+    });
+  };
+
   if (loading || !isMounted || !user) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading...</div>;
   }
@@ -123,11 +156,12 @@ export default function DashboardPage() {
       <Header user={user} />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
         <Tabs defaultValue="dashboard" className="flex flex-col gap-4">
-          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-4 self-start">
+          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-5 self-start">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
-            <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
+            <TabsTrigger value="admissions">Admissions</TabsTrigger>
+            <TabsTrigger value="enrollment">New Student</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -149,6 +183,14 @@ export default function DashboardPage() {
             />
           </TabsContent>
 
+          <TabsContent value="admissions">
+            <AdmissionsList 
+              admissions={admissions}
+              students={students}
+              onSave={handleSaveAdmission}
+            />
+          </TabsContent>
+          
           <TabsContent value="enrollment">
             <EnrollmentForm onEnroll={handleEnrollStudent} nextStudentId={nextStudentIdCounter.current} />
           </TabsContent>

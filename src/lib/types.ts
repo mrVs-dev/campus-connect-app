@@ -80,3 +80,15 @@ export interface Assessment {
   totalMarks: number;
   scores: Record<string, number>; // { [studentId]: rawScore }
 }
+
+// For yearly admissions
+export type StudentAdmission = {
+  studentId: string;
+  enrollments: Enrollment[];
+};
+
+export interface Admission {
+  admissionId: string; // e.g., '2025-2026'
+  schoolYear: string;
+  students: StudentAdmission[];
+}
