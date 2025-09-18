@@ -1,6 +1,6 @@
 "use client";
 
-import type { Student } from "@/lib/types";
+import type { Student, Guardian } from "@/lib/types";
 import { assessments, subjects } from "@/lib/mock-data";
 import { assessmentCategoryWeights } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -16,12 +16,34 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { AiSummary } from "./ai-summary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
 
 interface StudentPerformanceSheetProps {
   student: Student | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+function StudentDetail({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <p className="font-medium text-muted-foreground">{label}</p>
+      <p>{value}</p>
+    </div>
+  );
+}
+
+function GuardianDetails({ guardian }: { guardian: Guardian }) {
+  return (
+    <div className="space-y-2 rounded-lg border p-4">
+      <h4 className="font-semibold">{guardian.relation} - {guardian.name}</h4>
+      <p className="text-sm text-muted-foreground">{guardian.occupation} at {guardian.workplace}</p>
+      <p className="text-sm">Mobiles: {guardian.mobiles.join(', ')}</p>
+    </div>
+  );
+}
+
 
 export function StudentPerformanceSheet({
   student,
@@ -62,6 +84,9 @@ export function StudentPerformanceSheet({
     return acc;
   }, {} as Record<string, number>);
 
+  const fullName = `${student.firstName} ${student.middleName || ''} ${student.lastName}`.replace('  ', ' ');
+  const khmerFullName = `${student.khmerLastName} ${student.khmerFirstName}`;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-2xl w-full flex flex-col">
@@ -81,7 +106,12 @@ export function StudentPerformanceSheet({
             </div>
           </SheetTitle>
         </SheetHeader>
-        <div className="py-4 flex-1 overflow-y-auto pr-2">
+        <Tabs defaultValue="performance" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+          </TabsList>
+          <TabsContent value="performance" className="flex-1 overflow-y-auto pr-2 py-4">
             <Card className="mb-4">
                 <CardHeader>
                     <CardTitle className="text-base">AI Progress Summary</CardTitle>
@@ -111,7 +141,64 @@ export function StudentPerformanceSheet({
                 </div>
                 ))}
             </div>
-        </div>
+          </TabsContent>
+          <TabsContent value="profile" className="flex-1 overflow-y-auto pr-2 py-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Personal Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <StudentDetail label="Full English Name" value={fullName} />
+                <StudentDetail label="Full Khmer Name" value={khmerFullName} />
+                <StudentDetail label="Student ID" value={student.studentId} />
+                <StudentDetail label="Sex" value={student.sex} />
+                <StudentDetail label="Date of Birth" value={format(student.dateOfBirth, "MMMM d, yyyy")} />
+                <StudentDetail label="Place of Birth" value={student.placeOfBirth} />
+                <StudentDetail label="Nationality" value={student.nationality} />
+                <StudentDetail label="National ID" value={student.nationalId} />
+              </CardContent>
+            </Card>
+
+             <Card>
+              <CardHeader>
+                <CardTitle>Academic Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <StudentDetail label="Program" value={student.program} />
+                <StudentDetail label="Admission Year" value={student.admissionYear} />
+                <StudentDetail label="Current Grade" value={student.currentGradeLevel} />
+                <StudentDetail label="Status" value={student.status} />
+                <StudentDetail label="Previous School" value={student.previousSchool || 'N/A'} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact & Address</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                 <StudentDetail 
+                    label="Address" 
+                    value={`${student.address.village}, ${student.address.commune}, ${student.address.district}`} 
+                  />
+                <StudentDetail label="Emergency Contact" value={`${student.emergencyContact.name} (${student.emergencyContact.phone})`} />
+                <StudentDetail label="Media Consent" value={student.mediaConsent ? 'Yes' : 'No'} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Guardian Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {student.guardians.map((guardian, index) => (
+                  <GuardianDetails key={index} guardian={guardian} />
+                ))}
+              </CardContent>
+            </Card>
+
+          </TabsContent>
+        </Tabs>
         <div className="mt-auto pt-4 border-t">
           <Button onClick={() => onOpenChange(false)} className="w-full">
             Close
