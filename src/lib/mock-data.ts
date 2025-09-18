@@ -38,9 +38,6 @@ export const students: Student[] = [
     placeOfBirth: 'Springfield',
     nationality: 'American',
     nationalId: 'USA123456',
-    program: 'Science',
-    admissionYear: 2022,
-    currentGradeLevel: '10',
     status: 'Active',
     previousSchool: 'Springfield Middle School',
     address: {
@@ -60,6 +57,7 @@ export const students: Student[] = [
     mediaConsent: true,
     emergencyContact: { name: 'Robert Johnson', phone: '555-1112' },
     avatarUrl: 'https://picsum.photos/seed/1/100/100',
+    enrollments: [{ programId: 'khmer-national', level: 'Grade 10' }],
   },
   {
     studentId: 'S002',
@@ -72,9 +70,6 @@ export const students: Student[] = [
     placeOfBirth: 'Oakville',
     nationality: 'British',
     nationalId: 'GBR654321',
-    program: 'Arts',
-    admissionYear: 2022,
-    currentGradeLevel: '10',
     status: 'Active',
     address: {
         village: 'Oakhaven',
@@ -93,6 +88,7 @@ export const students: Student[] = [
     mediaConsent: false,
     emergencyContact: { name: 'Mary Smith', phone: '555-2223' },
     avatarUrl: 'https://picsum.photos/seed/2/100/100',
+    enrollments: [{ programId: 'english-international', level: 'Grade 10' }],
   },
   {
     studentId: 'S003',
@@ -105,9 +101,6 @@ export const students: Student[] = [
     placeOfBirth: 'Pine Ridge',
     nationality: 'Canadian',
     nationalId: 'CAN789012',
-    program: 'Science',
-    admissionYear: 2022,
-    currentGradeLevel: '10',
     status: 'Active',
     address: {
         village: 'Pinegrove',
@@ -126,6 +119,10 @@ export const students: Student[] = [
     mediaConsent: true,
     emergencyContact: { name: 'James Williams', phone: '555-3334' },
     avatarUrl: 'https://picsum.photos/seed/3/100/100',
+    enrollments: [
+      { programId: 'english-international', level: 'Grade 10' },
+      { programId: 'esl', level: 'Level 04' }
+    ],
   },
   {
     studentId: 'S004',
@@ -138,9 +135,6 @@ export const students: Student[] = [
     placeOfBirth: 'Birchwood',
     nationality: 'Australian',
     nationalId: 'AUS345678',
-    program: 'Commerce',
-    admissionYear: 2022,
-    currentGradeLevel: '10',
     status: 'Active',
     address: {
         village: 'Birch Creek',
@@ -159,6 +153,7 @@ export const students: Student[] = [
     mediaConsent: true,
     emergencyContact: { name: 'Patricia Brown', phone: '555-4445' },
     avatarUrl: 'https://picsum.photos/seed/4/100/100',
+    enrollments: [{ programId: 'csl', level: 'Level 03' }],
   },
     {
     studentId: 'S005',
@@ -171,9 +166,6 @@ export const students: Student[] = [
     placeOfBirth: 'Cedar Hill',
     nationality: 'American',
     nationalId: 'USA987654',
-    program: 'Arts',
-    admissionYear: 2022,
-    currentGradeLevel: '10',
     status: 'Active',
     address: {
         village: 'Cedarville',
@@ -199,6 +191,7 @@ export const students: Student[] = [
     mediaConsent: false,
     emergencyContact: { name: 'Jennifer Jones', phone: '555-5556' },
     avatarUrl: 'https://picsum.photos/seed/5/100/100',
+    enrollments: [{ programId: 'esl', level: 'Level 05' }],
   },
 ];
 

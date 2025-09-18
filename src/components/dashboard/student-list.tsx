@@ -4,7 +4,6 @@
 import * as React from "react";
 import type { Student } from "@/lib/types";
 import { Upload } from "lucide-react";
-
 import {
   Card,
   CardContent,
@@ -25,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StudentPerformanceSheet } from "./student-performance-sheet";
 import { StudentImportDialog } from "./student-import-dialog";
+import { programs } from "@/lib/program-data";
 
 export function StudentList({
   students,
@@ -43,6 +43,19 @@ export function StudentList({
   const formatAddress = (address: Student["address"]) => {
     return `${address.village}, ${address.commune}, ${address.district}`;
   }
+
+  const getProgramInfo = (enrollments: Student["enrollments"]) => {
+    if (!enrollments || enrollments.length === 0) {
+      return { programName: "N/A", level: "" };
+    }
+    const mainEnrollment = enrollments[0];
+    const program = programs.find(p => p.id === mainEnrollment.programId);
+    return {
+      programName: program?.name || "Unknown",
+      level: mainEnrollment.level,
+      additional: enrollments.length - 1
+    };
+  };
 
   return (
     <>
@@ -75,7 +88,7 @@ export function StudentList({
               <TableRow>
                 <TableHead>Student</TableHead>
                 <TableHead>Program</TableHead>
-                <TableHead className="hidden md:table-cell">Grade</TableHead>
+                <TableHead className="hidden md:table-cell">Grade/Level</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
                 <TableHead className="hidden lg:table-cell">Address</TableHead>
                 <TableHead className="hidden lg:table-cell">
@@ -84,57 +97,67 @@ export function StudentList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => (
-                <TableRow
-                  key={student.studentId}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedStudent(student)}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="hidden h-9 w-9 sm:flex">
-                        <AvatarImage
-                          src={student.avatarUrl}
-                          alt={`${student.firstName} ${student.lastName}`}
-                          data-ai-hint="student portrait"
-                          className="object-cover"
-                        />
-                        <AvatarFallback>
-                          {student.firstName[0]}
-                          {student.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="grid gap-1">
-                        <p className="text-sm font-medium leading-none">
-                          {student.firstName} {student.lastName}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {student.khmerLastName} {student.khmerFirstName}
-                        </p>
+              {students.map((student) => {
+                const { programName, level, additional } = getProgramInfo(student.enrollments);
+                return (
+                  <TableRow
+                    key={student.studentId}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedStudent(student)}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-4">
+                        <Avatar className="hidden h-9 w-9 sm:flex">
+                          <AvatarImage
+                            src={student.avatarUrl}
+                            alt={`${student.firstName} ${student.lastName}`}
+                            data-ai-hint="student portrait"
+                            className="object-cover"
+                          />
+                          <AvatarFallback>
+                            {student.firstName[0]}
+                            {student.lastName[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="grid gap-1">
+                          <p className="text-sm font-medium leading-none">
+                            {student.firstName} {student.lastName}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {student.khmerLastName} {student.khmerFirstName}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{student.program}</TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {student.currentGradeLevel}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <Badge
-                      variant={
-                        student.status === "Active" ? "default" : "secondary"
-                      }
-                    >
-                      {student.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {formatAddress(student.address)}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {student.guardians[0]?.name} ({student.guardians[0]?.mobiles[0]})
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      {programName}
+                      {additional > 0 && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          (+{additional})
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {level}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge
+                        variant={
+                          student.status === "Active" ? "default" : "secondary"
+                        }
+                      >
+                        {student.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {formatAddress(student.address)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {student.guardians[0]?.name} ({student.guardians[0]?.mobiles[0]})
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </CardContent>

@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import type { Student, Guardian } from "@/lib/types";
+import type { Student, Guardian, Enrollment } from "@/lib/types";
 import { assessments, subjects } from "@/lib/mock-data";
 import { assessmentCategoryWeights } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { ImageCropDialog } from "./image-crop-dialog";
+import { programs } from "@/lib/program-data";
 import 'react-image-crop/dist/ReactCrop.css'
 
 interface StudentPerformanceSheetProps {
@@ -47,6 +49,16 @@ function GuardianDetails({ guardian }: { guardian: Guardian }) {
       <p className="text-sm">Mobiles: {guardian.mobiles.join(', ')}</p>
     </div>
   );
+}
+
+function EnrollmentDetails({ enrollment }: { enrollment: Enrollment }) {
+  const program = programs.find(p => p.id === enrollment.programId);
+  return (
+    <div className="space-y-2 rounded-lg border p-4">
+      <h4 className="font-semibold">{program?.name || 'Unknown Program'}</h4>
+      <p className="text-sm text-muted-foreground">Level/Grade: {enrollment.level}</p>
+    </div>
+  )
 }
 
 
@@ -156,7 +168,7 @@ export function StudentPerformanceSheet({
               <div>
                 {student.firstName} {student.lastName}
                 <SheetDescription>
-                  {student.program} Program | Grade {student.currentGradeLevel}
+                  {student.enrollments.map(e => programs.find(p => p.id === e.programId)?.name).join(' | ')}
                 </SheetDescription>
               </div>
             </div>
@@ -219,12 +231,14 @@ export function StudentPerformanceSheet({
               <CardHeader>
                 <CardTitle>Academic Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <StudentDetail label="Program" value={student.program} />
-                <StudentDetail label="Admission Year" value={student.admissionYear} />
-                <StudentDetail label="Current Grade" value={student.currentGradeLevel} />
-                <StudentDetail label="Status" value={student.status} />
-                <StudentDetail label="Previous School" value={student.previousSchool || 'N/A'} />
+              <CardContent className="space-y-4">
+                {student.enrollments.map((enrollment, index) => (
+                  <EnrollmentDetails key={index} enrollment={enrollment} />
+                ))}
+                <div className="pt-2">
+                  <StudentDetail label="Status" value={student.status} />
+                  <StudentDetail label="Previous School" value={student.previousSchool || 'N/A'} />
+                </div>
               </CardContent>
             </Card>
 

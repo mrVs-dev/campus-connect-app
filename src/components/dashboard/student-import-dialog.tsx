@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import type { Student } from "@/lib/types";
+import { programs } from "@/lib/program-data";
 
 interface StudentImportDialogProps {
   open: boolean;
@@ -56,6 +57,11 @@ export function StudentImportDialog({
         try {
           const parsedStudents = results.data.map((row: any) => {
             // Basic validation and type conversion
+            const enrollments = [];
+            if (row.programId && row.level) {
+              enrollments.push({ programId: row.programId, level: row.level });
+            }
+
             return {
               firstName: row.firstName || '',
               lastName: row.lastName || '',
@@ -66,9 +72,6 @@ export function StudentImportDialog({
               placeOfBirth: row.placeOfBirth || '',
               nationality: row.nationality || '',
               nationalId: row.nationalId || undefined,
-              program: row.program || 'General',
-              admissionYear: parseInt(row.admissionYear, 10) || new Date().getFullYear(),
-              currentGradeLevel: row.currentGradeLevel || '10',
               status: ['Active', 'Inactive', 'Graduated'].includes(row.status) ? row.status : 'Active',
               address: {
                 village: row['address.village'] || '',
@@ -90,6 +93,7 @@ export function StudentImportDialog({
                 name: row['emergencyContact.name'] || '',
                 phone: row['emergencyContact.phone'] || '',
               },
+              enrollments: enrollments.length > 0 ? enrollments : [{programId: 'khmer-national', level: 'Grade 10'}], // Default enrollment
             };
           }) as Omit<Student, 'studentId' | 'avatarUrl'>[];
           

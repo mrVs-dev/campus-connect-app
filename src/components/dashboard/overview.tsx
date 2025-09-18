@@ -1,3 +1,4 @@
+
 "use client";
 
 import { BarChart, BookUser, Users } from "lucide-react";
@@ -14,13 +15,17 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import { students, subjects } from "@/lib/mock-data";
+import { programs } from "@/lib/program-data";
 
 export function Overview() {
   const totalStudents = students.length;
   const totalSubjects = subjects.length;
 
   const enrollmentByProgram = students.reduce((acc, student) => {
-    acc[student.program] = (acc[student.program] || 0) + 1;
+    student.enrollments.forEach(enrollment => {
+      const programName = programs.find(p => p.id === enrollment.programId)?.name || 'Unknown';
+      acc[programName] = (acc[programName] || 0) + 1;
+    });
     return acc;
   }, {} as Record<string, number>);
 
@@ -46,7 +51,7 @@ export function Overview() {
         <CardContent>
           <div className="text-2xl font-bold">{totalStudents}</div>
           <p className="text-xs text-muted-foreground">
-            Currently active in Grade 10
+            Enrolled in one or more programs
           </p>
         </CardContent>
       </Card>
@@ -76,6 +81,8 @@ export function Overview() {
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
+                interval={0}
+                tickFormatter={(value) => value.slice(0, 3)}
               />
               <YAxis tickLine={false} axisLine={false} />
               <ChartTooltip

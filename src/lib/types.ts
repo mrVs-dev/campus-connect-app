@@ -1,11 +1,15 @@
 
-
 export type Guardian = {
   relation: string;
   name: string;
   occupation: string;
   workplace: string;
   mobiles: string[];
+};
+
+export type Enrollment = {
+  programId: string;
+  level: string;
 };
 
 export interface Student {
@@ -22,9 +26,6 @@ export interface Student {
   placeOfBirth: string;
   nationality: string;
   nationalId?: string;
-  program: string;
-  admissionYear: number;
-  currentGradeLevel: string;
   status: 'Active' | 'Inactive' | 'Graduated';
   previousSchool?: string;
   address: {
@@ -41,6 +42,7 @@ export interface Student {
     phone: string;
   };
   avatarUrl?: string;
+  enrollments: Enrollment[];
 }
 
 export interface Teacher {
@@ -78,5 +80,3 @@ export interface Assessment {
   totalMarks: number;
   scores: Record<string, number>; // { [studentId]: rawScore }
 }
-
-    
