@@ -1,3 +1,5 @@
+"use client";
+
 import { BarChart, BookUser, Users } from "lucide-react";
 import {
   Card,
