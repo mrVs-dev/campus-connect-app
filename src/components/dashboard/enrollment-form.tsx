@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { communes, getVillagesByCommune } from "@/lib/address-data";
+import type { Student } from "@/lib/types";
 
 const guardianSchema = z.object({
   relation: z.string().min(1, "Relation is required"),
@@ -74,9 +75,18 @@ const formSchema = z.object({
     name: z.string().min(1, "Emergency contact name is required"),
     phone: z.string().min(1, "Emergency contact phone is required"),
   }),
+  // Fields not in the form but required for Student type
+  program: z.string().default("General"),
+  admissionYear: z.number().default(new Date().getFullYear()),
+  currentGradeLevel: z.string().default("10"), // Assuming a default grade
+  status: z.enum(["Active", "Inactive", "Graduated"]).default("Active"),
 });
 
-export function EnrollmentForm() {
+type EnrollmentFormProps = {
+  onEnroll: (student: Omit<Student, 'avatarUrl'>) => void;
+};
+
+export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const { toast } = useToast();
   const [nextStudentId, setNextStudentId] = React.useState(1832);
 
@@ -123,15 +133,15 @@ export function EnrollmentForm() {
 
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const newStudentData = {
+    const newStudentData: Omit<Student, 'avatarUrl'> = {
       studentId: `stu${nextStudentId}`, 
       enrollmentDate: new Date(),
       ...values,
     };
-    console.log("New Student Enrolled:", newStudentData);
+    onEnroll(newStudentData);
     toast({
       title: "Enrollment Successful",
-      description: `${values.firstName}'s data has been logged to the console.`,
+      description: `${values.firstName} has been added to the roster.`,
     });
     setNextStudentId(prevId => prevId + 1);
     form.reset();

@@ -1,12 +1,26 @@
+"use client";
+
+import * as React from "react";
+import type { Student } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/components/dashboard/overview";
 import { StudentList } from "@/components/dashboard/student-list";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
-import { students, assessments } from "@/lib/mock-data";
+import { students as initialStudents, assessments } from "@/lib/mock-data";
 
 export default function DashboardPage() {
+  const [students, setStudents] = React.useState<Student[]>(initialStudents);
+  
+  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl'>) => {
+    const studentWithAvatar: Student = {
+      ...newStudent,
+      avatarUrl: `https://picsum.photos/seed/${students.length + 1}/100/100`,
+    };
+    setStudents(prevStudents => [...prevStudents, studentWithAvatar]);
+  };
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
       <Header />
@@ -35,7 +49,7 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="enrollment">
-            <EnrollmentForm />
+            <EnrollmentForm onEnroll={handleEnrollStudent} />
           </TabsContent>
         </Tabs>
       </main>
