@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useFormContext } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
 import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
@@ -523,7 +523,7 @@ export function EnrollmentForm() {
 
 // Helper component for Guardian card to manage its own field array for mobiles
 function GuardianCard({ guardianIndex, remove }: { guardianIndex: number, remove: (index: number) => void }) {
-  const { control, formState: { errors } } = useFormContext();
+  const { control } = useFormContext();
   const { fields, append, remove: removeMobile } = useFieldArray({
     control,
     name: `guardians.${guardianIndex}.mobiles`,
@@ -633,5 +633,3 @@ function GuardianCard({ guardianIndex, remove }: { guardianIndex: number, remove
     </div>
   );
 }
-
-    
