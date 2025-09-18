@@ -14,7 +14,16 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase for client-side
-const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth: Auth = getAuth(app);
+let app: FirebaseApp;
+let auth: Auth;
 
+if (typeof window !== 'undefined' && !getApps().length) {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+} else if (typeof window !== 'undefined') {
+  app = getApp();
+  auth = getAuth(app);
+}
+
+// @ts-ignore
 export { app, auth };
