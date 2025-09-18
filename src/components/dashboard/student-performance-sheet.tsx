@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import type { Student, Guardian } from "@/lib/types";
 import { assessments, subjects } from "@/lib/mock-data";
 import { assessmentCategoryWeights } from "@/lib/types";
@@ -18,11 +19,13 @@ import { AiSummary } from "./ai-summary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface StudentPerformanceSheetProps {
   student: Student | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
 }
 
 function StudentDetail({ label, value }: { label: string; value: React.ReactNode }) {
@@ -49,8 +52,32 @@ export function StudentPerformanceSheet({
   student,
   open,
   onOpenChange,
+  onUpdateStudent,
 }: StudentPerformanceSheetProps) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
   if (!student) return null;
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && student) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUri = reader.result as string;
+        onUpdateStudent(student.studentId, { avatarUrl: dataUri });
+        toast({
+          title: "Photo Updated",
+          description: `${student.firstName}'s profile photo has been changed.`,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const studentAssessments = assessments.filter(
     (a) => a.scores[student.studentId] !== undefined
@@ -93,10 +120,22 @@ export function StudentPerformanceSheet({
         <SheetHeader>
           <SheetTitle>
             <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={student.avatarUrl} alt={student.firstName} />
-                <AvatarFallback>{student.firstName[0]}{student.lastName[0]}</AvatarFallback>
-              </Avatar>
+              <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={student.avatarUrl} alt={student.firstName} />
+                  <AvatarFallback>{student.firstName[0]}{student.lastName[0]}</AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex items-center justify-center rounded-full transition-opacity">
+                   <p className="text-white text-xs opacity-0 group-hover:opacity-100">Edit</p>
+                </div>
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileChange}
+              />
               <div>
                 {student.firstName} {student.lastName}
                 <SheetDescription>
@@ -155,7 +194,7 @@ export function StudentPerformanceSheet({
                 <StudentDetail label="Date of Birth" value={format(student.dateOfBirth, "MMMM d, yyyy")} />
                 <StudentDetail label="Place of Birth" value={student.placeOfBirth} />
                 <StudentDetail label="Nationality" value={student.nationality} />
-                <StudentDetail label="National ID" value={student.nationalId} />
+                <StudentDetail label="National ID" value={student.nationalId || 'N/A'} />
               </CardContent>
             </Card>
 
@@ -179,7 +218,7 @@ export function StudentPerformanceSheet({
               <CardContent className="space-y-2">
                  <StudentDetail 
                     label="Address" 
-                    value={`${student.address.village}, ${student.address.commune}, ${student.address.district}`} 
+                    value={`${student.address.house ? `${student.address.house}, ` : ''}${student.address.street ? `${student.address.street}, ` : ''}${student.address.village}, ${student.address.commune}, ${student.address.district}`} 
                   />
                 <StudentDetail label="Emergency Contact" value={`${student.emergencyContact.name} (${student.emergencyContact.phone})`} />
                 <StudentDetail label="Media Consent" value={student.mediaConsent ? 'Yes' : 'No'} />

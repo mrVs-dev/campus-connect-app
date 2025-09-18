@@ -25,7 +25,13 @@ import { Button } from "@/components/ui/button";
 import { StudentPerformanceSheet } from "./student-performance-sheet";
 import { StudentImportDialog } from "./student-import-dialog";
 
-export function StudentList({ students }: { students: Student[] }) {
+export function StudentList({
+  students,
+  onUpdateStudent,
+}: {
+  students: Student[];
+  onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
+}) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(
     null
   );
@@ -137,6 +143,7 @@ export function StudentList({ students }: { students: Student[] }) {
             setSelectedStudent(null);
           }
         }}
+        onUpdateStudent={onUpdateStudent}
       />
       <StudentImportDialog
         open={isImportOpen}

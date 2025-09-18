@@ -57,6 +57,14 @@ export default function DashboardPage() {
     setStudents(prevStudents => [...prevStudents, studentWithDetails]);
   };
 
+  const handleUpdateStudent = (studentId: string, updatedData: Partial<Student>) => {
+    setStudents(prevStudents =>
+      prevStudents.map(student =>
+        student.studentId === studentId ? { ...student, ...updatedData } : student
+      )
+    );
+  };
+
   if (!isMounted) {
     return null; // or a loading spinner
   }
@@ -78,7 +86,7 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="students">
-            <StudentList students={students} />
+            <StudentList students={students} onUpdateStudent={handleUpdateStudent} />
           </TabsContent>
 
           <TabsContent value="assessments">
