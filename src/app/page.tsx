@@ -2,131 +2,221 @@
 "use client";
 
 import * as React from "react";
-import type { Student } from "@/lib/types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Header } from "@/components/dashboard/header";
-import { Overview } from "@/components/dashboard/overview";
-import { StudentList } from "@/components/dashboard/student-list";
-import { AssessmentList } from "@/components/dashboard/assessment-list";
-import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
-import { students as initialStudents, assessments } from "@/lib/mock-data";
+import {
+  getAuth,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  type User,
+} from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { Mail, Lock } from "lucide-react";
 
-export default function DashboardPage() {
-  const [students, setStudents] = React.useState<Student[]>([]);
-  const [isMounted, setIsMounted] = React.useState(false);
-  const nextStudentIdCounter = React.useRef(0);
+import { getFirebaseAuth } from "@/lib/firebase/firebase";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { Logo } from "@/components/icons/logo";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [user, setUser] = React.useState<User | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  const [signInEmail, setSignInEmail] = React.useState("");
+  const [signInPassword, setSignInPassword] = React.useState("");
+  const [signUpEmail, setSignUpEmail] = React.useState("");
+  const [signUpPassword, setSignUpPassword] = React.useState("");
+  const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const [isSigningUp, setIsSigningUp] = React.useState(false);
+  
+  const { toast } = useToast();
 
   React.useEffect(() => {
-    setIsMounted(true);
+    const auth = getFirebaseAuth();
+    if (!auth) {
+        // Firebase might not be initialized yet
+        setLoading(false);
+        return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Load students from localStorage on initial mount
-  React.useEffect(() => {
-    if (isMounted) {
-      try {
-        const storedStudents = localStorage.getItem("students");
-        if (storedStudents) {
-          const parsedStudents = JSON.parse(storedStudents).map((s: Student) => ({
-            ...s,
-            dateOfBirth: new Date(s.dateOfBirth),
-          }));
-          setStudents(parsedStudents);
-        } else {
-          setStudents(initialStudents);
-        }
-      } catch (error) {
-        console.error("Failed to load students from localStorage", error);
-        setStudents(initialStudents);
-      }
-    }
-  }, [isMounted]);
-  
-  // Save students to localStorage whenever the list changes
-  React.useEffect(() => {
-    if (isMounted) {
-      try {
-        localStorage.setItem("students", JSON.stringify(students));
-        const maxId = students.reduce((max, s) => {
-            const idNum = parseInt(s.studentId.replace('stu', ''), 10);
-            return idNum > max ? idNum : max;
-        }, 1831);
-        nextStudentIdCounter.current = maxId + 1;
-      } catch (error) {
-        console.error("Failed to save students to localStorage", error);
-      }
-    }
-  }, [students, isMounted]);
-
-  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
-    const studentWithDetails: Student = {
-      ...newStudent,
-      studentId: `stu${nextStudentIdCounter.current}`,
-      avatarUrl: newStudent.avatarUrl || `https://picsum.photos/seed/${students.length + 1}/100/100`,
-    };
-    setStudents(prevStudents => [...prevStudents, studentWithDetails]);
-  };
-
-  const handleUpdateStudent = (studentId: string, updatedData: Partial<Student>) => {
-    setStudents(prevStudents =>
-      prevStudents.map(student =>
-        student.studentId === studentId ? { ...student, ...updatedData } : student
-      )
-    );
-  };
-
-  const handleImportStudents = (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
-    let currentId = nextStudentIdCounter.current;
-    const newStudents = importedStudents.map((s, index) => {
-        const student: Student = {
-            ...s,
-            studentId: `stu${currentId + index}`,
-            avatarUrl: `https://picsum.photos/seed/${students.length + index + 1}/100/100`,
-        };
-        return student;
-    });
-    setStudents(prev => [...prev, ...newStudents]);
-  };
-
-  if (!isMounted) {
-    return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading...</div>;
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
+  if (user) {
+    router.push("/dashboard");
+    return null;
+  }
+  
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSigningIn(true);
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+
+    try {
+      await signInWithEmailAndPassword(auth, signInEmail, signInPassword);
+      router.push("/dashboard");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign In Failed",
+        description: error.message,
+      });
+    } finally {
+        setIsSigningIn(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSigningUp(true);
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+    try {
+      await createUserWithEmailAndPassword(auth, signUpEmail, signUpPassword);
+      router.push("/dashboard");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign Up Failed",
+        description: error.message,
+      });
+    } finally {
+        setIsSigningUp(false);
+    }
+  };
+
+
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
-      <Header />
-      <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
-        <Tabs defaultValue="dashboard" className="flex flex-col gap-4">
-          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-4 self-start">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="students">Students</TabsTrigger>
-            <TabsTrigger value="assessments">Assessments</TabsTrigger>
-            <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="dashboard">
-            <Overview />
-          </TabsContent>
-
-          <TabsContent value="students">
-            <StudentList 
-              students={students} 
-              onUpdateStudent={handleUpdateStudent}
-              onImportStudents={handleImportStudents}
-            />
-          </TabsContent>
-
-          <TabsContent value="assessments">
-            <AssessmentList
-              assessments={assessments}
-              students={students}
-            />
-          </TabsContent>
-
-          <TabsContent value="enrollment">
-            <EnrollmentForm onEnroll={handleEnrollStudent} nextStudentId={nextStudentIdCounter.current} />
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
+      <div className="flex items-center gap-2 text-2xl font-semibold text-primary mb-6">
+        <Logo className="h-8 w-8" />
+        <span className="font-headline">CampusConnect</span>
+      </div>
+      <Tabs defaultValue="sign-in" className="w-full max-w-sm">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="sign-in">Sign In</TabsTrigger>
+          <TabsTrigger value="sign-up">Sign Up</TabsTrigger>
+        </TabsList>
+        <TabsContent value="sign-in">
+          <Card>
+            <form onSubmit={handleSignIn}>
+                <CardHeader>
+                <CardTitle className="text-2xl">Login</CardTitle>
+                <CardDescription>
+                    Enter your email below to login to your account.
+                </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="sign-in-email">Email</Label>
+                    <div className="relative">
+                        <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            id="sign-in-email" 
+                            type="email" 
+                            placeholder="m@example.com" 
+                            required 
+                            className="pl-8" 
+                            value={signInEmail}
+                            onChange={(e) => setSignInEmail(e.target.value)}
+                            disabled={isSigningIn}
+                        />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="sign-in-password">Password</Label>
+                    <div className="relative">
+                        <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            id="sign-in-password" 
+                            type="password" 
+                            required 
+                            className="pl-8"
+                            value={signInPassword}
+                            onChange={(e) => setSignInPassword(e.target.value)}
+                            disabled={isSigningIn}
+                        />
+                    </div>
+                </div>
+                </CardContent>
+                <CardFooter>
+                <Button className="w-full" type="submit" disabled={isSigningIn}>
+                    {isSigningIn ? 'Signing In...' : 'Sign in'}
+                </Button>
+                </CardFooter>
+            </form>
+          </Card>
+        </TabsContent>
+        <TabsContent value="sign-up">
+          <Card>
+             <form onSubmit={handleSignUp}>
+                <CardHeader>
+                    <CardTitle className="text-2xl">Sign Up</CardTitle>
+                    <CardDescription>
+                        Create an account to get started.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="sign-up-email">Email</Label>
+                        <div className="relative">
+                            <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                id="sign-up-email" 
+                                type="email" 
+                                placeholder="name@example.com" 
+                                required 
+                                className="pl-8"
+                                value={signUpEmail}
+                                onChange={(e) => setSignUpEmail(e.target.value)}
+                                disabled={isSigningUp}
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="sign-up-password">Password</Label>
+                         <div className="relative">
+                            <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                id="sign-up-password" 
+                                type="password" 
+                                required 
+                                className="pl-8"
+                                value={signUpPassword}
+                                onChange={(e) => setSignUpPassword(e.target.value)}
+                                disabled={isSigningUp}
+                            />
+                        </div>
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button className="w-full" type="submit" disabled={isSigningUp}>
+                        {isSigningUp ? 'Signing Up...' : 'Sign up'}
+                    </Button>
+                </CardFooter>
+             </form>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </main>
   );
 }
