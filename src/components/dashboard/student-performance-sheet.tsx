@@ -168,7 +168,7 @@ export function StudentPerformanceSheet({
               <div>
                 {student.firstName} {student.lastName}
                 <SheetDescription>
-                  {student.enrollments.map(e => programs.find(p => p.id === e.programId)?.name).join(' | ')}
+                  {student.enrollments && student.enrollments.map(e => programs.find(p => p.id === e.programId)?.name).join(' | ')}
                 </SheetDescription>
               </div>
             </div>
@@ -232,7 +232,7 @@ export function StudentPerformanceSheet({
                 <CardTitle>Academic Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {student.enrollments.map((enrollment, index) => (
+                {student.enrollments && student.enrollments.map((enrollment, index) => (
                   <EnrollmentDetails key={index} enrollment={enrollment} />
                 ))}
                 <div className="pt-2">
