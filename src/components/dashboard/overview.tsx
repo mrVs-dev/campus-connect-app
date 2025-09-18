@@ -17,6 +17,13 @@ import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid } from "
 import { students, subjects } from "@/lib/mock-data";
 import { programs } from "@/lib/program-data";
 
+const programShortNames: Record<string, string> = {
+  'English International': 'English',
+  'Khmer National': 'Khmer',
+  'English as Second Language (ESL)': 'ESL',
+  'Chinese as Second Language (CSL)': 'CSL',
+};
+
 export function Overview() {
   const totalStudents = students.length;
   const totalSubjects = subjects.length;
@@ -24,7 +31,8 @@ export function Overview() {
   const enrollmentByProgram = students.reduce((acc, student) => {
     student.enrollments.forEach(enrollment => {
       const programName = programs.find(p => p.id === enrollment.programId)?.name || 'Unknown';
-      acc[programName] = (acc[programName] || 0) + 1;
+      const shortName = programShortNames[programName] || programName;
+      acc[shortName] = (acc[shortName] || 0) + 1;
     });
     return acc;
   }, {} as Record<string, number>);
@@ -82,7 +90,6 @@ export function Overview() {
                 axisLine={false}
                 tickMargin={8}
                 interval={0}
-                tickFormatter={(value) => value.slice(0, 3)}
               />
               <YAxis tickLine={false} axisLine={false} />
               <ChartTooltip
