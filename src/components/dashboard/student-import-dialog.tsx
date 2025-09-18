@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -14,15 +15,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import type { Student } from "@/lib/types";
 
 interface StudentImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onImport: (students: Omit<Student, 'studentId' | 'avatarUrl'>[]) => void;
 }
 
 export function StudentImportDialog({
   open,
   onOpenChange,
+  onImport,
 }: StudentImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -49,16 +53,63 @@ export function StudentImportDialog({
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        console.log("Parsed student data:", results.data);
-        // Here you would typically handle the imported data,
-        // e.g., send it to a server or update the application state.
-        toast({
-          title: "Import Successful",
-          description: `${results.data.length} students were imported. Check the console for the data.`,
-        });
-        setIsImporting(false);
-        onOpenChange(false);
-        setFile(null);
+        try {
+          const parsedStudents = results.data.map((row: any) => {
+            // Basic validation and type conversion
+            return {
+              firstName: row.firstName || '',
+              lastName: row.lastName || '',
+              khmerFirstName: row.khmerFirstName || '',
+              khmerLastName: row.khmerLastName || '',
+              sex: ['Male', 'Female', 'Other'].includes(row.sex) ? row.sex : 'Other',
+              dateOfBirth: new Date(row.dateOfBirth) || new Date(),
+              placeOfBirth: row.placeOfBirth || '',
+              nationality: row.nationality || '',
+              nationalId: row.nationalId || undefined,
+              program: row.program || 'General',
+              admissionYear: parseInt(row.admissionYear, 10) || new Date().getFullYear(),
+              currentGradeLevel: row.currentGradeLevel || '10',
+              status: ['Active', 'Inactive', 'Graduated'].includes(row.status) ? row.status : 'Active',
+              address: {
+                village: row['address.village'] || '',
+                commune: row['address.commune'] || '',
+                district: row['address.district'] || '',
+              },
+              // For simplicity, we'll create a single guardian from the CSV
+              guardians: [
+                {
+                  relation: row['guardian.relation'] || 'Guardian',
+                  name: row['guardian.name'] || '',
+                  occupation: row['guardian.occupation'] || '',
+                  workplace: row['guardian.workplace'] || '',
+                  mobiles: row['guardian.mobiles'] ? row['guardian.mobiles'].split(',') : [],
+                },
+              ],
+              mediaConsent: row.mediaConsent === 'true' || row.mediaConsent === true,
+              emergencyContact: {
+                name: row['emergencyContact.name'] || '',
+                phone: row['emergencyContact.phone'] || '',
+              },
+            };
+          }) as Omit<Student, 'studentId' | 'avatarUrl'>[];
+          
+          onImport(parsedStudents);
+
+          toast({
+            title: "Import Successful",
+            description: `${results.data.length} students were imported successfully.`,
+          });
+          onOpenChange(false);
+          setFile(null);
+        } catch (error) {
+           toast({
+            title: "Import Failed",
+            description: "Please check the CSV file format and data.",
+            variant: "destructive",
+          });
+        } finally {
+            setIsImporting(false);
+        }
       },
       error: (error) => {
         toast({

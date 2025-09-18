@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -13,6 +14,8 @@ import { students as initialStudents, assessments } from "@/lib/mock-data";
 export default function DashboardPage() {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [isMounted, setIsMounted] = React.useState(false);
+  const nextStudentIdCounter = React.useRef(0);
+
 
   // Load students from localStorage on initial mount
   React.useEffect(() => {
@@ -40,6 +43,13 @@ export default function DashboardPage() {
     if (isMounted) {
       try {
         localStorage.setItem("students", JSON.stringify(students));
+        // Update the counter based on the loaded students
+        const maxId = students.reduce((max, s) => {
+            const idNum = parseInt(s.studentId.replace('stu', ''), 10);
+            return idNum > max ? idNum : max;
+        }, 1831);
+        nextStudentIdCounter.current = maxId + 1;
+
       } catch (error) {
         console.error("Failed to save students to localStorage", error);
       }
@@ -47,11 +57,9 @@ export default function DashboardPage() {
   }, [students, isMounted]);
 
   const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
-    const nextStudentId = `stu${1832 + students.filter(s => s.studentId.startsWith('stu')).length}`;
-    
     const studentWithDetails: Student = {
       ...newStudent,
-      studentId: nextStudentId,
+      studentId: `stu${nextStudentIdCounter.current}`,
       avatarUrl: newStudent.avatarUrl || `https://picsum.photos/seed/${students.length + 1}/100/100`,
     };
     setStudents(prevStudents => [...prevStudents, studentWithDetails]);
@@ -63,6 +71,19 @@ export default function DashboardPage() {
         student.studentId === studentId ? { ...student, ...updatedData } : student
       )
     );
+  };
+
+  const handleImportStudents = (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
+    let currentId = nextStudentIdCounter.current;
+    const newStudents = importedStudents.map((s, index) => {
+        const student: Student = {
+            ...s,
+            studentId: `stu${currentId + index}`,
+            avatarUrl: `https://picsum.photos/seed/${students.length + index + 1}/100/100`,
+        };
+        return student;
+    });
+    setStudents(prev => [...prev, ...newStudents]);
   };
 
   if (!isMounted) {
@@ -86,7 +107,11 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="students">
-            <StudentList students={students} onUpdateStudent={handleUpdateStudent} />
+            <StudentList 
+              students={students} 
+              onUpdateStudent={handleUpdateStudent}
+              onImportStudents={handleImportStudents}
+            />
           </TabsContent>
 
           <TabsContent value="assessments">
@@ -97,7 +122,7 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="enrollment">
-            <EnrollmentForm onEnroll={handleEnrollStudent} />
+            <EnrollmentForm onEnroll={handleEnrollStudent} nextStudentId={nextStudentIdCounter.current} />
           </TabsContent>
         </Tabs>
       </main>

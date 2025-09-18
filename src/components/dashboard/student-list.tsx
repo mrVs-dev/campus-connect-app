@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -28,9 +29,11 @@ import { StudentImportDialog } from "./student-import-dialog";
 export function StudentList({
   students,
   onUpdateStudent,
+  onImportStudents,
 }: {
   students: Student[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
+  onImportStudents: (students: Omit<Student, 'studentId' | 'avatarUrl'>[]) => void;
 }) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(
     null
@@ -149,6 +152,7 @@ export function StudentList({
       <StudentImportDialog
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
+        onImport={onImportStudents}
       />
     </>
   );

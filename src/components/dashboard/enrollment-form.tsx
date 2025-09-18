@@ -92,11 +92,11 @@ type EnrollmentFormValues = z.infer<typeof formSchema>;
 
 type EnrollmentFormProps = {
   onEnroll: (student: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => void;
+  nextStudentId: number;
 };
 
-export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
+export function EnrollmentForm({ onEnroll, nextStudentId }: EnrollmentFormProps) {
   const { toast } = useToast();
-  const [nextStudentId, setNextStudentId] = React.useState(1832);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
@@ -169,7 +169,6 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
       title: "Enrollment Successful",
       description: `${values.firstName} has been added to the roster.`,
     });
-    setNextStudentId(prevId => prevId + 1);
     form.reset();
     setPhotoPreview(null);
   }
@@ -469,7 +468,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Village</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCommune}>
+                      <Select onValueChange={field.onChange} value={field.value || ""} disabled={!selectedCommune}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a village" />
