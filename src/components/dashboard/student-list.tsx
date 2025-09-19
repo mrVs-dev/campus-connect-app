@@ -46,15 +46,11 @@ export function StudentList({
 
   const getProgramInfo = (enrollments: Student["enrollments"]) => {
     if (!enrollments || enrollments.length === 0) {
-      return [{ programName: "N/A", level: "" }];
+      return { programNames: ["N/A"], levels: [""] };
     }
-    return enrollments.map(enrollment => {
-      const program = programs.find(p => p.id === enrollment.programId);
-      return {
-        programName: program?.name || "Unknown Program",
-        level: enrollment.level,
-      };
-    });
+    const programNames = enrollments.map(e => programs.find(p => p.id === e.programId)?.name || 'Unknown');
+    const levels = enrollments.map(e => e.level);
+    return { programNames, levels };
   };
 
 
@@ -88,7 +84,8 @@ export function StudentList({
             <TableHeader>
               <TableRow>
                 <TableHead>Student</TableHead>
-                <TableHead>Program &amp; Level</TableHead>
+                <TableHead>Programs</TableHead>
+                <TableHead>Grade/Levels</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
                 <TableHead className="hidden lg:table-cell">Address</TableHead>
                 <TableHead className="hidden lg:table-cell">
@@ -98,7 +95,7 @@ export function StudentList({
             </TableHeader>
             <TableBody>
               {students.map((student) => {
-                const programInfo = getProgramInfo(student.enrollments);
+                const { programNames, levels } = getProgramInfo(student.enrollments);
                 return (
                   <TableRow
                     key={student.studentId}
@@ -130,12 +127,16 @@ export function StudentList({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {programInfo.map((p, index) => (
-                          <div key={index} className="text-sm">
-                            <span className="font-medium">{p.programName}:</span>
-                            <span className="text-muted-foreground ml-1">{p.level}</span>
-                          </div>
+                      <div className="flex flex-col">
+                        {programNames.map((name, index) => (
+                          <span key={index} className="text-sm">{name}</span>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        {levels.map((level, index) => (
+                          <span key={index} className="text-sm text-muted-foreground">{level}</span>
                         ))}
                       </div>
                     </TableCell>
