@@ -248,7 +248,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
   
-  // Show a loading screen while auth state is being checked
+  // Show a loading screen while auth state is being checked or if there's no user yet
   if (authLoading || !user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">

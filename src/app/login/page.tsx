@@ -67,11 +67,10 @@ export default function LoginPage() {
     getRedirectResult(auth)
       .catch((error) => {
         console.error("Authentication failed on redirect:", error);
-        // Map common errors to user-friendly messages
         if (error.code === 'auth/unauthorized-domain') {
             setError("This domain is not authorized for sign-in. Please check your Firebase console settings.");
         } else {
-            setError(`Failed to sign in. Error: ${error.code}`);
+            setError(`Failed to sign in. Error: ${error.message || error.code}`);
         }
       })
       .finally(() => {
@@ -100,7 +99,7 @@ export default function LoginPage() {
       // The page will redirect, so no need to set isSigningIn to false here.
     } catch (error: any) {
       console.error("Authentication failed to start:", error);
-      setError(`Failed to sign in. Error: ${error.message}`);
+      setError(`Failed to sign in. Error: ${error.message || error.code}`);
       setIsSigningIn(false);
     }
   };

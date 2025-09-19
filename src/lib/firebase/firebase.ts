@@ -1,4 +1,4 @@
-// src/lib/firebase/firebase.ts
+
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
@@ -27,7 +27,8 @@ if (isFirebaseConfigured) {
   auth = getAuth(app);
   db = getFirestore(app);
 } else {
-  // Provide mock objects if Firebase is not configured
+  console.warn("Firebase configuration is missing. The application will run in a limited mode.");
+  // Provide mock objects if Firebase is not configured to avoid runtime errors
   app = {} as FirebaseApp;
   auth = {} as Auth;
   db = {} as Firestore;
