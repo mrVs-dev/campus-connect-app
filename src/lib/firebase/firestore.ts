@@ -78,7 +78,7 @@ const convertDatesToTimestamps = (data: any): any => {
 // --- Students Collection ---
 
 export async function getStudents(): Promise<Student[]> {
-    if (!db) return [];
+    if (!db) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentsCollection = collection(db, 'students');
     const snapshot = await getDocs(studentsCollection);
     return snapshot.docs.map(doc => {
@@ -92,7 +92,7 @@ export async function getStudents(): Promise<Student[]> {
 }
 
 export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate'>): Promise<Student> {
-    if (!db) throw new Error("Firestore is not initialized");
+    if (!db) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentsCollection = collection(db, 'students');
     const studentWithTimestamps = convertDatesToTimestamps({
         ...studentData,
@@ -112,7 +112,7 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
 
 
 export async function updateStudent(studentId: string, dataToUpdate: Partial<Student>): Promise<void> {
-    if (!db) throw new Error("Firestore is not initialized");
+    if (!db) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentDoc = doc(db, 'students', studentId);
     const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
     await updateDoc(studentDoc, dataWithTimestamps);
@@ -121,7 +121,7 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
 // --- Admissions Collection ---
 
 export async function getAdmissions(): Promise<Admission[]> {
-    if (!db) return [];
+    if (!db) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const admissionsCollection = collection(db, 'admissions');
     const snapshot = await getDocs(admissionsCollection);
     return snapshot.docs.map(doc => {
@@ -133,7 +133,7 @@ export async function getAdmissions(): Promise<Admission[]> {
 }
 
 export async function saveAdmission(admissionData: Admission): Promise<void> {
-    if (!db) throw new Error("Firestore is not initialized");
+    if (!db) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const admissionDoc = doc(db, 'admissions', admissionData.admissionId);
     // Firestore doesn't like undefined values, so let's clean the object
     const cleanedAdmission = JSON.parse(JSON.stringify(admissionData));
