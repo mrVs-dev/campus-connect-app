@@ -37,7 +37,7 @@ function MissingFirebaseConfig() {
           <CardTitle>Firebase Configuration Missing</CardTitle>
           <CardDescription>
             Your application is not connected to Firebase. Please configure your environment variables.
-          </Description>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="mb-4">
