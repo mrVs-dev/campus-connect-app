@@ -310,9 +310,15 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     const programId = watch(`students.${studentIndex}.enrollments.${enrollmentIndex}.programId`);
     const levels = React.useMemo(() => getLevelsForProgram(programId), [programId]);
 
-    React.useEffect(() => {
+    // This effect was causing the bug. It reset the level whenever the programId changed.
+    // React.useEffect(() => {
+    //     setValue(`students.${studentIndex}.enrollments.${enrollmentIndex}.level`, '');
+    // }, [programId, studentIndex, enrollmentIndex, setValue]);
+
+    const handleProgramChange = (value: string) => {
+        setValue(`students.${studentIndex}.enrollments.${enrollmentIndex}.programId`, value);
         setValue(`students.${studentIndex}.enrollments.${enrollmentIndex}.level`, '');
-    }, [programId, studentIndex, enrollmentIndex, setValue]);
+    };
 
     return (
         <div className="p-4 border rounded-md relative space-y-4 bg-muted/50">
@@ -334,7 +340,7 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Program</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={handleProgramChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a program" />
