@@ -54,62 +54,48 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start true to handle the redirect result processing
+  const [isProcessingRedirect, setIsProcessingRedirect] = React.useState(true);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  // This effect handles the result of the redirect from Google
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
-      setIsSigningIn(false);
+      setIsProcessingRedirect(false);
       return;
     }
     
-    // Check for redirect result only once on mount
     getRedirectResult(auth)
       .catch((error) => {
         console.error("Authentication failed on redirect:", error);
         setError(`Failed to sign in. Error: ${error.message || error.code}`);
       })
       .finally(() => {
-        // After processing, let the auth hook take over.
-        setIsSigningIn(false);
+        setIsProcessingRedirect(false);
       });
   }, []);
 
-  // This effect reacts to changes in the authentication state from the hook
   React.useEffect(() => {
-    // If the auth state is still loading, do nothing.
-    if (authLoading) {
+    if (authLoading || isProcessingRedirect) {
       return;
     }
     
-    // If we have a user, redirect to the dashboard.
     if (user) {
       router.replace('/dashboard');
     }
-    
-    // If there is no user and we are done with the initial redirect check, stop the spinner.
-    setIsSigningIn(false);
-
-  }, [authLoading, user, router]);
+  }, [user, authLoading, isProcessingRedirect, router]);
 
   const handleSignIn = async () => {
     if (!isFirebaseConfigured) {
       setError("Firebase is not configured. Please check your .env.local file.");
       return;
     }
-    setIsSigningIn(true);
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
-      // The page will redirect, so the user will leave this page.
-      // The effects above will handle their return.
     } catch (error: any) {
       console.error("Authentication failed to start:", error);
       setError(`Failed to sign in. Error: ${error.message || error.code}`);
-      setIsSigningIn(false);
     }
   };
 
@@ -117,43 +103,45 @@ export default function LoginPage() {
     return <MissingFirebaseConfig />;
   }
   
-  // Show a loading indicator while checking auth state or if a sign-in is in progress.
-  if (isSigningIn || authLoading) {
+  if (authLoading || isProcessingRedirect) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
-  // If there's no user and we're not loading, show the login page.
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Logo className="h-8 w-8 text-primary" />
-          </div>
-          <CardTitle>Welcome to CampusConnect</CardTitle>
-          <CardDescription>Sign in to access your dashboard</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
-            {isSigningIn ? 'Signing in...' : (
-              <>
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <Logo className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle>Welcome to CampusConnect</CardTitle>
+            <CardDescription>Sign in to access your dashboard</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" onClick={handleSignIn}>
                 <GoogleIcon />
                 <span className="ml-2">Sign in with Google</span>
-              </>
+            </Button>
+          </CardContent>
+          <CardFooter className="flex-col items-start text-xs text-muted-foreground">
+            {error && (
+              <p className="text-sm text-destructive text-center w-full mb-2">{error}</p>
             )}
-          </Button>
-        </CardContent>
-        <CardFooter className="flex-col items-start text-xs text-muted-foreground">
-          {error && (
-            <p className="text-sm text-destructive text-center w-full mb-2">{error}</p>
-          )}
-          <div className="border-t pt-2 mt-2 w-full">
-             <p><strong>App's Project ID:</strong></p>
-             <p className="font-mono break-all">{firebaseConfig.projectId || "Not Found in .env.local"}</p>
-             <p className="mt-2 text-center text-balance">Please ensure this Project ID matches the one in your Firebase Console.</p>
-          </div>
-        </CardFooter>
-      </Card>
+            <div className="border-t pt-2 mt-2 w-full">
+               <p><strong>App's Project ID:</strong></p>
+               <p className="font-mono break-all">{firebaseConfig.projectId || "Not Found in .env.local"}</p>
+               <p className="mt-2 text-center text-balance">Please ensure this Project ID matches the one in your Firebase Console.</p>
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+        Redirecting to dashboard...
     </div>
   );
 }
