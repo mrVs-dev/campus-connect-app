@@ -42,7 +42,8 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     if (!isFirebaseConfigured || !auth) {
-      setError("Firebase is not configured. Please check your environment variables.");
+      setError("Firebase is not configured. Please check your environment variables and Firebase setup.");
+      console.error("Login attempt failed: Firebase is not configured or auth object is not available.");
       return;
     }
     setError(null);
