@@ -25,6 +25,7 @@ export default function DashboardPage() {
   // Load data from localStorage on initial mount
   React.useEffect(() => {
     if (isMounted) {
+      // Load Students
       try {
         const storedStudents = localStorage.getItem("students");
         if (storedStudents) {
@@ -42,6 +43,7 @@ export default function DashboardPage() {
         setStudents(initialStudents);
       }
 
+      // Load Admissions
       try {
         const storedAdmissions = localStorage.getItem("admissions");
         if (storedAdmissions) {
