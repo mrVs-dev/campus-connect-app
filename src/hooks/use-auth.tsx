@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) {
+      console.log("Firebase not configured or auth not available, skipping auth state check.");
       setLoading(false);
       return;
     }

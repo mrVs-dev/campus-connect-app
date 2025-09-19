@@ -20,26 +20,24 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore | null = null;
 
-function initializeFirebase() {
-  if (!isFirebaseConfigured) {
-    console.warn("Firebase is not configured. Please check your .env.local file.");
-    return;
-  }
+if (isFirebaseConfigured) {
   if (getApps().length === 0) {
     try {
       app = initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      db = getFirestore(app);
     } catch (e) {
-      console.error("Failed to initialize Firebase", e);
+      console.error("Failed to initialize Firebase app", e);
     }
   } else {
     app = getApp();
+  }
+  
+  if (app!) {
     auth = getAuth(app);
     db = getFirestore(app);
   }
+} else {
+    console.warn("Firebase is not configured. Please check your .env.local file.");
 }
 
-initializeFirebase();
 
 export { app, auth, db };
