@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup, GoogleAuthProvider, type User } from "firebase/auth";
-import { auth, isFirebaseConfigured } from "@/lib/firebase/firebase";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth, isFirebaseConfigured, firebaseConfig } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +42,7 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     if (!isFirebaseConfigured) {
-      setError("Firebase is not configured. Please check your environment variables.");
+      setError("Firebase is not configured. Please check your .env.local file.");
       return;
     }
 
@@ -55,10 +55,6 @@ export default function LoginPage() {
       // The onAuthStateChanged listener in useAuth will handle the redirect to the dashboard.
     } catch (error: any) {
       console.error("Authentication failed:", error);
-      if (error.code) {
-        console.error("Firebase Auth Error Code:", error.code);
-        console.error("Firebase Auth Error Message:", error.message);
-      }
       setError(`Failed to sign in. Error: ${error.message}`);
     } finally {
       setIsSigningIn(false);
@@ -89,11 +85,16 @@ export default function LoginPage() {
             )}
           </Button>
         </CardContent>
-        {error && (
-          <CardFooter>
-            <p className="text-sm text-destructive text-center w-full">{error}</p>
-          </CardFooter>
-        )}
+        <CardFooter className="flex-col items-start text-xs text-muted-foreground">
+          {error && (
+            <p className="text-sm text-destructive text-center w-full mb-2">{error}</p>
+          )}
+          <div className="border-t pt-2 mt-2 w-full">
+             <p><strong>App's Project ID:</strong></p>
+             <p className="font-mono break-all">{firebaseConfig.projectId || "Not Found in .env.local"}</p>
+             <p className="mt-2 text-center text-balance">Please ensure this Project ID matches the one in your Firebase Console.</p>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );
