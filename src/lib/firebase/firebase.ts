@@ -1,7 +1,5 @@
 
 // src/lib/firebase/firebase.ts
-'use client';
-
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
@@ -17,30 +15,9 @@ const firebaseConfig = {
 
 export const isFirebaseConfigured = !!firebaseConfig.projectId;
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-
-if (isFirebaseConfigured) {
-  // Initialize Firebase
-  if (!getApps().length) {
-    try {
-      app = initializeApp(firebaseConfig);
-    } catch (e) {
-      console.error("Failed to initialize Firebase app", e);
-      // You might want to throw an error here or handle it appropriately
-    }
-  } else {
-    app = getApp();
-  }
-  auth = getAuth(app!);
-  db = getFirestore(app!);
-} else {
-  console.warn("Firebase is not configured. Please check your .env.local file.");
-  // Provide dummy instances if not configured to avoid app crashes
-  app = {} as FirebaseApp;
-  auth = {} as Auth;
-  db = {} as Firestore;
-}
+// Initialize Firebase
+const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
 
 export { app, auth, db };

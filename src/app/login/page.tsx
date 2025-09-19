@@ -31,78 +31,61 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start as true to handle redirect
+  const [isProcessing, setIsProcessing] = React.useState(true);
   const router = useRouter();
   const { user, loading } = useAuth();
 
   React.useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard');
+      return;
+    }
+
     // This effect handles the user being redirected back from Google
-    const handleRedirectResult = async () => {
-      if (!auth) {
-        setIsSigningIn(false);
-        return;
-      }
-      try {
-        const result = await getRedirectResult(auth);
-        // If the result is null, it means the user has just landed on the login page
-        // and hasn't been redirected back from Google yet.
+    getRedirectResult(auth)
+      .then((result) => {
         if (result) {
-          // User is signed in. The useAuth hook will soon detect this.
-          // The redirect to /dashboard will be handled by the other useEffect.
+          // User is signed in. The useAuth hook will detect this, and the above check will redirect.
+          // No need to do anything else here.
         }
-      } catch (error: any) {
+        setIsProcessing(false); // Done checking for redirect result
+      })
+      .catch((error) => {
         console.error("Authentication redirect failed:", error);
         if (error.code) {
           console.error("Firebase Auth Error Code:", error.code);
           console.error("Firebase Auth Error Message:", error.message);
         }
-        setError(`Failed to sign in. Error: ${error.code || error.message}`);
-      } finally {
-         setIsSigningIn(false); // Allow the user to click the button now
-      }
-    };
-    
-    if(!user) {
-        handleRedirectResult();
-    }
-  }, [user]);
-
-  React.useEffect(() => {
-    if (!loading && user) {
-      router.replace('/dashboard');
-    }
+        setError(`Failed to sign in. Error: ${error.message}`);
+        setIsProcessing(false);
+      });
   }, [user, loading, router]);
 
+
   const handleSignIn = async () => {
-    if (isSigningIn) return;
-    setIsSigningIn(true);
+    setIsProcessing(true);
     setError(null);
     
-    if (!isFirebaseConfigured || !auth) {
+    if (!isFirebaseConfigured) {
       const errorMessage = "Firebase is not configured. Please check your environment variables and Firebase setup.";
       setError(errorMessage);
       console.error("Login attempt failed:", errorMessage);
-      setIsSigningIn(false);
+      setIsProcessing(false);
       return;
     }
 
     const provider = new GoogleAuthProvider();
     try {
-      // This will redirect the user to Google's sign-in page
       await signInWithRedirect(auth, provider);
-      // The code will effectively stop here, and continue in the useEffect hook after redirect
     } catch (error: any) {
       console.error("Authentication failed:", error);
-      if (error.code) {
-        console.error("Firebase Auth Error Code:", error.code);
-        console.error("Firebase Auth Error Message:", error.message);
-      }
       setError(`Failed to sign in. Error: ${error.code || 'Please try again.'}`);
-      setIsSigningIn(false);
+      setIsProcessing(false);
     }
   };
 
-  if (loading || user) {
+  // Show a loading state while checking auth status or processing sign-in
+  if (loading || isProcessing || user) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
@@ -117,9 +100,9 @@ export default function LoginPage() {
           <CardDescription>Sign in to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
+          <Button className="w-full" onClick={handleSignIn}>
             <GoogleIcon />
-            <span className="ml-2">{isSigningIn ? 'Authenticating...' : 'Sign in with Google'}</span>
+            <span className="ml-2">Sign in with Google</span>
           </Button>
         </CardContent>
         {error && (

@@ -231,7 +231,6 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
-      // Let the component render the config message
       return;
     }
     if (!authLoading && !user) {
