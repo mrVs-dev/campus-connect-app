@@ -29,6 +29,7 @@ export const subjects: Subject[] = [
 export const students: Student[] = [
   {
     studentId: 'S001',
+    enrollmentDate: new Date('2023-09-01'),
     firstName: 'Liam',
     lastName: 'Johnson',
     khmerFirstName: 'លីម',
@@ -61,6 +62,7 @@ export const students: Student[] = [
   },
   {
     studentId: 'S002',
+    enrollmentDate: new Date('2023-09-01'),
     firstName: 'Olivia',
     lastName: 'Smith',
     khmerFirstName: 'អូលីវីਆ',
@@ -92,6 +94,7 @@ export const students: Student[] = [
   },
   {
     studentId: 'S003',
+    enrollmentDate: new Date('2024-01-15'),
     firstName: 'Noah',
     lastName: 'Williams',
     khmerFirstName: 'ណូអេ',
@@ -126,6 +129,7 @@ export const students: Student[] = [
   },
   {
     studentId: 'S004',
+    enrollmentDate: new Date('2024-02-20'),
     firstName: 'Emma',
     lastName: 'Brown',
     khmerFirstName: 'អេម៉ា',
@@ -157,6 +161,7 @@ export const students: Student[] = [
   },
     {
     studentId: 'S005',
+    enrollmentDate: new Date('2024-03-10'),
     firstName: 'Ava',
     lastName: 'Jones',
     khmerFirstName: 'អាវ៉ា',

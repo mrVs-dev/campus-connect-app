@@ -1,22 +1,36 @@
 
 "use client";
 
-import { BarChart, BookUser, Users, User } from "lucide-react";
+import { BarChart, BookUser, Users, User, Calendar as CalendarIcon } from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
+import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { students, subjects } from "@/lib/mock-data";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
+import { addDays, format, isWithinInterval } from "date-fns";
+import { DateRange } from "react-day-picker";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import type { Student } from "@/lib/types";
+
 
 const programShortNames: Record<string, string> = {
   'English International': 'English',
@@ -25,9 +39,75 @@ const programShortNames: Record<string, string> = {
   'Chinese as Second Language (CSL)': 'CSL',
 };
 
+function DatePickerWithRange({
+  className,
+  onDateChange,
+}: React.HTMLAttributes<HTMLDivElement> & { onDateChange: (range: DateRange | undefined) => void }) {
+  const [date, setDate] = React.useState<DateRange | undefined>({
+    from: addDays(new Date(), -365),
+    to: new Date(),
+  });
+
+  React.useEffect(() => {
+    onDateChange(date);
+  }, [date, onDateChange]);
+
+  return (
+    <div className={cn("grid gap-2", className)}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            id="date"
+            variant={"outline"}
+            className={cn(
+              "w-[240px] justify-start text-left font-normal",
+              !date && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {date?.from ? (
+              date.to ? (
+                <>
+                  {format(date.from, "LLL dd, y")} -{" "}
+                  {format(date.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(date.from, "LLL dd, y")
+              )
+            ) : (
+              <span>Pick a date</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            initialFocus
+            mode="range"
+            defaultMonth={date?.from}
+            selected={date}
+            onSelect={setDate}
+            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+
 export function Overview() {
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>();
+  
+  const filteredStudents = React.useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) {
+      return students;
+    }
+    return students.filter(student => 
+      student.enrollmentDate && isWithinInterval(student.enrollmentDate, { start: dateRange.from!, end: dateRange.to! })
+    );
+  }, [dateRange]);
+
   const totalStudents = students.length;
-  const totalSubjects = subjects.length;
 
   const genderDistribution = React.useMemo(() => {
     return students.reduce((acc, student) => {
@@ -36,10 +116,17 @@ export function Overview() {
     }, {} as Record<string, number>);
   }, []);
 
+  const enrollmentGenderDistribution = React.useMemo(() => {
+     return filteredStudents.reduce((acc, student) => {
+      acc[student.sex] = (acc[student.sex] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [filteredStudents]);
+
   const pieData = [
-    { name: 'Male', value: genderDistribution['Male'] || 0 },
-    { name: 'Female', value: genderDistribution['Female'] || 0 },
-    { name: 'Other', value: genderDistribution['Other'] || 0 },
+    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0 },
+    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0 },
+    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0 },
   ].filter(d => d.value > 0);
 
   const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--muted-foreground))"];
@@ -75,26 +162,44 @@ export function Overview() {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card className="col-span-1 md:col-span-2">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>Student Population</CardTitle>
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
+           <div className="flex flex-col space-y-2">
+              <p className="text-3xl font-bold">{totalStudents}</p>
+              <p className="text-xs text-muted-foreground">Total students enrolled</p>
+              <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-1">
+                      <User className="h-4 w-4 text-primary" />
+                      <span>{genderDistribution['Male'] || 0} Male</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                      <User className="h-4 w-4 text-accent" />
+                      <span>{genderDistribution['Female'] || 0} Female</span>
+                  </div>
+              </div>
+           </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="col-span-1 md:col-span-2">
+        <CardHeader>
+            <div className="flex items-start justify-between">
+                <div>
+                    <CardTitle>Enrollments</CardTitle>
+                    <CardDescription>Number of new enrollments in the selected date range.</CardDescription>
+                </div>
+                <DatePickerWithRange onDateChange={setDateRange} />
+            </div>
+        </CardHeader>
+        <CardContent>
            <div className="grid grid-cols-2 items-center gap-4">
              <div className="flex flex-col space-y-2">
-                <p className="text-3xl font-bold">{totalStudents}</p>
-                <p className="text-xs text-muted-foreground">Total students enrolled</p>
-                <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-primary" />
-                        <span>{genderDistribution['Male'] || 0} Male</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-accent" />
-                        <span>{genderDistribution['Female'] || 0} Female</span>
-                    </div>
-                </div>
+                <p className="text-3xl font-bold">{filteredStudents.length}</p>
+                <p className="text-xs text-muted-foreground">Total enrollments in period</p>
              </div>
              <ChartContainer config={chartConfig} className="h-[150px] w-full">
                 <PieChart accessibilityLayer>
@@ -112,19 +217,7 @@ export function Overview() {
            </div>
         </CardContent>
       </Card>
-      
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Subjects Offered</CardTitle>
-          <BookUser className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{totalSubjects}</div>
-          <p className="text-xs text-muted-foreground">
-            Across all programs
-          </p>
-        </CardContent>
-      </Card>
+
       <Card className="col-span-1 md:col-span-2 lg:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>Enrollment by Program</CardTitle>
