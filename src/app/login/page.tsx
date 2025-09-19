@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { auth, isFirebaseConfigured, firebaseConfig } from "@/lib/firebase/firebase";
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
+import { auth, firebaseConfig } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,9 +30,29 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start as true to handle redirect
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+
+  React.useEffect(() => {
+    // This effect runs once on mount to check for redirect result
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // User successfully signed in. The useAuth hook will handle the redirect to dashboard.
+          // No need to do anything here, just let the state update.
+        }
+      } catch (error: any) {
+        console.error("Authentication failed on redirect:", error);
+        setError(`Failed to sign in. Error: ${error.code}`);
+      } finally {
+        // Whether there was a redirect or not, we are no longer in a "signing in" state from the redirect.
+        setIsSigningIn(false);
+      }
+    };
+    checkRedirect();
+  }, []);
 
   React.useEffect(() => {
     if (!authLoading && user) {
@@ -41,22 +61,15 @@ export default function LoginPage() {
   }, [authLoading, user, router]);
 
   const handleSignIn = async () => {
-    if (!isFirebaseConfigured) {
-      setError("Firebase is not configured. Please check your .env.local file.");
-      return;
-    }
-
     setIsSigningIn(true);
     setError(null);
-
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      // The onAuthStateChanged listener in useAuth will handle the redirect to the dashboard.
+      await signInWithRedirect(auth, provider);
+      // The page will redirect, and the result will be handled by the useEffect above on page load.
     } catch (error: any) {
-      console.error("Authentication failed:", error);
+      console.error("Authentication failed to start:", error);
       setError(`Failed to sign in. Error: ${error.message}`);
-    } finally {
       setIsSigningIn(false);
     }
   };
