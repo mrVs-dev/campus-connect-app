@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, BookUser, Users, User, Calendar as CalendarIcon } from "lucide-react";
+import { BarChart, Users, User, Calendar as CalendarIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -15,7 +15,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from "recharts";
-import { students, subjects } from "@/lib/mock-data";
+import { subjects } from "@/lib/mock-data";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
 import { addDays, format, isWithinInterval } from "date-fns";
@@ -94,8 +94,11 @@ function DatePickerWithRange({
   )
 }
 
+interface OverviewProps {
+  students: Student[];
+}
 
-export function Overview() {
+export function Overview({ students }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>();
   
   const filteredStudents = React.useMemo(() => {
@@ -105,7 +108,7 @@ export function Overview() {
     return students.filter(student => 
       student.enrollmentDate && isWithinInterval(student.enrollmentDate, { start: dateRange.from!, end: dateRange.to! })
     );
-  }, [dateRange]);
+  }, [dateRange, students]);
 
   const totalStudents = students.length;
 
@@ -114,7 +117,7 @@ export function Overview() {
       acc[student.sex] = (acc[student.sex] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-  }, []);
+  }, [students]);
 
   const enrollmentGenderDistribution = React.useMemo(() => {
      return filteredStudents.reduce((acc, student) => {

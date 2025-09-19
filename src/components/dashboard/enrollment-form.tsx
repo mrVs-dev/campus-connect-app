@@ -60,6 +60,7 @@ const enrollmentSchema = z.object({
 
 const formSchema = z.object({
   serialNumber: z.string().optional(),
+  enrollmentDate: z.date().optional(),
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
@@ -93,7 +94,7 @@ const formSchema = z.object({
 type EnrollmentFormValues = z.infer<typeof formSchema>;
 
 type EnrollmentFormProps = {
-  onEnroll: (student: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => void;
+  onEnroll: (student: Omit<Student, 'avatarUrl' | 'studentId' | 'enrollmentDate'> & { studentId?: string; avatarUrl?: string }) => void;
   nextStudentId: number;
 };
 

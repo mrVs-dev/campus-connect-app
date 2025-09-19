@@ -32,6 +32,7 @@ export default function DashboardPage() {
           const parsedStudents = JSON.parse(storedStudents).map((s: Student) => ({
             ...s,
             dateOfBirth: new Date(s.dateOfBirth),
+            enrollmentDate: s.enrollmentDate ? new Date(s.enrollmentDate) : undefined,
           }));
           setStudents(parsedStudents);
         } else {
@@ -79,10 +80,11 @@ export default function DashboardPage() {
     }
   }, [admissions, isMounted]);
 
-  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
+  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId' | 'enrollmentDate'> & { studentId?: string; avatarUrl?: string }) => {
     const studentWithDetails: Student = {
       ...newStudent,
       studentId: `stu${nextStudentIdCounter.current}`,
+      enrollmentDate: new Date(),
       avatarUrl: newStudent.avatarUrl || `https://picsum.photos/seed/${students.length + 1}/100/100`,
     };
     setStudents(prevStudents => [...prevStudents, studentWithDetails]);
@@ -166,7 +168,7 @@ export default function DashboardPage() {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Overview />
+            <Overview students={students} />
           </TabsContent>
 
           <TabsContent value="students">
