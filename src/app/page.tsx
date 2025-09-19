@@ -38,17 +38,22 @@ export default function DashboardPage() {
         } else {
           setStudents(initialStudents);
         }
-
+      } catch (error) {
+        console.error("Failed to load students from localStorage", error);
+        setStudents(initialStudents); // Fallback to initial students if loading fails
+      }
+      
+      try {
         // Load Admissions
         const storedAdmissions = localStorage.getItem("admissions");
         if (storedAdmissions) {
           setAdmissions(JSON.parse(storedAdmissions));
+        } else {
+          setAdmissions([]);
         }
-
       } catch (error) {
-        console.error("Failed to load data from localStorage", error);
-        setStudents(initialStudents);
-        setAdmissions([]);
+        console.error("Failed to load admissions from localStorage", error);
+        setAdmissions([]); // Fallback to empty array if loading fails
       }
     }
   }, [isMounted]);
