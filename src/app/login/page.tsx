@@ -44,6 +44,7 @@ export default function LoginPage() {
   const handleSignIn = async () => {
     if (isSigningIn) return;
     setIsSigningIn(true);
+    setError(null);
     
     if (!isFirebaseConfigured || !auth) {
       setError("Firebase is not configured. Please check your environment variables and Firebase setup.");
@@ -51,7 +52,7 @@ export default function LoginPage() {
       setIsSigningIn(false);
       return;
     }
-    setError(null);
+
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
