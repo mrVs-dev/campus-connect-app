@@ -122,6 +122,32 @@ export default function DashboardPage() {
     });
   };
 
+  const studentsWithLatestEnrollments = React.useMemo(() => {
+    if (admissions.length === 0) {
+      return students;
+    }
+
+    // Sort admissions by school year descending to find the latest one
+    const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
+    const latestAdmission = sortedAdmissions[0];
+
+    if (!latestAdmission) {
+      return students;
+    }
+
+    const admissionMap = new Map(latestAdmission.students.map(s => [s.studentId, s.enrollments]));
+
+    return students.map(student => {
+      const latestEnrollments = admissionMap.get(student.studentId);
+      if (latestEnrollments) {
+        return { ...student, enrollments: latestEnrollments };
+      }
+      // If student not in latest admission, return their original enrollments
+      return student;
+    });
+  }, [students, admissions]);
+
+
   if (!isMounted) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading...</div>;
   }
@@ -145,7 +171,7 @@ export default function DashboardPage() {
 
           <TabsContent value="students">
             <StudentList 
-              students={students} 
+              students={studentsWithLatestEnrollments} 
               onUpdateStudent={handleUpdateStudent}
               onImportStudents={handleImportStudents}
             />
