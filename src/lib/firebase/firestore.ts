@@ -50,31 +50,27 @@ const convertTimestampsToDates = (data: any): any => {
 // Converts JS Date objects in an object to Firestore Timestamps
 const convertDatesToTimestamps = (data: any): any => {
     if (!data) return data;
-    
-    // Create a deep copy to avoid modifying the original object
-    const dataCopy = JSON.parse(JSON.stringify(data));
 
     const convert = (obj: any): any => {
         if (!obj) return obj;
         if (Array.isArray(obj)) {
             return obj.map(item => convert(item));
         }
-        if (typeof obj === 'object') {
+        if (typeof obj === 'object' && obj !== null && !(obj instanceof Timestamp)) {
             const newObj: { [key: string]: any } = {};
             for (const key in obj) {
                 if (Object.prototype.hasOwnProperty.call(obj, key)) {
                     const value = obj[key];
-                    // Check for ISO date string format from JSON.parse
-                    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
+                    if (value instanceof Date) {
+                        newObj[key] = Timestamp.fromDate(value);
+                    } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
                          const date = new Date(value);
                          if (!isNaN(date.getTime())) {
                             newObj[key] = Timestamp.fromDate(date);
                          } else {
                             newObj[key] = value;
                          }
-                    } else if (value instanceof Date) { // This case might not happen after stringify/parse
-                        newObj[key] = Timestamp.fromDate(value);
-                    } else if (typeof value === 'object' && value !== null && !isTimestamp(value)) {
+                    } else if (typeof value === 'object') {
                         newObj[key] = convert(value);
                     } else {
                         newObj[key] = value;
@@ -86,7 +82,7 @@ const convertDatesToTimestamps = (data: any): any => {
         return obj;
     };
     
-    return convert(dataCopy);
+    return convert(data);
 };
 
 

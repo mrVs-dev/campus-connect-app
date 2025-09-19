@@ -10,12 +10,13 @@ export default function HomePage() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/login');
-      }
+    if (loading) {
+      return; // Wait for the auth state to be determined
+    }
+    if (user) {
+      router.replace('/dashboard');
+    } else {
+      router.replace('/login');
     }
   }, [user, loading, router]);
 

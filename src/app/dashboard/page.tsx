@@ -231,7 +231,7 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
-      return;
+      return; // Let the MissingFirebaseConfig component render
     }
     if (!authLoading && !user) {
       router.replace('/login');
