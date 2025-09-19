@@ -36,7 +36,6 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import { communes, getVillagesByCommune } from "@/lib/address-data";
 import type { Student } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -60,7 +59,6 @@ const enrollmentSchema = z.object({
 
 const formSchema = z.object({
   serialNumber: z.string().optional(),
-  enrollmentDate: z.date().optional(),
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
@@ -94,15 +92,14 @@ const formSchema = z.object({
 type EnrollmentFormValues = z.infer<typeof formSchema>;
 
 type EnrollmentFormProps = {
-  onEnroll: (student: Omit<Student, 'avatarUrl' | 'studentId' | 'enrollmentDate'> & { studentId?: string; avatarUrl?: string }) => void;
-  nextStudentId: number;
+  onEnroll: (student: Omit<Student, 'studentId' | 'enrollmentDate'>) => Promise<boolean>;
 };
 
-export function EnrollmentForm({ onEnroll, nextStudentId }: EnrollmentFormProps) {
-  const { toast } = useToast();
+export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<EnrollmentFormValues>({
     resolver: zodResolver(formSchema),
@@ -132,6 +129,7 @@ export function EnrollmentForm({ onEnroll, nextStudentId }: EnrollmentFormProps)
         name: "",
         phone: "",
       },
+      status: "Active",
     },
   });
 
@@ -172,14 +170,14 @@ export function EnrollmentForm({ onEnroll, nextStudentId }: EnrollmentFormProps)
     }
   };
 
-  function onSubmit(values: EnrollmentFormValues) {
-    onEnroll(values);
-    toast({
-      title: "Enrollment Successful",
-      description: `${values.firstName} has been added to the roster.`,
-    });
-    form.reset();
-    setPhotoPreview(null);
+  async function onSubmit(values: EnrollmentFormValues) {
+    setIsSubmitting(true);
+    const success = await onEnroll(values);
+    if (success) {
+      form.reset();
+      setPhotoPreview(null);
+    }
+    setIsSubmitting(false);
   }
 
   return (
@@ -237,13 +235,6 @@ export function EnrollmentForm({ onEnroll, nextStudentId }: EnrollmentFormProps)
                  />
               </div>
 
-              <FormItem>
-                <FormLabel>Student ID</FormLabel>
-                <FormControl>
-                  <Input value={`stu${nextStudentId}`} disabled />
-                </FormControl>
-                <FormDescription>This ID is auto-generated.</FormDescription>
-              </FormItem>
               <FormField
                 control={form.control}
                 name="serialNumber"
@@ -257,6 +248,8 @@ export function EnrollmentForm({ onEnroll, nextStudentId }: EnrollmentFormProps)
                   </FormItem>
                 )}
               />
+               <div></div>
+               <div></div>
               <FormField
                 control={form.control}
                 name="firstName"
@@ -637,8 +630,8 @@ export function EnrollmentForm({ onEnroll, nextStudentId }: EnrollmentFormProps)
             <Button type="button" variant="outline" onClick={() => {
               form.reset();
               setPhotoPreview(null);
-            }}>Reset Form</Button>
-            <Button type="submit">Enroll Student</Button>
+            }} disabled={isSubmitting}>Reset Form</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Enrolling..." : "Enroll Student"}</Button>
         </div>
       </form>
     </Form>

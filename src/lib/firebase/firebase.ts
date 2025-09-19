@@ -3,35 +3,34 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
+let db: Firestore | undefined;
 
-// This function ensures that Firebase is initialized only once and only on the client-side.
-function getFirebaseAuth(): Auth {
-  if (typeof window !== 'undefined' && !auth) {
-    // We are on the client and auth hasn't been initialized yet.
-    
-    // Config object is now inside the function to ensure env vars are available.
-    const firebaseConfig = {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-    };
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+};
 
+function initializeFirebase() {
+  if (typeof window !== 'undefined') {
     if (!getApps().length) {
       app = initializeApp(firebaseConfig);
     } else {
       app = getApp();
     }
     auth = getAuth(app);
+    db = getFirestore(app);
   }
-  // On the server, 'auth' will be undefined, which is fine because we won't use it there.
-  // On the client, it will be the initialized Auth instance.
-  return auth as Auth;
 }
 
-export { getFirebaseAuth };
+// Initialize Firebase on script load
+initializeFirebase();
+
+export { app, auth, db };

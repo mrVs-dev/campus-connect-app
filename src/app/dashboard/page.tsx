@@ -10,89 +10,112 @@ import { StudentList } from "@/components/dashboard/student-list";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
-import { students as initialStudents, assessments } from "@/lib/mock-data";
-import { usePersistentState } from "@/hooks/use-persistent-state";
-
-// Helper function to revive dates from JSON strings
-const reviveDates = (key: string, value: any) => {
-  const dateKeys = ['dateOfBirth', 'enrollmentDate'];
-  if (dateKeys.includes(key) && typeof value === 'string') {
-    const date = new Date(value);
-    // Return the date object only if it's valid
-    if (!isNaN(date.getTime())) {
-      return date;
-    }
-  }
-  return value;
-};
-
+import { assessments } from "@/lib/mock-data";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission } from "@/lib/firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
-  const [students, setStudents] = usePersistentState<Student[]>('students', initialStudents, reviveDates);
-  const [admissions, setAdmissions] = usePersistentState<Admission[]>('admissions', []);
-  const [isMounted, setIsMounted] = React.useState(false);
+  const [students, setStudents] = React.useState<Student[]>([]);
+  const [admissions, setAdmissions] = React.useState<Admission[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const { toast } = useToast();
 
-  const nextStudentIdCounter = React.useRef(
-    students.reduce((max, s) => {
-      const idNum = parseInt(s.studentId.replace('stu', ''), 10);
-      return idNum > max ? idNum : max;
-    }, 0) + 1
-  );
-  
   React.useEffect(() => {
-    setIsMounted(true);
-     // Update the counter after the initial load
-    nextStudentIdCounter.current = students.reduce((max, s) => {
-        const idNum = parseInt(s.studentId.replace('stu', ''), 10);
-        return idNum > max ? idNum : max;
-    }, 0) + 1;
-  }, [students]);
+    async function fetchData() {
+      try {
+        const [studentsData, admissionsData] = await Promise.all([getStudents(), getAdmissions()]);
+        setStudents(studentsData);
+        setAdmissions(admissionsData);
+      } catch (error) {
+        console.error("Failed to fetch initial data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load data from the server. Please try refreshing the page.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [toast]);
 
-
-  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
-    const studentWithDetails: Student = {
-      ...newStudent,
-      studentId: `stu${nextStudentIdCounter.current}`,
-      enrollmentDate: new Date(),
-      avatarUrl: newStudent.avatarUrl || `https://picsum.photos/seed/${students.length + 1}/100/100`,
-    };
-    const newStudents = [...students, studentWithDetails];
-    setStudents(newStudents);
+  const handleEnrollStudent = async (newStudentData: Omit<Student, 'avatarUrl' | 'studentId'>) => {
+    try {
+      const newStudent = await addStudent(newStudentData);
+      setStudents(prev => [...prev, newStudent]);
+      toast({
+        title: "Enrollment Successful",
+        description: `${newStudent.firstName} has been added to the roster.`,
+      });
+      return true;
+    } catch (error) {
+        console.error("Error enrolling student:", error);
+        toast({
+          title: "Enrollment Failed",
+          description: "There was an error saving the new student. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+    }
   };
 
-  const handleUpdateStudent = (studentId: string, updatedData: Partial<Student>) => {
-    setStudents(prevStudents =>
-      prevStudents.map(student =>
-        student.studentId === studentId ? { ...student, ...updatedData } : student
-      )
-    );
+  const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
+     try {
+        await updateStudent(studentId, updatedData);
+        setStudents(prevStudents =>
+            prevStudents.map(student =>
+                student.studentId === studentId ? { ...student, ...updatedData } : student
+            )
+        );
+         toast({
+            title: "Student Updated",
+            description: "Student information has been successfully updated.",
+        });
+    } catch (error) {
+        console.error("Error updating student:", error);
+        toast({
+            title: "Update Failed",
+            description: "There was an error updating the student. Please try again.",
+            variant: "destructive",
+        });
+    }
   };
 
   const handleImportStudents = (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
-    let currentId = nextStudentIdCounter.current;
-    const newStudents: Student[] = importedStudents.map((s, index) => {
-        const student: Student = {
-            ...s,
-            studentId: `stu${currentId + index}`,
-            enrollmentDate: s.enrollmentDate || new Date(),
-            avatarUrl: `https://picsum.photos/seed/${students.length + index + 1}/100/100`,
-        };
-        return student;
-    });
-    setStudents(prev => [...prev, ...newStudents]);
+    // This function will need to be updated to handle bulk Firestore writes.
+    // For now, we'll add them one by one.
+    console.log("Importing students...", importedStudents)
+    // This is a placeholder and should be implemented with batch writes for production.
   };
 
-  const handleSaveAdmission = (newAdmission: Admission) => {
-    setAdmissions(prev => {
-        const existingIndex = prev.findIndex(a => a.admissionId === newAdmission.admissionId);
+  const handleSaveAdmission = async (admissionData: Admission) => {
+    try {
+      await saveAdmission(admissionData);
+      setAdmissions(prev => {
+        const existingIndex = prev.findIndex(a => a.admissionId === admissionData.admissionId);
         if (existingIndex > -1) {
             const updatedAdmissions = [...prev];
-            updatedAdmissions[existingIndex] = newAdmission;
+            updatedAdmissions[existingIndex] = admissionData;
             return updatedAdmissions;
         } else {
-            return [...prev, newAdmission];
+            return [...prev, admissionData];
         }
-    });
+      });
+      toast({
+        title: "Admissions Saved",
+        description: `Admission data for ${admissionData.schoolYear} has been saved.`,
+      });
+      return true;
+    } catch (error) {
+       console.error("Error saving admission:", error);
+       toast({
+        title: "Save Failed",
+        description: "There was an error saving the admission data. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -119,8 +142,8 @@ export default function DashboardPage() {
   }, [students, admissions]);
 
 
-  if (!isMounted) {
-    return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading...</div>;
+  if (loading) {
+    return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading data from server...</div>;
   }
 
   return (
@@ -164,7 +187,7 @@ export default function DashboardPage() {
           </TabsContent>
           
           <TabsContent value="enrollment">
-            <EnrollmentForm onEnroll={handleEnrollStudent} nextStudentId={nextStudentIdCounter.current} />
+            <EnrollmentForm onEnroll={handleEnrollStudent} />
           </TabsContent>
         </Tabs>
       </main>

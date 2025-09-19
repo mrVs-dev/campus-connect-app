@@ -40,7 +40,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { programs, getLevelsForProgram } from "@/lib/program-data";
 import { Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 const studentAdmissionSchema = z.object({
   studentId: z.string(),
@@ -64,7 +63,7 @@ type AdmissionFormValues = z.infer<typeof admissionFormSchema>;
 interface AdmissionsListProps {
   admissions: Admission[];
   students: Student[];
-  onSave: (admission: Admission) => void;
+  onSave: (admission: Admission) => Promise<boolean>;
 }
 
 export function AdmissionsList({
@@ -92,6 +91,14 @@ export function AdmissionsList({
   const handleCancel = () => {
     setEditingYear(null);
   };
+  
+  const handleSaveAdmission = async (admissionData: Admission) => {
+    const success = await onSave(admissionData);
+    if (success) {
+      handleCancel();
+    }
+  };
+
 
   const editingAdmission = admissions.find(a => a.schoolYear === editingYear);
 
@@ -122,7 +129,7 @@ export function AdmissionsList({
             schoolYear={editingYear}
             activeStudents={activeStudents}
             existingAdmission={editingAdmission}
-            onSave={onSave}
+            onSave={handleSaveAdmission}
             onCancel={handleCancel}
           />
         ) : (
@@ -156,7 +163,7 @@ interface AdmissionFormProps {
 }
 
 function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, onCancel }: AdmissionFormProps) {
-  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const form = useForm<AdmissionFormValues>({
     resolver: zodResolver(admissionFormSchema),
     defaultValues: {
@@ -168,7 +175,7 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "students",
     keyName: "keyId",
@@ -190,18 +197,15 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
     }
   };
 
-  function onSubmit(values: AdmissionFormValues) {
+  async function onSubmit(values: AdmissionFormValues) {
+    setIsSubmitting(true);
     const newAdmission: Admission = {
         admissionId: values.schoolYear,
         schoolYear: values.schoolYear,
         students: values.students
     };
-    onSave(newAdmission);
-    toast({
-        title: "Admissions Saved",
-        description: `Admission data for ${values.schoolYear} has been saved.`,
-    })
-    onCancel();
+    await onSave(newAdmission);
+    setIsSubmitting(false);
   }
 
   return (
@@ -265,10 +269,10 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
         )}
 
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit">Save Admissions</Button>
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save Admissions"}</Button>
         </div>
       </form>
     </Form>
@@ -309,11 +313,6 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
 
     const programId = watch(`students.${studentIndex}.enrollments.${enrollmentIndex}.programId`);
     const levels = React.useMemo(() => getLevelsForProgram(programId), [programId]);
-
-    // This effect was causing the bug. It reset the level whenever the programId changed.
-    // React.useEffect(() => {
-    //     setValue(`students.${studentIndex}.enrollments.${enrollmentIndex}.level`, '');
-    // }, [programId, studentIndex, enrollmentIndex, setValue]);
 
     const handleProgramChange = (value: string) => {
         setValue(`students.${studentIndex}.enrollments.${enrollmentIndex}.programId`, value);
