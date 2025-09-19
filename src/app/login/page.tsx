@@ -54,7 +54,7 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(true);
+  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start as true to handle redirect
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
@@ -65,16 +65,18 @@ export default function LoginPage() {
     }
     
     getRedirectResult(auth)
-      .then((result) => {
-        if (result) {
-          // User is signed in. The useAuth hook will handle the redirect.
-        }
-      })
       .catch((error) => {
         console.error("Authentication failed on redirect:", error);
-        setError(`Failed to sign in. Error: ${error.code}`);
+        // Map common errors to user-friendly messages
+        if (error.code === 'auth/unauthorized-domain') {
+            setError("This domain is not authorized for sign-in. Please check your Firebase console settings.");
+        } else {
+            setError(`Failed to sign in. Error: ${error.code}`);
+        }
       })
       .finally(() => {
+        // The useAuth hook will handle the redirect to /dashboard if a user is found.
+        // If there's no user, we can stop the signing-in indicator.
         setIsSigningIn(false);
       });
   }, []);
@@ -95,6 +97,7 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
+      // The page will redirect, so no need to set isSigningIn to false here.
     } catch (error: any) {
       console.error("Authentication failed to start:", error);
       setError(`Failed to sign in. Error: ${error.message}`);
@@ -105,9 +108,16 @@ export default function LoginPage() {
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
-
-  if (authLoading || user) {
+  
+  // Show a loading indicator while checking for redirect result or waiting for auth state.
+  if (isSigningIn || authLoading) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
+  }
+
+  // If there's a user after loading, the useEffect above will redirect to dashboard.
+  // This avoids a flash of the login page.
+  if (user) {
+    return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
   }
 
   return (

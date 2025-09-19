@@ -15,19 +15,22 @@ export const firebaseConfig = {
 export const isFirebaseConfigured = !!firebaseConfig.projectId;
 
 let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+
 if (isFirebaseConfigured) {
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
   } else {
     app = getApp();
   }
+  auth = getAuth(app);
+  db = getFirestore(app);
 } else {
+  // Provide mock objects if Firebase is not configured
   app = {} as FirebaseApp;
+  auth = {} as Auth;
+  db = {} as Firestore;
 }
-
-
-const auth: Auth = isFirebaseConfigured ? getAuth(app) : ({} as Auth);
-const db: Firestore = isFirebaseConfigured ? getFirestore(app) : ({} as Firestore);
-
 
 export { app, auth, db };

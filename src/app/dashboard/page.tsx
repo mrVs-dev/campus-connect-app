@@ -234,7 +234,12 @@ export default function DashboardPage() {
     if (!isFirebaseConfigured) {
       return;
     }
-    if (!authLoading && !user) {
+    // Wait for the auth state to be determined
+    if (authLoading) {
+      return;
+    }
+    // If not authenticated, redirect to login
+    if (!user) {
       router.replace('/login');
     }
   }, [user, authLoading, router]);
@@ -242,7 +247,8 @@ export default function DashboardPage() {
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
-
+  
+  // Show a loading screen while auth state is being checked
   if (authLoading || !user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -251,5 +257,6 @@ export default function DashboardPage() {
     );
   }
 
+  // If we have a user, render the dashboard
   return <DashboardContent />;
 }
