@@ -31,30 +31,37 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start as true to handle redirect
   const router = useRouter();
   const { user, loading } = useAuth();
 
   React.useEffect(() => {
     // This effect handles the user being redirected back from Google
-    async function handleRedirectResult() {
-      if (auth) {
-        try {
-          const result = await getRedirectResult(auth);
-          if (result) {
-            // User is signed in. The useAuth hook will detect this
-            // and the main dashboard redirect will handle it.
-            setIsSigningIn(false);
-          }
-        } catch (error: any) {
-          console.error("Authentication redirect failed:", error);
-          setError(`Failed to sign in. Error: ${error.code || error.message}`);
-          setIsSigningIn(false);
-        }
+    const handleRedirectResult = async () => {
+      if (!auth) {
+        setIsSigningIn(false);
+        return;
       }
+      try {
+        const result = await getRedirectResult(auth);
+        // If the result is null, it means the user has just landed on the login page
+        // and hasn't been redirected back from Google yet.
+        if (result) {
+          // User is signed in. The useAuth hook will soon detect this.
+          // The redirect to /dashboard will be handled by the other useEffect.
+        }
+      } catch (error: any) {
+        console.error("Authentication redirect failed:", error);
+        setError(`Failed to sign in. Error: ${error.code || error.message}`);
+      } finally {
+         setIsSigningIn(false); // Allow the user to click the button now
+      }
+    };
+    
+    if(!user) {
+        handleRedirectResult();
     }
-    handleRedirectResult();
-  }, []);
+  }, [user]);
 
   React.useEffect(() => {
     if (!loading && user) {
@@ -79,14 +86,14 @@ export default function LoginPage() {
     try {
       // This will redirect the user to Google's sign-in page
       await signInWithRedirect(auth, provider);
-      // The code will continue in the useEffect hook after redirect
+      // The code will effectively stop here, and continue in the useEffect hook after redirect
     } catch (error: any) {
       console.error("Authentication failed:", error);
       if (error.code) {
         console.error("Firebase Auth Error Code:", error.code);
         console.error("Firebase Auth Error Message:", error.message);
       }
-      setError(`Failed to sign in. Error: ${error.code}`);
+      setError(`Failed to sign in. Error: ${error.code || 'Please try again.'}`);
       setIsSigningIn(false);
     }
   };
@@ -108,7 +115,7 @@ export default function LoginPage() {
         <CardContent>
           <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
             <GoogleIcon />
-            <span className="ml-2">{isSigningIn ? 'Redirecting to Google...' : 'Sign in with Google'}</span>
+            <span className="ml-2">{isSigningIn ? 'Authenticating...' : 'Sign in with Google'}</span>
           </Button>
         </CardContent>
         {error && (
@@ -120,4 +127,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
