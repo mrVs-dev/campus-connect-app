@@ -64,7 +64,7 @@ export default function LoginPage() {
         console.error("Firebase Auth Error Code:", error.code);
         console.error("Firebase Auth Error Message:", error.message);
       }
-      setError("Failed to sign in with Google. Please try again.");
+      setError(`Failed to sign in. Error: ${error.code}`);
     } finally {
       setIsSigningIn(false);
     }
