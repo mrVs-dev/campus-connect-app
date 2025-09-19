@@ -5,10 +5,6 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
-let app: FirebaseApp | undefined;
-let auth: Auth | undefined;
-let db: Firestore | undefined;
-
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -25,19 +21,21 @@ export const isFirebaseConfigured = !!(
     firebaseConfig.projectId
 );
 
-function initializeFirebase() {
-  if (typeof window !== 'undefined' && isFirebaseConfigured) {
-    if (!getApps().length) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApp();
-    }
-    auth = getAuth(app);
-    db = getFirestore(app);
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+
+if (isFirebaseConfigured) {
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
   }
+  auth = getAuth(app);
+  db = getFirestore(app);
+} else {
+  console.warn("Firebase configuration is missing. The app will not connect to Firebase.");
 }
 
-// Initialize Firebase on script load
-initializeFirebase();
 
 export { app, auth, db };
