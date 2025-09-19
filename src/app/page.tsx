@@ -10,16 +10,13 @@ export default function HomePage() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    // Wait until the auth state is fully determined.
-    if (loading) {
-      return; 
-    }
-    
-    // Once loading is false, we can safely redirect.
-    if (user) {
-      router.replace('/dashboard');
-    } else {
-      router.replace('/login');
+    // Only redirect once the auth state is no longer loading
+    if (!loading) {
+      if (user) {
+        router.replace('/dashboard');
+      } else {
+        router.replace('/login');
+      }
     }
   }, [user, loading, router]);
 

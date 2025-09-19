@@ -55,37 +55,31 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start with true to handle redirect
+  const [isProcessingRedirect, setIsProcessingRedirect] = React.useState(true);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
   React.useEffect(() => {
     async function handleRedirectResult() {
+      if (!isFirebaseConfigured) {
+        setIsProcessingRedirect(false);
+        return;
+      }
       try {
-        const result = await getRedirectResult(auth);
-        // If result is null, it means the user has just landed on the page.
-        // If there's a user, the main auth state will handle it.
+        await getRedirectResult(auth);
+        // The onAuthStateChanged listener in useAuth will handle the user state update.
       } catch (error: any) {
-        console.error("Authentication failed:", error);
+        console.error("Authentication failed during redirect:", error);
         setError(`Failed to sign in. Error: ${error.message || error.code}`);
       } finally {
-        setIsSigningIn(false);
+        setIsProcessingRedirect(false);
       }
     }
-
-    if (isFirebaseConfigured) {
-      handleRedirectResult();
-    } else {
-      setIsSigningIn(false);
-    }
+    handleRedirectResult();
   }, []);
 
   React.useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-    
-    if (user) {
+    if (!authLoading && user) {
       router.replace('/dashboard');
     }
   }, [user, authLoading, router]);
@@ -96,25 +90,24 @@ export default function LoginPage() {
       return;
     }
     setError(null);
-    setIsSigningIn(true);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       console.error("Authentication failed:", error);
       setError(`Failed to sign in. Error: ${error.message || error.code}`);
-      setIsSigningIn(false);
     }
   };
 
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
-  
-  if (authLoading || isSigningIn) {
+
+  if (authLoading || isProcessingRedirect) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
+  // Only render the login card if we are done loading and there is no user.
   if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -133,7 +126,7 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
+            <Button className="w-full" onClick={handleSignIn}>
                 <GoogleIcon />
                 <span className="ml-2">Sign in with Google</span>
             </Button>
@@ -150,6 +143,7 @@ export default function LoginPage() {
     );
   }
 
+  // If there is a user, show a redirecting message while the effect above runs.
   return (
     <div className="flex min-h-screen items-center justify-center">
         Redirecting to dashboard...

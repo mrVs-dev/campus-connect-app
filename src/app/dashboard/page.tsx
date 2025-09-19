@@ -232,10 +232,10 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (authLoading) {
-      return;
+      return; // Wait for the auth state to be determined
     }
     if (!user) {
-      router.replace('/login');
+      router.replace('/login'); // If no user, redirect to login
     }
   }, [user, authLoading, router]);
 
@@ -243,6 +243,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
   
+  // Show a loading screen while auth is in progress or if there is no user yet
   if (authLoading || !user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -250,6 +251,7 @@ export default function DashboardPage() {
       </div>
     );
   }
-
+  
+  // Only render the dashboard if auth is complete and a user exists
   return <DashboardContent />;
 }
