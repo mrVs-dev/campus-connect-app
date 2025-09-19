@@ -8,6 +8,7 @@ import {
   Timestamp,
   addDoc,
   serverTimestamp,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Student, Admission, StudentAdmission, Enrollment } from "../types";
@@ -49,31 +50,45 @@ const convertTimestampsToDates = (data: any): any => {
 // Converts JS Date objects in an object to Firestore Timestamps
 const convertDatesToTimestamps = (data: any): any => {
     if (!data) return data;
+    
+    // Create a deep copy to avoid modifying the original object
+    const dataCopy = JSON.parse(JSON.stringify(data));
 
-    if (Array.isArray(data)) {
-        return data.map(item => convertDatesToTimestamps(item));
-    }
-
-    if (typeof data === 'object' && data !== null) {
-        const newData: { [key: string]: any } = {};
-        for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-                const value = data[key];
-                if (value instanceof Date) {
-                    newData[key] = Timestamp.fromDate(value);
-                } else if (typeof value === 'object' && !isTimestamp(value)) {
-                    newData[key] = convertDatesToTimestamps(value);
-                }
-                 else {
-                    newData[key] = value;
+    const convert = (obj: any): any => {
+        if (!obj) return obj;
+        if (Array.isArray(obj)) {
+            return obj.map(item => convert(item));
+        }
+        if (typeof obj === 'object') {
+            const newObj: { [key: string]: any } = {};
+            for (const key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    const value = obj[key];
+                    // Check for ISO date string format from JSON.parse
+                    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
+                         const date = new Date(value);
+                         if (!isNaN(date.getTime())) {
+                            newObj[key] = Timestamp.fromDate(date);
+                         } else {
+                            newObj[key] = value;
+                         }
+                    } else if (value instanceof Date) { // This case might not happen after stringify/parse
+                        newObj[key] = Timestamp.fromDate(value);
+                    } else if (typeof value === 'object' && value !== null && !isTimestamp(value)) {
+                        newObj[key] = convert(value);
+                    } else {
+                        newObj[key] = value;
+                    }
                 }
             }
+            return newObj;
         }
-        return newData;
-    }
+        return obj;
+    };
     
-    return data;
+    return convert(dataCopy);
 };
+
 
 // --- Students Collection ---
 
@@ -91,23 +106,29 @@ export async function getStudents(): Promise<Student[]> {
     });
 }
 
-export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate'>): Promise<Student> {
+export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'avatarUrl'> & {avatarUrl?: string}): Promise<Student> {
     if (!db) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
+    
     const studentsCollection = collection(db, 'students');
-    const studentWithTimestamps = convertDatesToTimestamps({
+    
+    // Create a clean copy for Firestore, ensuring dates are handled
+    const studentForFirestore = {
         ...studentData,
         enrollmentDate: serverTimestamp() // Use server timestamp for creation
-    });
-    
-    const docRef = await addDoc(studentsCollection, studentWithTimestamps);
-    
-    // We can be optimistic and not fetch the doc again for the enrollmentDate
-    const newStudent: Student = {
-        ...studentData,
-        studentId: docRef.id,
-        enrollmentDate: new Date(),
     };
-    return newStudent;
+    
+    const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
+
+    const docRef = await addDoc(studentsCollection, dataWithTimestamps);
+    
+    // Fetch the just-created document to get the server-generated timestamp
+    const newDoc = await getDoc(docRef);
+    const newStudentData = newDoc.data();
+
+    return convertTimestampsToDates({
+        ...newStudentData,
+        studentId: docRef.id,
+    }) as Student;
 }
 
 
