@@ -135,11 +135,13 @@ export function Overview({ students }: OverviewProps) {
   const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--muted-foreground))"];
 
   const enrollmentByProgram = students.reduce((acc, student) => {
-    student.enrollments.forEach(enrollment => {
-      const programName = programs.find(p => p.id === enrollment.programId)?.name || 'Unknown';
-      const shortName = programShortNames[programName] || programName;
-      acc[shortName] = (acc[shortName] || 0) + 1;
-    });
+    if (student.enrollments) {
+      student.enrollments.forEach(enrollment => {
+        const programName = programs.find(p => p.id === enrollment.programId)?.name || 'Unknown';
+        const shortName = programShortNames[programName] || programName;
+        acc[shortName] = (acc[shortName] || 0) + 1;
+      });
+    }
     return acc;
   }, {} as Record<string, number>);
 
