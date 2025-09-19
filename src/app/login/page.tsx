@@ -31,6 +31,7 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = React.useState(false);
   const router = useRouter();
   const { user, loading } = useAuth();
 
@@ -41,16 +42,20 @@ export default function LoginPage() {
   }, [user, loading, router]);
 
   const handleSignIn = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
+    
     if (!isFirebaseConfigured || !auth) {
       setError("Firebase is not configured. Please check your environment variables and Firebase setup.");
       console.error("Login attempt failed: Firebase is not configured or auth object is not available.");
+      setIsSigningIn(false);
       return;
     }
     setError(null);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      router.push('/dashboard');
+      // The useEffect hook will handle the redirect on successful sign-in
     } catch (error: any) {
       console.error("Authentication failed:", error);
       // More detailed error logging
@@ -59,6 +64,8 @@ export default function LoginPage() {
         console.error("Firebase Auth Error Message:", error.message);
       }
       setError("Failed to sign in with Google. Please try again.");
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -77,9 +84,9 @@ export default function LoginPage() {
           <CardDescription>Sign in to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button className="w-full" onClick={handleSignIn}>
+          <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
             <GoogleIcon />
-            <span className="ml-2">Sign in with Google</span>
+            <span className="ml-2">{isSigningIn ? 'Signing in...' : 'Sign in with Google'}</span>
           </Button>
         </CardContent>
         {error && (
