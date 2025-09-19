@@ -61,6 +61,9 @@ export function StudentImportDialog({
             if (row.programId && row.level) {
               enrollments.push({ programId: row.programId, level: row.level });
             }
+            
+            const dateOfBirth = new Date(row.dateOfBirth);
+            const enrollmentDate = row.enrollmentDate ? new Date(row.enrollmentDate) : new Date();
 
             return {
               firstName: row.firstName || '',
@@ -68,7 +71,8 @@ export function StudentImportDialog({
               khmerFirstName: row.khmerFirstName || '',
               khmerLastName: row.khmerLastName || '',
               sex: ['Male', 'Female', 'Other'].includes(row.sex) ? row.sex : 'Other',
-              dateOfBirth: new Date(row.dateOfBirth) || new Date(),
+              dateOfBirth: !isNaN(dateOfBirth.getTime()) ? dateOfBirth : new Date(),
+              enrollmentDate: !isNaN(enrollmentDate.getTime()) ? enrollmentDate : new Date(),
               placeOfBirth: row.placeOfBirth || '',
               nationality: row.nationality || '',
               nationalId: row.nationalId || undefined,

@@ -11,88 +11,53 @@ import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { students as initialStudents, assessments } from "@/lib/mock-data";
+import { usePersistentState } from "@/hooks/use-persistent-state";
+
+// Helper function to revive dates from JSON strings
+const reviveDates = (key: string, value: any) => {
+  const dateKeys = ['dateOfBirth', 'enrollmentDate'];
+  if (dateKeys.includes(key) && typeof value === 'string') {
+    const date = new Date(value);
+    // Return the date object only if it's valid
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+  return value;
+};
+
 
 export default function DashboardPage() {
-  const [students, setStudents] = React.useState<Student[]>([]);
-  const [admissions, setAdmissions] = React.useState<Admission[]>([]);
+  const [students, setStudents] = usePersistentState<Student[]>('students', initialStudents, reviveDates);
+  const [admissions, setAdmissions] = usePersistentState<Admission[]>('admissions', []);
   const [isMounted, setIsMounted] = React.useState(false);
-  const nextStudentIdCounter = React.useRef(0);
 
+  const nextStudentIdCounter = React.useRef(
+    students.reduce((max, s) => {
+      const idNum = parseInt(s.studentId.replace('stu', ''), 10);
+      return idNum > max ? idNum : max;
+    }, 0) + 1
+  );
+  
   React.useEffect(() => {
     setIsMounted(true);
-  }, []);
+     // Update the counter after the initial load
+    nextStudentIdCounter.current = students.reduce((max, s) => {
+        const idNum = parseInt(s.studentId.replace('stu', ''), 10);
+        return idNum > max ? idNum : max;
+    }, 0) + 1;
+  }, [students]);
 
-  // Load data from localStorage on initial mount
-  React.useEffect(() => {
-    if (isMounted) {
-      // Load Students
-      try {
-        const storedStudents = localStorage.getItem("students");
-        if (storedStudents) {
-          const parsedStudents = JSON.parse(storedStudents).map((s: Student) => ({
-            ...s,
-            dateOfBirth: new Date(s.dateOfBirth),
-            enrollmentDate: s.enrollmentDate ? new Date(s.enrollmentDate) : undefined,
-          }));
-          setStudents(parsedStudents);
-        } else {
-          setStudents(initialStudents);
-        }
-      } catch (error) {
-        console.error("Failed to load students from localStorage, resetting to initial data.", error);
-        setStudents(initialStudents);
-      }
 
-      // Load Admissions
-      try {
-        const storedAdmissions = localStorage.getItem("admissions");
-        if (storedAdmissions) {
-          setAdmissions(JSON.parse(storedAdmissions));
-        } else {
-          setAdmissions([]);
-        }
-      } catch (error) {
-        console.error("Failed to load admissions from localStorage, resetting to empty.", error);
-        setAdmissions([]);
-      }
-    }
-  }, [isMounted]);
-
-  // Save students to localStorage
-  React.useEffect(() => {
-    if (isMounted) {
-      try {
-        localStorage.setItem("students", JSON.stringify(students));
-        const maxId = students.reduce((max, s) => {
-            const idNum = parseInt(s.studentId.replace('stu', ''), 10);
-            return idNum > max ? idNum : max;
-        }, 1831);
-        nextStudentIdCounter.current = maxId + 1;
-      } catch (error) {
-        console.error("Failed to save students to localStorage", error);
-      }
-    }
-  }, [students, isMounted]);
-
-  // Save admissions to localStorage
-  React.useEffect(() => {
-    if (isMounted) {
-      try {
-        localStorage.setItem("admissions", JSON.stringify(admissions));
-      } catch (error) {
-        console.error("Failed to save admissions to localStorage", error);
-      }
-    }
-  }, [admissions, isMounted]);
-
-  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId' | 'enrollmentDate'> & { studentId?: string; avatarUrl?: string }) => {
+  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
     const studentWithDetails: Student = {
       ...newStudent,
       studentId: `stu${nextStudentIdCounter.current}`,
       enrollmentDate: new Date(),
       avatarUrl: newStudent.avatarUrl || `https://picsum.photos/seed/${students.length + 1}/100/100`,
     };
-    setStudents(prevStudents => [...prevStudents, studentWithDetails]);
+    const newStudents = [...students, studentWithDetails];
+    setStudents(newStudents);
   };
 
   const handleUpdateStudent = (studentId: string, updatedData: Partial<Student>) => {
@@ -105,10 +70,11 @@ export default function DashboardPage() {
 
   const handleImportStudents = (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
     let currentId = nextStudentIdCounter.current;
-    const newStudents = importedStudents.map((s, index) => {
+    const newStudents: Student[] = importedStudents.map((s, index) => {
         const student: Student = {
             ...s,
             studentId: `stu${currentId + index}`,
+            enrollmentDate: s.enrollmentDate || new Date(),
             avatarUrl: `https://picsum.photos/seed/${students.length + index + 1}/100/100`,
         };
         return student;
@@ -130,11 +96,10 @@ export default function DashboardPage() {
   };
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
-    if (admissions.length === 0) {
+    if (!admissions || admissions.length === 0) {
       return students;
     }
 
-    // Sort admissions by school year descending to find the latest one
     const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
     const latestAdmission = sortedAdmissions[0];
 
@@ -149,7 +114,6 @@ export default function DashboardPage() {
       if (latestEnrollments) {
         return { ...student, enrollments: latestEnrollments };
       }
-      // If student not in latest admission, return their original enrollments
       return student;
     });
   }, [students, admissions]);
