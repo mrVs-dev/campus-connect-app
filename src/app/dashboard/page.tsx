@@ -136,7 +136,7 @@ export default function DashboardPage() {
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
             <TabsTrigger value="admissions">Admissions</TabsTrigger>
-            <TabsTrigger value="enrollment">New Student</TabsTrigger>
+            <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
