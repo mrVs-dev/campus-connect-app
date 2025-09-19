@@ -26,32 +26,36 @@ export default function DashboardPage() {
   React.useEffect(() => {
     if (isMounted) {
       try {
-        // Load Students
         const storedStudents = localStorage.getItem("students");
         if (storedStudents) {
           const parsedStudents = JSON.parse(storedStudents).map((s: Student) => ({
             ...s,
             dateOfBirth: new Date(s.dateOfBirth),
+            enrollmentDate: s.enrollmentDate ? new Date(s.enrollmentDate) : undefined,
           }));
           setStudents(parsedStudents);
         } else {
           setStudents(initialStudents);
         }
+      } catch (error) {
+        console.error("Failed to load students from localStorage, resetting to initial data.", error);
+        setStudents(initialStudents);
+      }
 
-        // Load Admissions
+      try {
         const storedAdmissions = localStorage.getItem("admissions");
         if (storedAdmissions) {
           setAdmissions(JSON.parse(storedAdmissions));
+        } else {
+          setAdmissions([]);
         }
-
       } catch (error) {
-        console.error("Failed to load data from localStorage", error);
-        setStudents(initialStudents);
+        console.error("Failed to load admissions from localStorage, resetting to empty.", error);
         setAdmissions([]);
       }
     }
   }, [isMounted]);
-  
+
   // Save students to localStorage
   React.useEffect(() => {
     if (isMounted) {
@@ -79,10 +83,11 @@ export default function DashboardPage() {
     }
   }, [admissions, isMounted]);
 
-  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId'> & { studentId?: string; avatarUrl?: string }) => {
+  const handleEnrollStudent = (newStudent: Omit<Student, 'avatarUrl' | 'studentId' | 'enrollmentDate'> & { studentId?: string; avatarUrl?: string }) => {
     const studentWithDetails: Student = {
       ...newStudent,
       studentId: `stu${nextStudentIdCounter.current}`,
+      enrollmentDate: new Date(),
       avatarUrl: newStudent.avatarUrl || `https://picsum.photos/seed/${students.length + 1}/100/100`,
     };
     setStudents(prevStudents => [...prevStudents, studentWithDetails]);
@@ -122,6 +127,32 @@ export default function DashboardPage() {
     });
   };
 
+  const studentsWithLatestEnrollments = React.useMemo(() => {
+    if (admissions.length === 0) {
+      return students;
+    }
+
+    // Sort admissions by school year descending to find the latest one
+    const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
+    const latestAdmission = sortedAdmissions[0];
+
+    if (!latestAdmission) {
+      return students;
+    }
+
+    const admissionMap = new Map(latestAdmission.students.map(s => [s.studentId, s.enrollments]));
+
+    return students.map(student => {
+      const latestEnrollments = admissionMap.get(student.studentId);
+      if (latestEnrollments) {
+        return { ...student, enrollments: latestEnrollments };
+      }
+      // If student not in latest admission, return their original enrollments
+      return student;
+    });
+  }, [students, admissions]);
+
+
   if (!isMounted) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading...</div>;
   }
@@ -140,12 +171,12 @@ export default function DashboardPage() {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Overview />
+            <Overview students={students} />
           </TabsContent>
 
           <TabsContent value="students">
             <StudentList 
-              students={students} 
+              students={studentsWithLatestEnrollments} 
               onUpdateStudent={handleUpdateStudent}
               onImportStudents={handleImportStudents}
             />
