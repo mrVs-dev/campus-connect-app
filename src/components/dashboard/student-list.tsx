@@ -46,16 +46,17 @@ export function StudentList({
 
   const getProgramInfo = (enrollments: Student["enrollments"]) => {
     if (!enrollments || enrollments.length === 0) {
-      return { programName: "N/A", level: "" };
+      return [{ programName: "N/A", level: "" }];
     }
-    const mainEnrollment = enrollments[0];
-    const program = programs.find(p => p.id === mainEnrollment.programId);
-    return {
-      programName: program?.name || "Unknown",
-      level: mainEnrollment.level,
-      additional: enrollments.length - 1
-    };
+    return enrollments.map(enrollment => {
+      const program = programs.find(p => p.id === enrollment.programId);
+      return {
+        programName: program?.name || "Unknown Program",
+        level: enrollment.level,
+      };
+    });
   };
+
 
   return (
     <>
@@ -87,8 +88,7 @@ export function StudentList({
             <TableHeader>
               <TableRow>
                 <TableHead>Student</TableHead>
-                <TableHead>Program</TableHead>
-                <TableHead className="hidden md:table-cell">Grade/Level</TableHead>
+                <TableHead>Program &amp; Level</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
                 <TableHead className="hidden lg:table-cell">Address</TableHead>
                 <TableHead className="hidden lg:table-cell">
@@ -98,7 +98,7 @@ export function StudentList({
             </TableHeader>
             <TableBody>
               {students.map((student) => {
-                const { programName, level, additional } = getProgramInfo(student.enrollments);
+                const programInfo = getProgramInfo(student.enrollments);
                 return (
                   <TableRow
                     key={student.studentId}
@@ -130,15 +130,14 @@ export function StudentList({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {programName}
-                      {additional > 0 && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                          (+{additional})
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {level}
+                      <div className="flex flex-col gap-1">
+                        {programInfo.map((p, index) => (
+                          <div key={index} className="text-sm">
+                            <span className="font-medium">{p.programName}:</span>
+                            <span className="text-muted-foreground ml-1">{p.level}</span>
+                          </div>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge
