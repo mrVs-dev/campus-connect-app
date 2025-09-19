@@ -52,6 +52,11 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Authentication failed:", error);
+      // More detailed error logging
+      if (error.code) {
+        console.error("Firebase Auth Error Code:", error.code);
+        console.error("Firebase Auth Error Message:", error.message);
+      }
       setError("Failed to sign in with Google. Please try again.");
     }
   };
@@ -73,7 +78,7 @@ export default function LoginPage() {
         <CardContent>
           <Button className="w-full" onClick={handleSignIn}>
             <GoogleIcon />
-            Sign in with Google
+            <span className="ml-2">Sign in with Google</span>
           </Button>
         </CardContent>
         {error && (
