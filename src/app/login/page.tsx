@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithRedirect, GoogleAuthProvider, getRedirectResult } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,27 @@ export default function LoginPage() {
   const { user, loading } = useAuth();
 
   React.useEffect(() => {
+    // This effect handles the user being redirected back from Google
+    async function handleRedirectResult() {
+      if (auth) {
+        try {
+          const result = await getRedirectResult(auth);
+          if (result) {
+            // User is signed in. The useAuth hook will detect this
+            // and the main dashboard redirect will handle it.
+            setIsSigningIn(false);
+          }
+        } catch (error: any) {
+          console.error("Authentication redirect failed:", error);
+          setError(`Failed to sign in. Error: ${error.code || error.message}`);
+          setIsSigningIn(false);
+        }
+      }
+    }
+    handleRedirectResult();
+  }, []);
+
+  React.useEffect(() => {
     if (!loading && user) {
       router.replace('/dashboard');
     }
@@ -47,25 +68,25 @@ export default function LoginPage() {
     setError(null);
     
     if (!isFirebaseConfigured || !auth) {
-      setError("Firebase is not configured. Please check your environment variables and Firebase setup.");
-      console.error("Login attempt failed: Firebase is not configured or auth object is not available.");
+      const errorMessage = "Firebase is not configured. Please check your environment variables and Firebase setup.";
+      setError(errorMessage);
+      console.error("Login attempt failed:", errorMessage);
       setIsSigningIn(false);
       return;
     }
 
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      // The useEffect hook will handle the redirect on successful sign-in
+      // This will redirect the user to Google's sign-in page
+      await signInWithRedirect(auth, provider);
+      // The code will continue in the useEffect hook after redirect
     } catch (error: any) {
       console.error("Authentication failed:", error);
-      // More detailed error logging
       if (error.code) {
         console.error("Firebase Auth Error Code:", error.code);
         console.error("Firebase Auth Error Message:", error.message);
       }
       setError(`Failed to sign in. Error: ${error.code}`);
-    } finally {
       setIsSigningIn(false);
     }
   };
@@ -87,7 +108,7 @@ export default function LoginPage() {
         <CardContent>
           <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
             <GoogleIcon />
-            <span className="ml-2">{isSigningIn ? 'Signing in...' : 'Sign in with Google'}</span>
+            <span className="ml-2">{isSigningIn ? 'Redirecting to Google...' : 'Sign in with Google'}</span>
           </Button>
         </CardContent>
         {error && (
@@ -99,3 +120,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

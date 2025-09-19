@@ -48,7 +48,7 @@ function MissingFirebaseConfig() {
 function DashboardContent() {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [loadingData, setLoadingData] = React.useState(true);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -65,13 +65,13 @@ function DashboardContent() {
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        setLoadingData(false);
       }
     }
     fetchData();
   }, [toast]);
 
-  const handleEnrollStudent = async (newStudentData: Omit<Student, 'avatarUrl' | 'studentId'>) => {
+  const handleEnrollStudent = async (newStudentData: Omit<Student, 'avatarUrl' | 'studentId' | 'enrollmentDate'> & {avatarUrl?: string}) => {
     try {
       const newStudent = await addStudent(newStudentData);
       setStudents(prev => [...prev, newStudent]);
@@ -172,7 +172,7 @@ function DashboardContent() {
     });
   }, [students, admissions]);
 
-  if (loading) {
+  if (loadingData) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading data from server...</div>;
   }
 
@@ -226,7 +226,7 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -234,16 +234,16 @@ export default function DashboardPage() {
       // Let the component render the config message
       return;
     }
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.replace('/login');
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
 
-  if (loading || !user) {
+  if (authLoading || !user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading...
