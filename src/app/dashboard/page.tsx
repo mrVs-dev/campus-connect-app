@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import type { Student, Admission } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
@@ -14,6 +15,7 @@ import { assessments } from "@/lib/mock-data";
 import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 function MissingFirebaseConfig() {
@@ -43,18 +45,13 @@ function MissingFirebaseConfig() {
   );
 }
 
-
-export default function DashboardPage() {
+function DashboardContent() {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [loading, setLoading] = React.useState(true);
   const { toast } = useToast();
 
   React.useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setLoading(false);
-      return;
-    }
     async function fetchData() {
       try {
         const [studentsData, admissionsData] = await Promise.all([getStudents(), getAdmissions()]);
@@ -175,11 +172,6 @@ export default function DashboardPage() {
     });
   }, [students, admissions]);
 
-
-  if (!isFirebaseConfigured) {
-    return <MissingFirebaseConfig />;
-  }
-
   if (loading) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading data from server...</div>;
   }
@@ -231,4 +223,33 @@ export default function DashboardPage() {
       </main>
     </div>
   );
+}
+
+export default function DashboardPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!isFirebaseConfigured) {
+      // Let the component render the config message
+      return;
+    }
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  if (!isFirebaseConfigured) {
+    return <MissingFirebaseConfig />;
+  }
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        Loading...
+      </div>
+    );
+  }
+
+  return <DashboardContent />;
 }
