@@ -67,7 +67,7 @@ export default function LoginPage() {
       }
       try {
         await getRedirectResult(auth);
-        // The onAuthStateChanged listener in useAuth will handle the user state update.
+        // The onAuthStateChanged listener in useAuth will handle the user state update and redirect.
       } catch (error: any) {
         console.error("Authentication failed during redirect:", error);
         setError(`Failed to sign in. Error: ${error.message || error.code}`);
@@ -79,10 +79,11 @@ export default function LoginPage() {
   }, []);
 
   React.useEffect(() => {
-    if (!authLoading && user) {
+    // Wait until both auth state is resolved and redirect is processed
+    if (!authLoading && !isProcessingRedirect && user) {
       router.replace('/dashboard');
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, isProcessingRedirect, router]);
 
   const handleSignIn = async () => {
     if (!isFirebaseConfigured) {
@@ -103,8 +104,9 @@ export default function LoginPage() {
     return <MissingFirebaseConfig />;
   }
 
+  // Show a loading screen while auth is in progress or redirect is being processed.
   if (authLoading || isProcessingRedirect) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
   }
 
   // Only render the login card if we are done loading and there is no user.

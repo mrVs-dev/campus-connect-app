@@ -174,7 +174,7 @@ function DashboardContent() {
   }, [students, admissions]);
 
   if (loadingData) {
-    return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading data from server...</div>;
+    return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading application data...</div>;
   }
 
   return (
@@ -231,11 +231,13 @@ export default function DashboardPage() {
   const router = useRouter();
 
   React.useEffect(() => {
+    // Wait for the auth state to be determined
     if (authLoading) {
-      return; // Wait for the auth state to be determined
+      return; 
     }
+    // If auth is resolved and there is no user, redirect to login
     if (!user) {
-      router.replace('/login'); // If no user, redirect to login
+      router.replace('/login');
     }
   }, [user, authLoading, router]);
 
@@ -243,11 +245,11 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
   
-  // Show a loading screen while auth is in progress or if there is no user yet
+  // Show a loading screen while auth is in progress or if there is no user yet.
   if (authLoading || !user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        Loading...
+        Verifying your session...
       </div>
     );
   }

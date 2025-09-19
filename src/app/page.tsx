@@ -23,7 +23,7 @@ export default function HomePage() {
   // Display a loading indicator while the auth state is being resolved.
   return (
      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-      Loading...
+      Loading application...
     </div>
   );
 }
