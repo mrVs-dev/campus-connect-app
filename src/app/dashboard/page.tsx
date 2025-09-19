@@ -52,6 +52,10 @@ function DashboardContent() {
   const { toast } = useToast();
 
   React.useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setLoadingData(false);
+      return;
+    }
     async function fetchData() {
       try {
         const [studentsData, admissionsData] = await Promise.all([getStudents(), getAdmissions()]);
@@ -114,10 +118,7 @@ function DashboardContent() {
   };
 
   const handleImportStudents = (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
-    // This function will need to be updated to handle bulk Firestore writes.
-    // For now, we'll add them one by one.
     console.log("Importing students...", importedStudents)
-    // This is a placeholder and should be implemented with batch writes for production.
   };
 
   const handleSaveAdmission = async (admissionData: Admission) => {
@@ -231,7 +232,7 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
-      return; // Let the MissingFirebaseConfig component render
+      return;
     }
     if (!authLoading && !user) {
       router.replace('/login');

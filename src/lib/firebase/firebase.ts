@@ -1,4 +1,3 @@
-
 // src/lib/firebase/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
@@ -15,15 +14,19 @@ export const firebaseConfig = {
 
 export const isFirebaseConfigured = !!firebaseConfig.projectId;
 
-// Initialize Firebase
 let app: FirebaseApp;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
+if (isFirebaseConfigured) {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
 } else {
-  app = getApp();
+  app = {} as FirebaseApp;
 }
 
-const auth: Auth = getAuth(app);
+
+const auth: Auth = isFirebaseConfigured ? getAuth(app) : ({} as Auth);
 const db: Firestore = isFirebaseConfigured ? getFirestore(app) : ({} as Firestore);
 
 

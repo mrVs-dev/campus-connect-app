@@ -4,7 +4,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
-import { auth, firebaseConfig } from "@/lib/firebase/firebase";
+import { auth, firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,30 +28,55 @@ function GoogleIcon() {
   );
 }
 
+function MissingFirebaseConfig() {
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Firebase Configuration Missing</CardTitle>
+          <CardDescription>
+            Your application is not connected to Firebase. Please configure your environment variables.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4">
+            To get started, you need to create a Firebase project and add its configuration to this application.
+          </p>
+          <p>
+            Please follow the instructions in the <code className="bg-muted px-2 py-1 rounded-md text-sm">README.md</code> file
+            to set up your <code className="bg-muted px-2 py-1 rounded-md text-sm">.env.local</code> file with the necessary Firebase keys.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start as true to handle redirect
+  const [isSigningIn, setIsSigningIn] = React.useState(true);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
   React.useEffect(() => {
-    // This effect runs once on mount to check for redirect result
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
+    if (!isFirebaseConfigured) {
+      setIsSigningIn(false);
+      return;
+    }
+    
+    getRedirectResult(auth)
+      .then((result) => {
         if (result) {
-          // User successfully signed in. The useAuth hook will handle the redirect to dashboard.
-          // No need to do anything here, just let the state update.
+          // User is signed in. The useAuth hook will handle the redirect.
         }
-      } catch (error: any) {
+      })
+      .catch((error) => {
         console.error("Authentication failed on redirect:", error);
         setError(`Failed to sign in. Error: ${error.code}`);
-      } finally {
-        // Whether there was a redirect or not, we are no longer in a "signing in" state from the redirect.
+      })
+      .finally(() => {
         setIsSigningIn(false);
-      }
-    };
-    checkRedirect();
+      });
   }, []);
 
   React.useEffect(() => {
@@ -61,18 +86,25 @@ export default function LoginPage() {
   }, [authLoading, user, router]);
 
   const handleSignIn = async () => {
+    if (!isFirebaseConfigured) {
+      setError("Firebase is not configured. Please check your .env.local file.");
+      return;
+    }
     setIsSigningIn(true);
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
-      // The page will redirect, and the result will be handled by the useEffect above on page load.
     } catch (error: any) {
       console.error("Authentication failed to start:", error);
       setError(`Failed to sign in. Error: ${error.message}`);
       setIsSigningIn(false);
     }
   };
+
+  if (!isFirebaseConfigured) {
+    return <MissingFirebaseConfig />;
+  }
 
   if (authLoading || user) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
