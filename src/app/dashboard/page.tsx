@@ -243,7 +243,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
   
-  if (authLoading) {
+  if (authLoading || !user) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading...
@@ -251,13 +251,5 @@ export default function DashboardPage() {
     );
   }
 
-  if (user) {
-    return <DashboardContent />;
-  }
-
-  return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-background">
-      Redirecting to login...
-    </div>
-  );
+  return <DashboardContent />;
 }

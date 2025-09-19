@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
 import { auth, firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -55,13 +55,28 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [appOrigin, setAppOrigin] = React.useState<string>("");
+  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start with true to handle redirect
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
   React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      setAppOrigin(window.location.origin);
+    async function handleRedirectResult() {
+      try {
+        const result = await getRedirectResult(auth);
+        // If result is null, it means the user has just landed on the page.
+        // If there's a user, the main auth state will handle it.
+      } catch (error: any) {
+        console.error("Authentication failed:", error);
+        setError(`Failed to sign in. Error: ${error.message || error.code}`);
+      } finally {
+        setIsSigningIn(false);
+      }
+    }
+
+    if (isFirebaseConfigured) {
+      handleRedirectResult();
+    } else {
+      setIsSigningIn(false);
     }
   }, []);
 
@@ -81,13 +96,14 @@ export default function LoginPage() {
       return;
     }
     setError(null);
+    setIsSigningIn(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      // On successful sign-in, the useEffect hook will handle the redirect.
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
       console.error("Authentication failed:", error);
       setError(`Failed to sign in. Error: ${error.message || error.code}`);
+      setIsSigningIn(false);
     }
   };
 
@@ -95,7 +111,7 @@ export default function LoginPage() {
     return <MissingFirebaseConfig />;
   }
   
-  if (authLoading) {
+  if (authLoading || isSigningIn) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
@@ -114,19 +130,10 @@ export default function LoginPage() {
             {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertTitle>Authentication Error</AlertTitle>
-                <AlertDescription>
-                  {error}
-                  {error.includes("auth/unauthorized-domain") && (
-                    <div className="mt-2 text-xs">
-                      <p className="font-bold">ACTION REQUIRED:</p>
-                      <p>You MUST add the following domain to your Firebase project's authorized domains list:</p>
-                      <p className="font-mono bg-muted p-1 rounded-md mt-1 break-all">{appOrigin}</p>
-                    </div>
-                  )}
-                </AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button className="w-full" onClick={handleSignIn}>
+            <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
                 <GoogleIcon />
                 <span className="ml-2">Sign in with Google</span>
             </Button>
