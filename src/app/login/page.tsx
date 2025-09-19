@@ -54,36 +54,44 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start as true to handle redirect
+  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start true to handle the redirect result processing
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
+  // This effect handles the result of the redirect from Google
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
       setIsSigningIn(false);
       return;
     }
     
+    // Check for redirect result only once on mount
     getRedirectResult(auth)
       .catch((error) => {
         console.error("Authentication failed on redirect:", error);
-        if (error.code === 'auth/unauthorized-domain') {
-            setError("This domain is not authorized for sign-in. Please check your Firebase console settings.");
-        } else {
-            setError(`Failed to sign in. Error: ${error.message || error.code}`);
-        }
+        setError(`Failed to sign in. Error: ${error.message || error.code}`);
       })
       .finally(() => {
-        // The useAuth hook will handle the redirect to /dashboard if a user is found.
-        // If there's no user, we can stop the signing-in indicator.
+        // After processing, let the auth hook take over.
         setIsSigningIn(false);
       });
   }, []);
 
+  // This effect reacts to changes in the authentication state from the hook
   React.useEffect(() => {
-    if (!authLoading && user) {
+    // If the auth state is still loading, do nothing.
+    if (authLoading) {
+      return;
+    }
+    
+    // If we have a user, redirect to the dashboard.
+    if (user) {
       router.replace('/dashboard');
     }
+    
+    // If there is no user and we are done with the initial redirect check, stop the spinner.
+    setIsSigningIn(false);
+
   }, [authLoading, user, router]);
 
   const handleSignIn = async () => {
@@ -96,7 +104,8 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
-      // The page will redirect, so no need to set isSigningIn to false here.
+      // The page will redirect, so the user will leave this page.
+      // The effects above will handle their return.
     } catch (error: any) {
       console.error("Authentication failed to start:", error);
       setError(`Failed to sign in. Error: ${error.message || error.code}`);
@@ -108,17 +117,12 @@ export default function LoginPage() {
     return <MissingFirebaseConfig />;
   }
   
-  // Show a loading indicator while checking for redirect result or waiting for auth state.
+  // Show a loading indicator while checking auth state or if a sign-in is in progress.
   if (isSigningIn || authLoading) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
-  // If there's a user after loading, the useEffect above will redirect to dashboard.
-  // This avoids a flash of the login page.
-  if (user) {
-    return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
-  }
-
+  // If there's no user and we're not loading, show the login page.
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <Card className="w-full max-w-sm">

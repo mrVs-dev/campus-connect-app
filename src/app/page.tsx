@@ -10,9 +10,12 @@ export default function HomePage() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
+    // Wait until the auth state is fully determined.
     if (loading) {
-      return; // Wait for the auth state to be determined
+      return; 
     }
+    
+    // Once loading is false, we can safely redirect.
     if (user) {
       router.replace('/dashboard');
     } else {
@@ -20,9 +23,10 @@ export default function HomePage() {
     }
   }, [user, loading, router]);
 
+  // Display a loading indicator while the auth state is being resolved.
   return (
      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-      Authenticating...
+      Loading...
     </div>
   );
 }

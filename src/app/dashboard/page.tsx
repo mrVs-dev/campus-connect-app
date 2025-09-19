@@ -231,14 +231,11 @@ export default function DashboardPage() {
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!isFirebaseConfigured) {
-      return;
-    }
-    // Wait for the auth state to be determined
+    // Don't do anything until the auth state is fully resolved
     if (authLoading) {
       return;
     }
-    // If not authenticated, redirect to login
+    // If auth is resolved and there's still no user, redirect to login
     if (!user) {
       router.replace('/login');
     }
@@ -248,8 +245,8 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
   
-  // Show a loading screen while auth state is being checked or if there's no user yet
-  if (authLoading || !user) {
+  // Show a loading screen while auth state is being checked.
+  if (authLoading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading...
@@ -257,6 +254,16 @@ export default function DashboardPage() {
     );
   }
 
-  // If we have a user, render the dashboard
-  return <DashboardContent />;
+  // If we have a user, render the dashboard content. Otherwise, this will be blank
+  // for a moment before the redirect happens.
+  if (user) {
+    return <DashboardContent />;
+  }
+
+  // Fallback loading state while redirecting
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background">
+      Redirecting to login...
+    </div>
+  );
 }
