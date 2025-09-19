@@ -13,6 +13,36 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { assessments } from "@/lib/mock-data";
 import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { isFirebaseConfigured } from "@/lib/firebase/firebase";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+function MissingFirebaseConfig() {
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Firebase Configuration Missing</CardTitle>
+          <CardDescription>
+            Your application is not connected to Firebase, which is required for storing and managing data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4">
+            To get started, you need to create a Firebase project and add its configuration to this application.
+          </p>
+          <p>
+            Please follow the instructions in the <code className="bg-muted px-2 py-1 rounded-md text-sm">README.md</code> file
+            to set up your <code className="bg-muted px-2 py-1 rounded-md text-sm">.env.local</code> file with the necessary Firebase keys.
+          </p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            After adding the configuration, you will need to restart the development server for the changes to take effect.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 
 export default function DashboardPage() {
   const [students, setStudents] = React.useState<Student[]>([]);
@@ -21,6 +51,10 @@ export default function DashboardPage() {
   const { toast } = useToast();
 
   React.useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setLoading(false);
+      return;
+    }
     async function fetchData() {
       try {
         const [studentsData, admissionsData] = await Promise.all([getStudents(), getAdmissions()]);
@@ -30,7 +64,7 @@ export default function DashboardPage() {
         console.error("Failed to fetch initial data:", error);
         toast({
           title: "Error",
-          description: "Failed to load data from the server. Please try refreshing the page.",
+          description: "Failed to load data from the server. Please check your Firebase connection and configuration.",
           variant: "destructive",
         });
       } finally {
@@ -141,6 +175,10 @@ export default function DashboardPage() {
     });
   }, [students, admissions]);
 
+
+  if (!isFirebaseConfigured) {
+    return <MissingFirebaseConfig />;
+  }
 
   if (loading) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading data from server...</div>;

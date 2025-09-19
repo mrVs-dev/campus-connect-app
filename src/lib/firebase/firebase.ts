@@ -18,8 +18,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
+// Check if the essential Firebase config values are present
+export const isFirebaseConfigured = !!(
+    firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId
+);
+
 function initializeFirebase() {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && isFirebaseConfigured) {
     if (!getApps().length) {
       app = initializeApp(firebaseConfig);
     } else {
