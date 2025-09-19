@@ -18,26 +18,28 @@ export const isFirebaseConfigured = !!firebaseConfig.projectId;
 
 let app: FirebaseApp;
 let auth: Auth;
-let db: Firestore | null = null;
+let db: Firestore;
 
 if (isFirebaseConfigured) {
-  if (getApps().length === 0) {
+  // Initialize Firebase
+  if (!getApps().length) {
     try {
       app = initializeApp(firebaseConfig);
     } catch (e) {
       console.error("Failed to initialize Firebase app", e);
+      // You might want to throw an error here or handle it appropriately
     }
   } else {
     app = getApp();
   }
-  
-  if (app!) {
-    auth = getAuth(app);
-    db = getFirestore(app);
-  }
+  auth = getAuth(app!);
+  db = getFirestore(app!);
 } else {
-    console.warn("Firebase is not configured. Please check your .env.local file.");
+  console.warn("Firebase is not configured. Please check your .env.local file.");
+  // Provide dummy instances if not configured to avoid app crashes
+  app = {} as FirebaseApp;
+  auth = {} as Auth;
+  db = {} as Firestore;
 }
-
 
 export { app, auth, db };
