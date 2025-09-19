@@ -134,8 +134,7 @@ export async function getAdmissions(): Promise<Admission[]> {
 
 export async function saveAdmission(admissionData: Admission): Promise<void> {
     if (!db) throw new Error("Firestore is not initialized");
-    const admissionsCollection = collection(db, 'admissions');
-    const admissionDoc = doc(admissionsCollection, admissionData.admissionId);
+    const admissionDoc = doc(db, 'admissions', admissionData.admissionId);
     // Firestore doesn't like undefined values, so let's clean the object
     const cleanedAdmission = JSON.parse(JSON.stringify(admissionData));
     await setDoc(admissionDoc, cleanedAdmission);
