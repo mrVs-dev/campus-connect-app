@@ -32,8 +32,11 @@ const convertTimestampsToDates = (data: any): any => {
                 const value = data[key];
                 if (isTimestamp(value)) {
                     newData[key] = value.toDate();
-                } else {
+                } else if (typeof value === 'object') {
                     newData[key] = convertTimestampsToDates(value);
+                }
+                 else {
+                    newData[key] = value;
                 }
             }
         }
@@ -58,8 +61,11 @@ const convertDatesToTimestamps = (data: any): any => {
                 const value = data[key];
                 if (value instanceof Date) {
                     newData[key] = Timestamp.fromDate(value);
-                } else {
+                } else if (typeof value === 'object' && !isTimestamp(value)) {
                     newData[key] = convertDatesToTimestamps(value);
+                }
+                 else {
+                    newData[key] = value;
                 }
             }
         }
@@ -70,9 +76,10 @@ const convertDatesToTimestamps = (data: any): any => {
 };
 
 // --- Students Collection ---
-const studentsCollection = collection(db!, 'students');
 
 export async function getStudents(): Promise<Student[]> {
+    if (!db) throw new Error("Firestore is not initialized");
+    const studentsCollection = collection(db, 'students');
     const snapshot = await getDocs(studentsCollection);
     return snapshot.docs.map(doc => {
         const data = doc.data();
@@ -84,7 +91,9 @@ export async function getStudents(): Promise<Student[]> {
     });
 }
 
-export async function addStudent(studentData: Omit<Student, 'studentId'>): Promise<Student> {
+export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate'>): Promise<Student> {
+    if (!db) throw new Error("Firestore is not initialized");
+    const studentsCollection = collection(db, 'students');
     const studentWithTimestamps = convertDatesToTimestamps({
         ...studentData,
         enrollmentDate: serverTimestamp() // Use server timestamp for creation
@@ -92,26 +101,28 @@ export async function addStudent(studentData: Omit<Student, 'studentId'>): Promi
     
     const docRef = await addDoc(studentsCollection, studentWithTimestamps);
     
-    // We need to fetch the document again to get the server-generated timestamp
+    // We can be optimistic and not fetch the doc again for the enrollmentDate
     const newStudent: Student = {
         ...studentData,
         studentId: docRef.id,
-        enrollmentDate: new Date(), // Use current date as an optimistic update
+        enrollmentDate: new Date(),
     };
     return newStudent;
 }
 
 
 export async function updateStudent(studentId: string, dataToUpdate: Partial<Student>): Promise<void> {
-    const studentDoc = doc(db!, 'students', studentId);
+    if (!db) throw new Error("Firestore is not initialized");
+    const studentDoc = doc(db, 'students', studentId);
     const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
     await updateDoc(studentDoc, dataWithTimestamps);
 }
 
 // --- Admissions Collection ---
-const admissionsCollection = collection(db!, 'admissions');
 
 export async function getAdmissions(): Promise<Admission[]> {
+    if (!db) throw new Error("Firestore is not initialized");
+    const admissionsCollection = collection(db, 'admissions');
     const snapshot = await getDocs(admissionsCollection);
     return snapshot.docs.map(doc => {
         return {
@@ -122,7 +133,9 @@ export async function getAdmissions(): Promise<Admission[]> {
 }
 
 export async function saveAdmission(admissionData: Admission): Promise<void> {
-    const admissionDoc = doc(db!, 'admissions', admissionData.admissionId);
+    if (!db) throw new Error("Firestore is not initialized");
+    const admissionsCollection = collection(db, 'admissions');
+    const admissionDoc = doc(admissionsCollection, admissionData.admissionId);
     // Firestore doesn't like undefined values, so let's clean the object
     const cleanedAdmission = JSON.parse(JSON.stringify(admissionData));
     await setDoc(admissionDoc, cleanedAdmission);
