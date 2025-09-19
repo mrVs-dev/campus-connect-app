@@ -1,3 +1,4 @@
+
 // src/lib/firebase/firebase.ts
 'use client';
 
