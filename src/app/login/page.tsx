@@ -52,6 +52,10 @@ export default function LoginPage() {
         }
       } catch (error: any) {
         console.error("Authentication redirect failed:", error);
+        if (error.code) {
+          console.error("Firebase Auth Error Code:", error.code);
+          console.error("Firebase Auth Error Message:", error.message);
+        }
         setError(`Failed to sign in. Error: ${error.code || error.message}`);
       } finally {
          setIsSigningIn(false); // Allow the user to click the button now
