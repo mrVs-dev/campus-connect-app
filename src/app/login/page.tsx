@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth, firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Logo } from "@/components/icons/logo";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 function GoogleIcon() {
   return (
@@ -36,7 +37,7 @@ function MissingFirebaseConfig() {
           <CardTitle>Firebase Configuration Missing</CardTitle>
           <CardDescription>
             Your application is not connected to Firebase. Please configure your environment variables.
-          </CardDescription>
+          </Description>
         </CardHeader>
         <CardContent>
           <p className="mb-4">
@@ -54,35 +55,25 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isProcessingRedirect, setIsProcessingRedirect] = React.useState(true);
+  const [appOrigin, setAppOrigin] = React.useState<string>("");
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
   React.useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setIsProcessingRedirect(false);
-      return;
+    if (typeof window !== "undefined") {
+      setAppOrigin(window.location.origin);
     }
-    
-    getRedirectResult(auth)
-      .catch((error) => {
-        console.error("Authentication failed on redirect:", error);
-        setError(`Failed to sign in. Error: ${error.message || error.code}`);
-      })
-      .finally(() => {
-        setIsProcessingRedirect(false);
-      });
   }, []);
 
   React.useEffect(() => {
-    if (authLoading || isProcessingRedirect) {
+    if (authLoading) {
       return;
     }
     
     if (user) {
       router.replace('/dashboard');
     }
-  }, [user, authLoading, isProcessingRedirect, router]);
+  }, [user, authLoading, router]);
 
   const handleSignIn = async () => {
     if (!isFirebaseConfigured) {
@@ -92,9 +83,10 @@ export default function LoginPage() {
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
+      // On successful sign-in, the useEffect hook will handle the redirect.
     } catch (error: any) {
-      console.error("Authentication failed to start:", error);
+      console.error("Authentication failed:", error);
       setError(`Failed to sign in. Error: ${error.message || error.code}`);
     }
   };
@@ -103,14 +95,14 @@ export default function LoginPage() {
     return <MissingFirebaseConfig />;
   }
   
-  if (authLoading || isProcessingRedirect) {
+  if (authLoading) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="w-full max-w-sm">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <Logo className="h-8 w-8 text-primary" />
@@ -119,19 +111,31 @@ export default function LoginPage() {
             <CardDescription>Sign in to access your dashboard</CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTitle>Authentication Error</AlertTitle>
+                <AlertDescription>
+                  {error}
+                  {error.includes("auth/unauthorized-domain") && (
+                    <div className="mt-2 text-xs">
+                      <p className="font-bold">ACTION REQUIRED:</p>
+                      <p>You MUST add the following domain to your Firebase project's authorized domains list:</p>
+                      <p className="font-mono bg-muted p-1 rounded-md mt-1 break-all">{appOrigin}</p>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
             <Button className="w-full" onClick={handleSignIn}>
                 <GoogleIcon />
                 <span className="ml-2">Sign in with Google</span>
             </Button>
           </CardContent>
           <CardFooter className="flex-col items-start text-xs text-muted-foreground">
-            {error && (
-              <p className="text-sm text-destructive text-center w-full mb-2">{error}</p>
-            )}
-            <div className="border-t pt-2 mt-2 w-full">
+            <div className="border-t pt-2 mt-2 w-full text-center">
                <p><strong>App's Project ID:</strong></p>
                <p className="font-mono break-all">{firebaseConfig.projectId || "Not Found in .env.local"}</p>
-               <p className="mt-2 text-center text-balance">Please ensure this Project ID matches the one in your Firebase Console.</p>
+               <p className="mt-2 text-balance">Please ensure this Project ID matches the one in your Firebase Console.</p>
             </div>
           </CardFooter>
         </Card>
