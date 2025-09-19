@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithRedirect, GoogleAuthProvider, getRedirectResult } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, type User } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,9 @@ function GoogleIcon() {
   );
 }
 
-
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = React.useState(true);
+  const [isSigningIn, setIsSigningIn] = React.useState(false);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
@@ -41,65 +40,32 @@ export default function LoginPage() {
     }
   }, [authLoading, user, router]);
 
-  React.useEffect(() => {
-    // This effect handles the user being redirected back from Google
-    async function checkRedirect() {
-      if (isFirebaseConfigured && !user) {
-        try {
-          const result = await getRedirectResult(auth);
-          // If result is not null, the onAuthStateChanged listener in useAuth
-          // will pick up the new user, and the effect above will redirect.
-          if (result) {
-            // User is signed in, redirect will happen automatically.
-            // Setting isProcessing to false can be delayed slightly
-            // to avoid flashing the login page.
-          } else {
-            // No redirect result, so we are not in the middle of a login flow.
-            setIsProcessing(false);
-          }
-        } catch (error: any) {
-          console.error("Authentication redirect failed:", error);
-          if (error.code) {
-            console.error("Firebase Auth Error Code:", error.code);
-            console.error("Firebase Auth Error Message:", error.message);
-          }
-          setError(`Failed to sign in. Error: ${error.message}`);
-          setIsProcessing(false);
-        }
-      } else if (!isFirebaseConfigured) {
-        setIsProcessing(false);
-      }
-    }
-    
-    checkRedirect();
-  }, [user]);
-
-
   const handleSignIn = async () => {
-    setError(null);
-    setIsProcessing(true);
-    
     if (!isFirebaseConfigured) {
-      const errorMessage = "Firebase is not configured. Please check your environment variables and Firebase setup.";
-      console.error("Login attempt failed:", errorMessage);
-      setError(errorMessage);
-      setIsProcessing(false);
+      setError("Firebase is not configured. Please check your environment variables.");
       return;
     }
 
-    const provider = new GoogleAuthProvider();
+    setIsSigningIn(true);
+    setError(null);
+
     try {
-      await signInWithRedirect(auth, provider);
-      // The page will redirect, and the result will be handled by the useEffect hook on the next load.
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      // The onAuthStateChanged listener in useAuth will handle the redirect to the dashboard.
     } catch (error: any) {
-      console.error("signInWithRedirect call failed:", error);
-      setError(`Failed to start sign in. Error: ${error.code || 'Please try again.'}`);
-      setIsProcessing(false);
+      console.error("Authentication failed:", error);
+      if (error.code) {
+        console.error("Firebase Auth Error Code:", error.code);
+        console.error("Firebase Auth Error Message:", error.message);
+      }
+      setError(`Failed to sign in. Error: ${error.message}`);
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
-  // Show a loading state while checking auth status or processing sign-in
-  if (authLoading || isProcessing || user) {
+  if (authLoading || user) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
 
@@ -114,9 +80,13 @@ export default function LoginPage() {
           <CardDescription>Sign in to access your dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button className="w-full" onClick={handleSignIn} disabled={isProcessing}>
-            <GoogleIcon />
-            <span className="ml-2">Sign in with Google</span>
+          <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
+            {isSigningIn ? 'Signing in...' : (
+              <>
+                <GoogleIcon />
+                <span className="ml-2">Sign in with Google</span>
+              </>
+            )}
           </Button>
         </CardContent>
         {error && (
