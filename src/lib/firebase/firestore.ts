@@ -78,7 +78,7 @@ const convertDatesToTimestamps = (data: any): any => {
 // --- Students Collection ---
 
 export async function getStudents(): Promise<Student[]> {
-    if (!db) throw new Error("Firestore is not initialized");
+    if (!db) return [];
     const studentsCollection = collection(db, 'students');
     const snapshot = await getDocs(studentsCollection);
     return snapshot.docs.map(doc => {
@@ -121,7 +121,7 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
 // --- Admissions Collection ---
 
 export async function getAdmissions(): Promise<Admission[]> {
-    if (!db) throw new Error("Firestore is not initialized");
+    if (!db) return [];
     const admissionsCollection = collection(db, 'admissions');
     const snapshot = await getDocs(admissionsCollection);
     return snapshot.docs.map(doc => {

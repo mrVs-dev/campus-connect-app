@@ -14,28 +14,23 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Check if the essential Firebase config values are present
-export const isFirebaseConfigured = !!(
-    firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.projectId
-);
+// This check is the most reliable way to determine if Firebase is configured.
+export const isFirebaseConfigured = !!firebaseConfig.projectId;
 
 let app: FirebaseApp;
 let auth: Auth;
-let db: Firestore;
+let db: Firestore | null = null; // Initialize as null
 
+// Only attempt to initialize Firebase if the configuration is present.
 if (isFirebaseConfigured) {
-  if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
+  try {
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } catch (e) {
+    console.error("Failed to initialize Firebase", e);
   }
-  auth = getAuth(app);
-  db = getFirestore(app);
-} else {
-  console.warn("Firebase configuration is missing. The app will not connect to Firebase.");
 }
 
-
+// Export db as potentially null. The consuming functions must handle this.
 export { app, auth, db };
