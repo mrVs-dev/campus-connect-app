@@ -12,7 +12,7 @@ import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { assessments } from "@/lib/mock-data";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -117,6 +117,25 @@ function DashboardContent() {
     }
   };
 
+  const handleDeleteStudent = async (studentId: string) => {
+    try {
+      await deleteStudent(studentId);
+      setStudents(prev => prev.filter(s => s.studentId !== studentId));
+      toast({
+        title: "Student Deleted",
+        description: "The student has been removed from the roster.",
+      });
+    } catch (error) {
+      console.error("Error deleting student:", error);
+      toast({
+        title: "Deletion Failed",
+        description: "There was an error deleting the student. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   const handleImportStudents = (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
     console.log("Importing students...", importedStudents)
   };
@@ -199,6 +218,7 @@ function DashboardContent() {
               students={studentsWithLatestEnrollments} 
               onUpdateStudent={handleUpdateStudent}
               onImportStudents={handleImportStudents}
+              onDeleteStudent={handleDeleteStudent}
             />
           </TabsContent>
 

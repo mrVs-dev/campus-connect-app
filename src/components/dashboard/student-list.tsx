@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { Student } from "@/lib/types";
-import { Upload } from "lucide-react";
+import { Upload, MoreHorizontal, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -22,6 +22,23 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { StudentPerformanceSheet } from "./student-performance-sheet";
 import { StudentImportDialog } from "./student-import-dialog";
 import { programs } from "@/lib/program-data";
@@ -30,21 +47,24 @@ export function StudentList({
   students,
   onUpdateStudent,
   onImportStudents,
+  onDeleteStudent,
 }: {
   students: Student[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
   onImportStudents: (students: Omit<Student, 'studentId' | 'avatarUrl'>[]) => void;
+  onDeleteStudent: (studentId: string) => void;
 }) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(
     null
   );
   const [isImportOpen, setIsImportOpen] = React.useState(false);
+  const [studentToDelete, setStudentToDelete] = React.useState<Student | null>(null);
+
 
   const formatAddress = (address?: Student["address"]) => {
-    if (!address || !address.village || !address.commune || !address.district) {
-      return "N/A";
-    }
-    return `${address.village}, ${address.commune}, ${address.district}`;
+    if (!address) return "N/A";
+    const parts = [address.village, address.commune, address.district].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : "N/A";
   }
 
   const getProgramInfo = (enrollments?: Student["enrollments"]) => {
@@ -56,6 +76,17 @@ export function StudentList({
     return { programNames, levels };
   };
 
+  const handleDeleteClick = (e: React.MouseEvent, student: Student) => {
+    e.stopPropagation();
+    setStudentToDelete(student);
+  };
+  
+  const confirmDelete = () => {
+    if (studentToDelete) {
+      onDeleteStudent(studentToDelete.studentId);
+      setStudentToDelete(null);
+    }
+  };
 
   return (
     <>
@@ -65,8 +96,8 @@ export function StudentList({
             <div>
               <CardTitle>Class Roster</CardTitle>
               <CardDescription>
-                A list of all students in your class. Click a student to view
-                their performance.
+                A list of all students. Click a student to view their
+                performance.
               </CardDescription>
             </div>
             <Button
@@ -87,20 +118,18 @@ export function StudentList({
             <TableHeader>
               <TableRow>
                 <TableHead>Student</TableHead>
+                <TableHead>Student ID</TableHead>
                 <TableHead>Programs</TableHead>
                 <TableHead>Grade/Levels</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
-                <TableHead className="hidden lg:table-cell">Address</TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  Guardian
+                <TableHead>
+                  <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {students.map((student) => {
                 const { programNames, levels } = getProgramInfo(student.enrollments);
-                const firstGuardian = student.guardians && student.guardians[0];
-
                 return (
                   <TableRow
                     key={student.studentId}
@@ -131,6 +160,7 @@ export function StudentList({
                         </div>
                       </div>
                     </TableCell>
+                    <TableCell>{student.studentId}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
                         {programNames.map((name, index) => (
@@ -154,11 +184,24 @@ export function StudentList({
                         {student.status || 'N/A'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {formatAddress(student.address)}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {firstGuardian ? `${firstGuardian.name} (${firstGuardian.mobiles[0]})` : 'N/A'}
+                    <TableCell>
+                       <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                             <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => setSelectedStudent(student)}>
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={(e) => handleDeleteClick(e, student)} className="text-destructive">
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 )
@@ -182,6 +225,20 @@ export function StudentList({
         onOpenChange={setIsImportOpen}
         onImport={onImportStudents}
       />
+      <AlertDialog open={!!studentToDelete} onOpenChange={(isOpen) => !isOpen && setStudentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the student record for {studentToDelete?.firstName} {studentToDelete?.lastName}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

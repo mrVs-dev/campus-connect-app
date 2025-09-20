@@ -9,6 +9,8 @@ import {
   addDoc,
   serverTimestamp,
   getDoc,
+  runTransaction,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Student, Admission } from "../types";
@@ -74,6 +76,28 @@ const convertDatesToTimestamps = (data: any): any => {
     return data;
 };
 
+// --- App Metadata ---
+const getNextStudentId = async (): Promise<string> => {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const metadataRef = doc(db, 'metadata', 'studentCounter');
+    
+    let nextId = 1;
+
+    await runTransaction(db, async (transaction) => {
+        const metadataDoc = await transaction.get(metadataRef);
+        if (!metadataDoc.exists()) {
+            transaction.set(metadataRef, { lastId: 1 });
+        } else {
+            const currentId = metadataDoc.data().lastId;
+            nextId = currentId + 1;
+            transaction.update(metadataRef, { lastId: nextId });
+        }
+    });
+
+    return `S${String(nextId).padStart(3, '0')}`;
+};
+
+
 // --- Students Collection ---
 
 export async function getStudents(): Promise<Student[]> {
@@ -85,7 +109,6 @@ export async function getStudents(): Promise<Student[]> {
         const studentDataWithDates = convertTimestampsToDates(data);
         return {
             ...studentDataWithDates,
-            studentId: doc.id,
         } as Student;
     });
 }
@@ -93,21 +116,22 @@ export async function getStudents(): Promise<Student[]> {
 export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>): Promise<Student> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     
-    const studentsCollection = collection(db, 'students');
-    
+    const newStudentId = await getNextStudentId();
+    const studentDocRef = doc(db, 'students', newStudentId);
+
     const studentForFirestore = {
         ...studentData,
+        studentId: newStudentId,
         status: "Active",
         enrollmentDate: serverTimestamp() 
     };
     
     const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
-
-    const docRef = await addDoc(studentsCollection, dataWithTimestamps);
+    await setDoc(studentDocRef, dataWithTimestamps);
     
     const newStudent: Student = {
       ...studentData,
-      studentId: docRef.id,
+      studentId: newStudentId,
       enrollmentDate: new Date(),
       status: "Active",
     };
@@ -122,6 +146,13 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
     const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
     await updateDoc(studentDoc, dataWithTimestamps);
 }
+
+export async function deleteStudent(studentId: string): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const studentDoc = doc(db, 'students', studentId);
+    await deleteDoc(studentDoc);
+}
+
 
 // --- Admissions Collection ---
 

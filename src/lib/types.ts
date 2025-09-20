@@ -2,8 +2,8 @@
 export type Guardian = {
   relation: string;
   name: string;
-  occupation: string;
-  workplace: string;
+  occupation?: string;
+  workplace?: string;
   mobiles: string[];
 };
 
@@ -14,7 +14,6 @@ export type Enrollment = {
 
 export interface Student {
   studentId: string;
-  serialNumber?: string;
   enrollmentDate?: Date;
   firstName: string;
   middleName?: string;
@@ -29,17 +28,17 @@ export interface Student {
   status: 'Active' | 'Inactive' | 'Graduated';
   previousSchool?: string;
   address?: {
-    district: string;
-    commune: string;
-    village: string;
+    district?: string;
+    commune?: string;
+    village?: string;
     street?: string;
     house?: string;
   };
   guardians?: Guardian[];
   mediaConsent?: boolean;
   emergencyContact?: {
-    name: string;
-    phone: string;
+    name?: string;
+    phone?: string;
   };
   avatarUrl?: string;
   enrollments?: Enrollment[];
