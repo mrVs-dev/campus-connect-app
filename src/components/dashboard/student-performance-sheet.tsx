@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -135,8 +134,8 @@ export function StudentPerformanceSheet({
     return acc;
   }, {} as Record<string, number>);
 
-  const fullName = `${student.firstName} ${student.middleName || ''} ${student.lastName}`.replace('  ', ' ');
-  const khmerFullName = `${student.khmerLastName || ''} ${student.khmerFirstName || ''}`;
+  const fullName = `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.replace(/ +/g, ' ').trim();
+  const khmerFullName = `${student.khmerLastName || ''} ${student.khmerFirstName || ''}`.trim();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -152,7 +151,7 @@ export function StudentPerformanceSheet({
               <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
                 <Avatar className="h-12 w-12">
                   <AvatarImage src={student.avatarUrl} alt={student.firstName} className="object-cover" />
-                  <AvatarFallback>{student.firstName[0]}{student.lastName[0]}</AvatarFallback>
+                  <AvatarFallback>{student.firstName?.[0]}{student.lastName?.[0]}</AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex items-center justify-center rounded-full transition-opacity">
                    <p className="text-white text-xs opacity-0 group-hover:opacity-100">Edit</p>
