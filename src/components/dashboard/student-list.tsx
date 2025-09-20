@@ -40,11 +40,14 @@ export function StudentList({
   );
   const [isImportOpen, setIsImportOpen] = React.useState(false);
 
-  const formatAddress = (address: Student["address"]) => {
+  const formatAddress = (address?: Student["address"]) => {
+    if (!address || !address.village || !address.commune || !address.district) {
+      return "N/A";
+    }
     return `${address.village}, ${address.commune}, ${address.district}`;
   }
 
-  const getProgramInfo = (enrollments: Student["enrollments"]) => {
+  const getProgramInfo = (enrollments?: Student["enrollments"]) => {
     if (!enrollments || enrollments.length === 0) {
       return { programNames: ["N/A"], levels: [""] };
     }
@@ -73,7 +76,7 @@ export function StudentList({
               onClick={() => setIsImportOpen(true)}
             >
               <Upload className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              <span className="sr-only sm-not-sr-only sm:whitespace-nowrap">
                 Import Students
               </span>
             </Button>
@@ -96,6 +99,8 @@ export function StudentList({
             <TableBody>
               {students.map((student) => {
                 const { programNames, levels } = getProgramInfo(student.enrollments);
+                const firstGuardian = student.guardians && student.guardians[0];
+
                 return (
                   <TableRow
                     key={student.studentId}
@@ -112,8 +117,8 @@ export function StudentList({
                             className="object-cover"
                           />
                           <AvatarFallback>
-                            {student.firstName[0]}
-                            {student.lastName[0]}
+                            {(student.firstName || ' ')[0]}
+                            {(student.lastName || ' ')[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div className="grid gap-1">
@@ -121,7 +126,7 @@ export function StudentList({
                             {student.firstName} {student.lastName}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {student.khmerLastName} {student.khmerFirstName}
+                            {student.khmerLastName || ''} {student.khmerFirstName || ''}
                           </p>
                         </div>
                       </div>
@@ -146,14 +151,14 @@ export function StudentList({
                           student.status === "Active" ? "default" : "secondary"
                         }
                       >
-                        {student.status}
+                        {student.status || 'N/A'}
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {formatAddress(student.address)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {student.guardians[0]?.name} ({student.guardians[0]?.mobiles[0]})
+                      {firstGuardian ? `${firstGuardian.name} (${firstGuardian.mobiles[0]})` : 'N/A'}
                     </TableCell>
                   </TableRow>
                 )
