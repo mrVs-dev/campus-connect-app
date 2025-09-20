@@ -90,7 +90,7 @@ export async function getStudents(): Promise<Student[]> {
     });
 }
 
-export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'avatarUrl'> & {avatarUrl?: string}): Promise<Student> {
+export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate'>): Promise<Student> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     
     const studentsCollection = collection(db, 'students');
@@ -111,7 +111,6 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     // The actual server date will be correct in the database.
     const newStudent: Student = {
       ...studentData,
-      avatarUrl: studentData.avatarUrl,
       studentId: docRef.id,
       enrollmentDate: new Date(), // Use client-side date for immediate UI update
     };
