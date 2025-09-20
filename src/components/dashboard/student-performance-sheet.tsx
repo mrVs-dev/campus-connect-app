@@ -36,7 +36,7 @@ function StudentDetail({ label, value }: { label: string; value: React.ReactNode
   return (
     <div className="grid grid-cols-2 gap-2">
       <p className="font-medium text-muted-foreground">{label}</p>
-      <p>{value}</p>
+      <p>{value || 'N/A'}</p>
     </div>
   );
 }
@@ -136,7 +136,7 @@ export function StudentPerformanceSheet({
   }, {} as Record<string, number>);
 
   const fullName = `${student.firstName} ${student.middleName || ''} ${student.lastName}`.replace('  ', ' ');
-  const khmerFullName = `${student.khmerLastName} ${student.khmerFirstName}`;
+  const khmerFullName = `${student.khmerLastName || ''} ${student.khmerFirstName || ''}`;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -220,7 +220,7 @@ export function StudentPerformanceSheet({
                 <StudentDetail label="Full Khmer Name" value={khmerFullName} />
                 <StudentDetail label="Student ID" value={student.studentId} />
                 <StudentDetail label="Sex" value={student.sex} />
-                <StudentDetail label="Date of Birth" value={format(student.dateOfBirth, "MMMM d, yyyy")} />
+                <StudentDetail label="Date of Birth" value={student.dateOfBirth ? format(student.dateOfBirth, "MMMM d, yyyy") : "N/A"} />
                 <StudentDetail label="Place of Birth" value={student.placeOfBirth} />
                 <StudentDetail label="Nationality" value={student.nationality} />
                 <StudentDetail label="National ID" value={student.nationalId || 'N/A'} />
@@ -249,9 +249,9 @@ export function StudentPerformanceSheet({
               <CardContent className="space-y-2">
                  <StudentDetail 
                     label="Address" 
-                    value={`${student.address.house ? `${student.address.house}, ` : ''}${student.address.street ? `${student.address.street}, ` : ''}${student.address.village}, ${student.address.commune}, ${student.address.district}`} 
+                    value={student.address ? `${student.address.house ? `${student.address.house}, ` : ''}${student.address.street ? `${student.address.street}, ` : ''}${student.address.village}, ${student.address.commune}, ${student.address.district}`: 'N/A'}
                   />
-                <StudentDetail label="Emergency Contact" value={`${student.emergencyContact.name} (${student.emergencyContact.phone})`} />
+                <StudentDetail label="Emergency Contact" value={student.emergencyContact ? `${student.emergencyContact.name} (${student.emergencyContact.phone})` : 'N/A'} />
                 <StudentDetail label="Media Consent" value={student.mediaConsent ? 'Yes' : 'No'} />
               </CardContent>
             </Card>
@@ -261,7 +261,7 @@ export function StudentPerformanceSheet({
                 <CardTitle>Guardian Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {student.guardians.map((guardian, index) => (
+                {student.guardians && student.guardians.map((guardian, index) => (
                   <GuardianDetails key={index} guardian={guardian} />
                 ))}
               </CardContent>
