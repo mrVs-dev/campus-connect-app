@@ -104,14 +104,18 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
 
     const docRef = await addDoc(studentsCollection, dataWithTimestamps);
     
-    const newDoc = await getDoc(docRef);
-    const newStudentData = newDoc.data();
-
-    return convertTimestampsToDates({
-        ...newStudentData,
-        studentId: docRef.id,
-    }) as Student;
+    // To avoid race conditions with serverTimestamp, we can be optimistic
+    // and return the new student object with a client-side date.
+    // The actual server date will be correct in the database.
+    const newStudent: Student = {
+      ...studentData,
+      studentId: docRef.id,
+      enrollmentDate: new Date(), // Use client-side date for immediate UI update
+    };
+    
+    return newStudent;
 }
+
 
 export async function updateStudent(studentId: string, dataToUpdate: Partial<Student>): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
