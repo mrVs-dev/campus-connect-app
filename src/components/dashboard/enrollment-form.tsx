@@ -52,7 +52,6 @@ const guardianSchema = z.object({
 });
 
 const formSchema = z.object({
-  serialNumber: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
@@ -66,7 +65,6 @@ const formSchema = z.object({
   nationality: z.string().min(1, "Nationality is required"),
   nationalId: z.string().optional(),
   avatarUrl: z.string().optional(),
-  previousSchool: z.string().optional(),
   address: z.object({
     district: z.string().min(1, "District is required"),
     commune: z.string().min(1, "Commune is required"),
@@ -98,7 +96,6 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const form = useForm<EnrollmentFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      serialNumber: "",
       firstName: "",
       middleName: "",
       lastName: "",
@@ -109,7 +106,6 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
       nationality: "Cambodian",
       nationalId: "",
       avatarUrl: "",
-      previousSchool: "",
       address: {
         district: "Krong Siem Reap",
         commune: "",
@@ -223,22 +219,6 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                   )}
                  />
               </div>
-
-              <FormField
-                control={form.control}
-                name="serialNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Serial Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Optional serial number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <div></div>
-               <div></div>
               <FormField
                 control={form.control}
                 name="firstName"
@@ -402,19 +382,6 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>National ID / Passport</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Optional" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="previousSchool"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Previous School</FormLabel>
                     <FormControl>
                       <Input placeholder="Optional" {...field} />
                     </FormControl>
