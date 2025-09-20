@@ -19,25 +19,25 @@ export interface Student {
   firstName: string;
   middleName?: string;
   lastName: string;
-  khmerFirstName: string;
-  khmerLastName: string;
-  sex: 'Male' | 'Female' | 'Other';
-  dateOfBirth: Date;
-  placeOfBirth: string;
-  nationality: string;
+  khmerFirstName?: string;
+  khmerLastName?: string;
+  sex?: 'Male' | 'Female' | 'Other';
+  dateOfBirth?: Date;
+  placeOfBirth?: string;
+  nationality?: string;
   nationalId?: string;
   status: 'Active' | 'Inactive' | 'Graduated';
   previousSchool?: string;
-  address: {
+  address?: {
     district: string;
     commune: string;
     village: string;
     street?: string;
     house?: string;
   };
-  guardians: Guardian[];
-  mediaConsent: boolean;
-  emergencyContact: {
+  guardians?: Guardian[];
+  mediaConsent?: boolean;
+  emergencyContact?: {
     name: string;
     phone: string;
   };
