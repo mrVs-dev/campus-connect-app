@@ -72,7 +72,6 @@ const formSchema = z.object({
   nationality: z.string().min(1, "Nationality is required"),
   nationalId: z.string().optional(),
   avatarUrl: z.string().optional(),
-  previousSchool: z.string().optional(),
   address: z.object({
     district: z.string().min(1, "District is required"),
     commune: z.string().min(1, "Commune is required"),
@@ -116,7 +115,6 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
       nationality: "Cambodian",
       nationalId: "",
       avatarUrl: "",
-      previousSchool: "",
       address: {
         district: "Krong Siem Reap",
         commune: "",
@@ -174,7 +172,12 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
 
   async function onSubmit(values: EnrollmentFormValues) {
     setIsSubmitting(true);
-    const success = await onEnroll(values);
+    // The `values` object now correctly matches the schema without `previousSchool`.
+    const studentDataForEnrollment: Omit<Student, 'studentId' | 'enrollmentDate'> = {
+        ...values,
+        previousSchool: (document.getElementById('previousSchool') as HTMLInputElement)?.value || undefined,
+    };
+    const success = await onEnroll(studentDataForEnrollment);
     if (success) {
       form.reset();
       setPhotoPreview(null);
@@ -422,19 +425,13 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="previousSchool"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Previous School</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Optional" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Previous School</FormLabel>
+                <FormControl>
+                  <Input id="previousSchool" placeholder="Optional" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             </div>
             
             <Separator className="my-6" />
@@ -848,5 +845,3 @@ function EnrollmentCard({ enrollmentIndex, remove }: { enrollmentIndex: number, 
     </div>
   );
 }
-
-    
