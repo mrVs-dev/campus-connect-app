@@ -72,6 +72,7 @@ const formSchema = z.object({
   nationality: z.string().min(1, "Nationality is required"),
   nationalId: z.string().optional(),
   avatarUrl: z.string().optional(),
+  previousSchool: z.string().optional(),
   address: z.object({
     district: z.string().min(1, "District is required"),
     commune: z.string().min(1, "Commune is required"),
@@ -115,6 +116,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
       nationality: "Cambodian",
       nationalId: "",
       avatarUrl: "",
+      previousSchool: "",
       address: {
         district: "Krong Siem Reap",
         commune: "",
@@ -413,6 +415,19 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>National ID / Passport</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Optional" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="previousSchool"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Previous School</FormLabel>
                     <FormControl>
                       <Input placeholder="Optional" {...field} />
                     </FormControl>
@@ -833,3 +848,5 @@ function EnrollmentCard({ enrollmentIndex, remove }: { enrollmentIndex: number, 
     </div>
   );
 }
+
+    
