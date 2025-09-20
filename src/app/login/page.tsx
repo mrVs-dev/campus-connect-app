@@ -75,11 +75,12 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      // The onAuthStateChanged listener in useAuth will handle the user state update and the useEffect above will trigger the redirect.
+      // The onAuthStateChanged listener in useAuth will handle the redirect.
     } catch (error: any) {
       console.error("Authentication failed:", error);
-      // Handle specific errors for a better user experience
-      if (error.code === 'auth/popup-closed-by-user') {
+      if (error.code === 'auth/popup-blocked') {
+        setError("Pop-up blocked. Please allow pop-ups for this site in your browser's address bar and try again.");
+      } else if (error.code === 'auth/popup-closed-by-user') {
         setError("Sign-in was cancelled. Please try again.");
       } else if (error.code === 'auth/unauthorized-domain') {
          setError(`Authentication Error: ${error.message}. Please make sure the domain is authorized in your Firebase project.`);
@@ -95,12 +96,10 @@ export default function LoginPage() {
     return <MissingFirebaseConfig />;
   }
 
-  // Show a loading screen while auth is in progress.
   if (authLoading) {
     return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
   }
 
-  // Only render the login card if we are done loading and there is no user.
   if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -136,7 +135,6 @@ export default function LoginPage() {
     );
   }
 
-  // If there is a user, show a redirecting message while the effect above runs.
   return (
     <div className="flex min-h-screen items-center justify-center">
         Redirecting to dashboard...
