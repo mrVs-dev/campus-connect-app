@@ -75,7 +75,7 @@ function DashboardContent() {
     fetchData();
   }, [toast]);
 
-  const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
+  const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status' | 'enrollments'>) => {
     try {
       const newStudent = await addStudent(newStudentData);
       setStudents(prev => [...prev, newStudent]);
