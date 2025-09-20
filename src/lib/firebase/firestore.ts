@@ -90,7 +90,7 @@ export async function getStudents(): Promise<Student[]> {
     });
 }
 
-export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate'>): Promise<Student> {
+export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'enrollments'>): Promise<Student> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     
     const studentsCollection = collection(db, 'students');

@@ -42,7 +42,7 @@ export interface Student {
     phone: string;
   };
   avatarUrl?: string;
-  enrollments: Enrollment[];
+  enrollments?: Enrollment[];
 }
 
 export interface Teacher {
