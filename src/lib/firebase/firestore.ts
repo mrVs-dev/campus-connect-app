@@ -83,16 +83,21 @@ const getNextStudentId = async (): Promise<string> => {
     
     let nextId = 1;
 
-    await runTransaction(db, async (transaction) => {
-        const metadataDoc = await transaction.get(metadataRef);
-        if (!metadataDoc.exists()) {
-            transaction.set(metadataRef, { lastId: 1 });
-        } else {
-            const currentId = metadataDoc.data().lastId;
-            nextId = currentId + 1;
-            transaction.update(metadataRef, { lastId: nextId });
-        }
-    });
+    try {
+        await runTransaction(db, async (transaction) => {
+            const metadataDoc = await transaction.get(metadataRef);
+            if (!metadataDoc.exists()) {
+                transaction.set(metadataRef, { lastId: 1 });
+            } else {
+                const currentId = metadataDoc.data().lastId;
+                nextId = currentId + 1;
+                transaction.update(metadataRef, { lastId: nextId });
+            }
+        });
+    } catch (e) {
+        console.error("Transaction failed: ", e);
+        throw new Error("Could not generate a new student ID.");
+    }
 
     return `S${String(nextId).padStart(3, '0')}`;
 };
