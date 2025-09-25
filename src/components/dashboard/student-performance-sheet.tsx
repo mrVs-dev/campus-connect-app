@@ -1,8 +1,9 @@
+
 "use client";
 
 import * as React from "react";
-import type { Student, Guardian, Enrollment } from "@/lib/types";
-import { assessments, subjects } from "@/lib/mock-data";
+import type { Student, Guardian, Enrollment, Assessment } from "@/lib/types";
+import { subjects } from "@/lib/mock-data";
 import { assessmentCategoryWeights } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -26,6 +27,7 @@ import 'react-image-crop/dist/ReactCrop.css'
 
 interface StudentPerformanceSheetProps {
   student: Student | null;
+  assessments: Assessment[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
@@ -63,6 +65,7 @@ function EnrollmentDetails({ enrollment }: { enrollment: Enrollment }) {
 
 export function StudentPerformanceSheet({
   student,
+  assessments,
   open,
   onOpenChange,
   onUpdateStudent,
@@ -103,7 +106,7 @@ export function StudentPerformanceSheet({
   };
 
   const studentAssessments = assessments.filter(
-    (a) => a.scores[student.studentId] !== undefined
+    (a) => a.scores && a.scores[student.studentId] !== undefined
   );
   
   const performanceBySubject = subjects.map(subject => {
@@ -219,7 +222,7 @@ export function StudentPerformanceSheet({
                 <StudentDetail label="Full Khmer Name" value={khmerFullName} />
                 <StudentDetail label="Student ID" value={student.studentId} />
                 <StudentDetail label="Sex" value={student.sex} />
-                <StudentDetail label="Date of Birth" value={student.dateOfBirth ? format(student.dateOfBirth, "MMMM d, yyyy") : "N/A"} />
+                <StudentDetail label="Date of Birth" value={student.dateOfBirth ? format(new Date(student.dateOfBirth), "MMMM d, yyyy") : "N/A"} />
                 <StudentDetail label="Place of Birth" value={student.placeOfBirth} />
                 <StudentDetail label="Nationality" value={student.nationality} />
                 <StudentDetail label="National ID" value={student.nationalId || 'N/A'} />

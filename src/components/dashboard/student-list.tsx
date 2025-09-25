@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { Student } from "@/lib/types";
+import type { Student, Assessment } from "@/lib/types";
 import { Upload, MoreHorizontal, Trash2 } from "lucide-react";
 import {
   Card,
@@ -45,11 +45,13 @@ import { programs } from "@/lib/program-data";
 
 export function StudentList({
   students,
+  assessments,
   onUpdateStudent,
   onImportStudents,
   onDeleteStudent,
 }: {
   students: Student[];
+  assessments: Assessment[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
   onImportStudents: (students: Omit<Student, 'studentId' | 'avatarUrl'>[]) => void;
   onDeleteStudent: (studentId: string) => void;
@@ -212,6 +214,7 @@ export function StudentList({
       </Card>
       <StudentPerformanceSheet
         student={selectedStudent}
+        assessments={assessments}
         open={!!selectedStudent}
         onOpenChange={(isOpen) => {
           if (!isOpen) {

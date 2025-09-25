@@ -263,7 +263,8 @@ function DashboardContent() {
 
           <TabsContent value="students">
             <StudentList 
-              students={studentsWithLatestEnrollments} 
+              students={studentsWithLatestEnrollments}
+              assessments={assessments}
               onUpdateStudent={handleUpdateStudent}
               onImportStudents={handleImportStudents}
               onDeleteStudent={handleDeleteStudent}
