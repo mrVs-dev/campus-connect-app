@@ -71,7 +71,7 @@ export function StudentImportDialog({
               khmerFirstName: row.khmerFirstName || '',
               khmerLastName: row.khmerLastName || '',
               sex: ['Male', 'Female', 'Other'].includes(row.sex) ? row.sex : 'Other',
-              dateOfBirth: !isNaN(dateOfBirth.getTime()) ? dateOfBirth : new Date(),
+              dateOfBirth: !isNaN(dateOfBirth.getTime()) ? dateOfBirth : undefined,
               enrollmentDate: !isNaN(enrollmentDate.getTime()) ? enrollmentDate : new Date(),
               placeOfBirth: row.placeOfBirth || '',
               nationality: row.nationality || '',

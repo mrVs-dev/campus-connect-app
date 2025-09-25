@@ -154,15 +154,21 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
   const newStudents: Student[] = [];
 
   for (const student of studentsData) {
-    // For imported students, we use Firestore's auto-generated IDs
     const newDocRef = doc(collection(db, 'students')); 
     
-    const studentForFirestore = {
+    const studentForFirestore: Partial<Student> = {
       ...student,
-      studentId: newDocRef.id, // Save the auto-ID inside the document as well
+      studentId: newDocRef.id,
       status: 'Active',
-      enrollmentDate: serverTimestamp(),
+      enrollmentDate: serverTimestamp() as any, // Cast to any for serverTimestamp
     };
+  
+    // Firestore doesn't allow `undefined` values. We need to clean the object.
+    Object.keys(studentForFirestore).forEach(key => {
+      if (studentForFirestore[key as keyof typeof studentForFirestore] === undefined) {
+        delete studentForFirestore[key as keyof typeof studentForFirestore];
+      }
+    });
     
     const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
     batch.set(newDocRef, dataWithTimestamps);
