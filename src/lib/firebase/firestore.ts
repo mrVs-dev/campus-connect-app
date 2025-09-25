@@ -11,6 +11,7 @@ import {
   getDoc,
   runTransaction,
   deleteDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Student, Admission } from "../types";
@@ -129,7 +130,6 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
 
     const studentForFirestore = {
         ...studentData,
-        studentId: newStudentId, // Also save the ID inside the document
         status: "Active",
         enrollmentDate: serverTimestamp() 
     };
@@ -145,6 +145,38 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     };
     
     return newStudent;
+}
+
+export async function importStudents(studentsData: Omit<Student, 'studentId' | 'avatarUrl'>[]): Promise<Student[]> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  
+  const batch = writeBatch(db);
+  const newStudents: Student[] = [];
+
+  for (const student of studentsData) {
+    // For imported students, we use Firestore's auto-generated IDs
+    const newDocRef = doc(collection(db, 'students')); 
+    
+    const studentForFirestore = {
+      ...student,
+      studentId: newDocRef.id, // Save the auto-ID inside the document as well
+      status: 'Active',
+      enrollmentDate: serverTimestamp(),
+    };
+    
+    const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
+    batch.set(newDocRef, dataWithTimestamps);
+    
+    newStudents.push({
+      ...student,
+      studentId: newDocRef.id,
+      status: 'Active',
+      enrollmentDate: new Date(),
+    });
+  }
+  
+  await batch.commit();
+  return newStudents;
 }
 
 

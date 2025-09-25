@@ -12,7 +12,7 @@ import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { assessments } from "@/lib/mock-data";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -136,8 +136,22 @@ function DashboardContent() {
   };
 
 
-  const handleImportStudents = (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
-    console.log("Importing students...", importedStudents)
+  const handleImportStudents = async (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
+    try {
+      const newStudents = await importStudents(importedStudents);
+      setStudents(prev => [...prev, ...newStudents]);
+      toast({
+        title: "Import Successful",
+        description: `${newStudents.length} students have been added.`,
+      });
+    } catch (error) {
+      console.error("Error importing students:", error);
+      toast({
+        title: "Import Failed",
+        description: "There was an error importing the students. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSaveAdmission = async (admissionData: Admission) => {
