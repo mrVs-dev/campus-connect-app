@@ -91,7 +91,8 @@ export function ImageCropDialog({
       pixelCrop.height
     );
 
-    onCropComplete(canvas.toDataURL("image/jpeg"));
+    // Compress the image by setting the JPEG quality to 0.7
+    onCropComplete(canvas.toDataURL("image/jpeg", 0.7));
   };
 
   return (
