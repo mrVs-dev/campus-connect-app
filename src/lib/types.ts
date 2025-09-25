@@ -42,6 +42,8 @@ export interface Student {
   };
   avatarUrl?: string;
   enrollments?: Enrollment[];
+  deactivationDate?: Date;
+  deactivationReason?: string;
 }
 
 export interface Teacher {

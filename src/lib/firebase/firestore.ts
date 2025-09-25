@@ -155,14 +155,15 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
 
   for (const student of studentsData) {
     const studentsCollection = collection(db, "students");
-    const newDocRef = doc(studentsCollection); // Auto-generate ID
+    const newDocRef = doc(studentsCollection);
 
     const studentForFirestore: Omit<Student, 'studentId' | 'enrollmentDate'> & { enrollmentDate: any } = {
       ...student,
-      status: 'Active',
-      enrollmentDate: serverTimestamp(),
+      // If enrollmentDate is not provided in CSV, use server timestamp
+      enrollmentDate: student.enrollmentDate ? student.enrollmentDate : serverTimestamp(),
     };
   
+    // Remove any fields with undefined values before sending to Firestore
     const cleanedStudentData = Object.entries(studentForFirestore).reduce((acc, [key, value]) => {
       if (value !== undefined) {
         (acc as any)[key] = value;
@@ -176,8 +177,7 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
     newStudents.push({
       ...student,
       studentId: newDocRef.id,
-      status: 'Active',
-      enrollmentDate: new Date(),
+      enrollmentDate: student.enrollmentDate || new Date(),
     });
   }
   

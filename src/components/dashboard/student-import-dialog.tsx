@@ -31,14 +31,22 @@ const findValue = (row: any, keys: string[]): string | undefined => {
     // Try case-insensitive, space-insensitive, and underscore-insensitive matching
     const lowerCaseKeys = keys.map(k => k.toLowerCase().replace(/[\s_]/g, ''));
     for (const rowKey in row) {
-        if (row[rowKey] !== undefined && row[rowKey] !== null) {
-            const lowerCaseRowKey = rowKey.toLowerCase().replace(/[\s_]/g, '');
-            if (lowerCaseKeys.includes(lowerCaseRowKey)) {
-                return String(row[rowKey]);
+        const lowerCaseRowKey = rowKey.toLowerCase().replace(/[\s_]/g, '');
+        if (lowerCaseKeys.includes(lowerCaseRowKey)) {
+            const value = row[rowKey];
+            if (value !== undefined && value !== null) {
+                return String(value);
             }
         }
     }
     return undefined;
+};
+
+// Function to parse a date string into a Date object, returns undefined if invalid
+const parseDate = (dateStr: string | undefined): Date | undefined => {
+    if (!dateStr) return undefined;
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? undefined : date;
 };
 
 export function StudentImportDialog({
@@ -77,11 +85,8 @@ export function StudentImportDialog({
           }
 
           const parsedStudents = results.data.map((row: any) => {
-            const dateOfBirthStr = findValue(row, ['dateOfBirth', 'Date of Birth', 'dob']);
-            const dateOfBirth = dateOfBirthStr ? new Date(dateOfBirthStr) : undefined;
-            
-            const enrollmentDateStr = findValue(row, ['enrollmentDate', 'Enrollment Date']);
-            const enrollmentDate = enrollmentDateStr ? new Date(enrollmentDateStr) : new Date();
+            const statusStr = findValue(row, ['status']) || 'Active';
+            const status : Student['status'] = statusStr.toLowerCase() === 'inactive' ? 'Inactive' : (statusStr.toLowerCase() === 'graduated' ? 'Graduated' : 'Active');
 
             const guardians = [];
             const guardian1Name = findValue(row, ['guardian1_name', 'Guardian 1 Name']);
@@ -104,17 +109,19 @@ export function StudentImportDialog({
 
             const student: Omit<Student, 'studentId' | 'avatarUrl'> = {
               firstName: findValue(row, ['firstName', 'First Name']) || '',
-              middleName: findValue(row, ['middleName', 'Middle Name']) || '',
+              middleName: findValue(row, ['middleName', 'Middle Name']),
               lastName: findValue(row, ['lastName', 'Last Name']) || '',
-              khmerFirstName: findValue(row, ['khmerFirstName', 'Khmer First Name']) || '',
-              khmerLastName: findValue(row, ['khmerLastName', 'Khmer Last Name']) || '',
-              sex: findValue(row, ['sex', 'Gender']) as 'Male' | 'Female' | 'Other' || 'Other',
-              dateOfBirth: dateOfBirth && !isNaN(dateOfBirth.getTime()) ? dateOfBirth : undefined,
-              enrollmentDate: enrollmentDate && !isNaN(enrollmentDate.getTime()) ? enrollmentDate : new Date(),
-              placeOfBirth: findValue(row, ['placeOfBirth', 'Place of Birth']) || '',
-              nationality: findValue(row, ['nationality']) || '',
+              khmerFirstName: findValue(row, ['khmerFirstName', 'Khmer First Name']),
+              khmerLastName: findValue(row, ['khmerLastName', 'Khmer Last Name']),
+              sex: findValue(row, ['sex', 'Gender']) as 'Male' | 'Female' | 'Other' | undefined,
+              dateOfBirth: parseDate(findValue(row, ['dateOfBirth', 'Date of Birth', 'dob'])),
+              enrollmentDate: parseDate(findValue(row, ['enrollmentDate', 'Enrollment Date'])),
+              placeOfBirth: findValue(row, ['placeOfBirth', 'Place of Birth']),
+              nationality: findValue(row, ['nationality']),
               nationalId: findValue(row, ['nationalId', 'National ID']),
-              status: 'Active',
+              status: status,
+              deactivationDate: parseDate(findValue(row, ['deactivationDate', 'Deactivation Date'])),
+              deactivationReason: findValue(row, ['deactivationReason', 'Deactivation Reason']),
               previousSchool: findValue(row, ['previousSchool', 'Previous School']),
               address: {
                 village: findValue(row, ['address.village', 'village', 'Village']),
@@ -129,13 +136,13 @@ export function StudentImportDialog({
                 name: findValue(row, ['emergencyContact.name', 'Emergency Contact Name']),
                 phone: findValue(row, ['emergencyContact.phone', 'Emergency Contact Phone']),
               },
-              enrollments: [
-                {
-                  programId: findValue(row, ['programId', 'Program']) || 'khmer-national',
-                  level: findValue(row, ['level', 'Grade', 'Level']) || 'Grade 10',
-                },
-              ],
             };
+            
+            // Remove enrollments if they are empty
+            if (student.enrollments && student.enrollments.length === 0) {
+                delete student.enrollments;
+            }
+
             return student;
           });
           
