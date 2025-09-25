@@ -17,7 +17,7 @@ import {
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
-import { addDays, format, isWithinInterval } from "date-fns";
+import { addDays, format, isWithinInterval, startOfQuarter, endOfQuarter } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -50,8 +50,8 @@ function DatePickerWithRange({
   onDateChange,
 }: React.HTMLAttributes<HTMLDivElement> & { onDateChange: (range: DateRange | undefined) => void }) {
   const [date, setDate] = React.useState<DateRange | undefined>({
-    from: addDays(new Date(), -365),
-    to: new Date(),
+    from: startOfQuarter(new Date()),
+    to: endOfQuarter(new Date()),
   });
 
   React.useEffect(() => {
