@@ -116,16 +116,27 @@ interface OverviewProps {
 }
 
 export function Overview({ students }: OverviewProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>();
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfQuarter(new Date()),
+    to: endOfQuarter(new Date()),
+  });
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   
   const enrollmentFilteredStudents = React.useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) {
+    if (!dateRange?.from) {
       return students;
     }
-    return students.filter(student => 
-      student.enrollmentDate && isWithinInterval(new Date(student.enrollmentDate), { start: dateRange.from!, end: dateRange.to! })
-    );
+    // Make sure to include the whole day for the 'to' date
+    const toDate = dateRange.to ? addDays(dateRange.to, 1) : undefined;
+    
+    return students.filter(student => {
+      if (!student.enrollmentDate) return false;
+      const enrollmentDate = new Date(student.enrollmentDate);
+      if (!toDate) {
+        return enrollmentDate >= dateRange.from!;
+      }
+      return isWithinInterval(enrollmentDate, { start: dateRange.from!, end: toDate });
+    });
   }, [dateRange, students]);
 
   const populationStudents = React.useMemo(() => {
@@ -262,7 +273,7 @@ export function Overview({ students }: OverviewProps) {
 
       <Card className="col-span-1 md:col-span-2 lg:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle>Enrollment by Program</CardTitle>
+          <CardTitle>Admission by Program</CardTitle>
           <BarChart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
