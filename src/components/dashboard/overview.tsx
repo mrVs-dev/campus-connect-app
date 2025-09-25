@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Student } from "@/lib/types";
+import type { Student, Admission } from "@/lib/types";
 
 
 function DatePickerWithRange({
@@ -103,14 +103,16 @@ function DatePickerWithRange({
 
 interface OverviewProps {
   students: Student[];
+  admissions: Admission[];
 }
 
-export function Overview({ students }: OverviewProps) {
+export function Overview({ students, admissions }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
     from: new Date(2025, 6, 21), // July is month 6 (0-indexed)
     to: new Date(),
   });
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
+  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
@@ -169,9 +171,21 @@ export function Overview({ students }: OverviewProps) {
         programData[p.name] = { total: 0, levels: {} };
     });
 
+    const admissionsToConsider = admissionYearFilter === 'All'
+      ? admissions
+      : admissions.filter(a => a.schoolYear === admissionYearFilter);
+
+    const studentEnrollmentsMap = new Map<string, any[]>();
+    admissionsToConsider.forEach(admission => {
+      admission.students.forEach(studentAdmission => {
+        studentEnrollmentsMap.set(studentAdmission.studentId, studentAdmission.enrollments);
+      });
+    });
+    
     students.forEach(student => {
-        if (student.enrollments) {
-            student.enrollments.forEach(enrollment => {
+        const enrollments = studentEnrollmentsMap.get(student.studentId) || student.enrollments;
+        if (enrollments) {
+            enrollments.forEach(enrollment => {
                 const programName = programs.find(p => p.id === enrollment.programId)?.name;
                 if (programName) {
                     programData[programName].total++;
@@ -191,7 +205,7 @@ export function Overview({ students }: OverviewProps) {
           .sort((a,b) => a.level.localeCompare(b.level)), // Sort levels
       }))
       .filter(p => p.total > 0);
-  }, [students]);
+  }, [students, admissions, admissionYearFilter]);
 
   const chartConfig = {
     students: {
@@ -207,6 +221,8 @@ export function Overview({ students }: OverviewProps) {
       color: "hsl(var(--accent))",
     },
   };
+
+  const admissionYears = ['All', ...admissions.map(a => a.schoolYear).sort((a, b) => b.localeCompare(a))];
 
   return (
     <div className="flex flex-col gap-4">
@@ -279,9 +295,21 @@ export function Overview({ students }: OverviewProps) {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Admissions by Program</CardTitle>
-          <CardDescription>Student distribution across different programs and levels.</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Admission by Program</CardTitle>
+            <CardDescription>Student distribution across different programs and levels.</CardDescription>
+          </div>
+           <Select value={admissionYearFilter} onValueChange={setAdmissionYearFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select admission year" />
+              </SelectTrigger>
+              <SelectContent>
+                {admissionYears.map(year => (
+                  <SelectItem key={year} value={year}>{year === 'All' ? 'All Years' : year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
         </CardHeader>
         <CardContent className="grid gap-6">
           {enrollmentsByProgramAndLevel.map((program) => (
@@ -325,5 +353,3 @@ export function Overview({ students }: OverviewProps) {
     </div>
   );
 }
-
-    
