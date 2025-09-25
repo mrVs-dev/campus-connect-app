@@ -43,10 +43,11 @@ function StudentDetail({ label, value }: { label: string; value: React.ReactNode
 }
 
 function GuardianDetails({ guardian }: { guardian: Guardian }) {
+  const occupationInfo = [guardian.occupation, guardian.workplace].filter(Boolean).join(' at ');
   return (
     <div className="space-y-2 rounded-lg border p-4">
       <h4 className="font-semibold">{guardian.relation} - {guardian.name}</h4>
-      <p className="text-sm text-muted-foreground">{guardian.occupation} at {guardian.workplace}</p>
+      {occupationInfo && <p className="text-sm text-muted-foreground">{occupationInfo}</p>}
       <p className="text-sm">Mobiles: {guardian.mobiles.join(', ')}</p>
     </div>
   );

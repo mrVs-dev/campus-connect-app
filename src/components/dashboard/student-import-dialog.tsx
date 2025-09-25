@@ -94,6 +94,8 @@ export function StudentImportDialog({
                 guardians.push({
                     relation: findValue(row, ['guardian1_relation', 'Guardian 1 Relation']) || 'Guardian',
                     name: guardian1Name,
+                    occupation: findValue(row, ['guardian1_occupation', 'Guardian 1 Occupation']),
+                    workplace: findValue(row, ['guardian1_workplace', 'Guardian 1 Workplace']),
                     mobiles: findValue(row, ['guardian1_mobiles', 'Guardian 1 Mobiles'])?.split(',') || [],
                 });
             }
@@ -103,6 +105,8 @@ export function StudentImportDialog({
                  guardians.push({
                     relation: findValue(row, ['guardian2_relation', 'Guardian 2 Relation']) || 'Guardian',
                     name: guardian2Name,
+                    occupation: findValue(row, ['guardian2_occupation', 'Guardian 2 Occupation']),
+                    workplace: findValue(row, ['guardian2_workplace', 'Guardian 2 Workplace']),
                     mobiles: findValue(row, ['guardian2_mobiles', 'Guardian 2 Mobiles'])?.split(',') || [],
                 });
             }

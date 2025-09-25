@@ -329,6 +329,20 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                          <FormMessage />
                       </FormItem>
                     )} />
+                    <FormField control={form.control} name={`guardians.${index}.occupation`} render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Occupation</FormLabel>
+                        <FormControl><Input placeholder="e.g., Doctor" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name={`guardians.${index}.workplace`} render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Workplace</FormLabel>
+                        <FormControl><Input placeholder="e.g., City Hospital" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                      <FormField control={form.control} name={`guardians.${index}.mobiles.0`} render={({ field }) => (
                       <FormItem>
                         <FormLabel>Mobile Phone</FormLabel>
@@ -343,7 +357,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                     )}
                   </div>
                 ))}
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ relation: '', name: '', mobiles: [''] })}>
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ relation: '', name: '', occupation: '', workplace: '', mobiles: [''] })}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Guardian
                 </Button>
               </CardContent>
