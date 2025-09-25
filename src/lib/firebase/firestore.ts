@@ -88,9 +88,9 @@ const getNextStudentId = async (): Promise<string> => {
     try {
         await runTransaction(db, async (transaction) => {
             const metadataDoc = await transaction.get(metadataRef);
-            if (!metadataDoc.exists() || metadataDoc.data().lastId < startingId) {
+            if (!metadataDoc.exists() || !metadataDoc.data().lastId || metadataDoc.data().lastId < startingId) {
                 // If it doesn't exist or is lower than our new starting point, set it.
-                transaction.set(metadataRef, { lastId: nextId });
+                 transaction.set(metadataRef, { lastId: nextId });
             } else {
                 const currentId = metadataDoc.data().lastId;
                 nextId = currentId + 1;
@@ -137,11 +137,12 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
     await setDoc(studentDocRef, dataWithTimestamps);
     
+    // We can be optimistic and not fetch the doc again for the enrollmentDate
     const newStudent: Student = {
-      ...studentData,
-      studentId: newStudentId,
-      enrollmentDate: new Date(),
-      status: "Active",
+        ...studentData,
+        studentId: newStudentId,
+        enrollmentDate: new Date(),
+        status: "Active",
     };
     
     return newStudent;
@@ -154,36 +155,39 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
   const newStudents: Student[] = [];
 
   for (const student of studentsData) {
-    const newDocRef = doc(collection(db, 'students')); 
-    
-    const studentForFirestore: Partial<Student> = {
+    // Generate a new Firestore document reference with a unique ID
+    const newDocRef = doc(collection(db, 'students'));
+    const newStudentId = newDocRef.id;
+
+    const studentForFirestore: Student = {
       ...student,
+      studentId: newStudentId, // Assign the generated ID to the student data
       status: 'Active',
       enrollmentDate: serverTimestamp() as any, // Cast to any for serverTimestamp
     };
   
     // Firestore doesn't allow `undefined` values. We need to clean the object.
-    Object.keys(studentForFirestore).forEach(key => {
-      if (studentForFirestore[key as keyof typeof studentForFirestore] === undefined) {
-        delete studentForFirestore[key as keyof typeof studentForFirestore];
+    const cleanedStudentData = Object.entries(studentForFirestore).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key as keyof Student] = value;
       }
-    });
+      return acc;
+    }, {} as Partial<Student>);
     
-    const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
+    const dataWithTimestamps = convertDatesToTimestamps(cleanedStudentData);
     batch.set(newDocRef, dataWithTimestamps);
     
     newStudents.push({
       ...student,
-      studentId: newDocRef.id,
+      studentId: newStudentId,
       status: 'Active',
-      enrollmentDate: new Date(),
+      enrollmentDate: new Date(), // Optimistic date
     });
   }
   
   await batch.commit();
   return newStudents;
 }
-
 
 export async function updateStudent(studentId: string, dataToUpdate: Partial<Student>): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
