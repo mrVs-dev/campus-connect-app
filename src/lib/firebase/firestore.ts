@@ -80,14 +80,16 @@ const convertDatesToTimestamps = (data: any): any => {
 const getNextStudentId = async (): Promise<string> => {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const metadataRef = doc(db, 'metadata', 'studentCounter');
+    const startingId = 1831; // Start counting from here, so first student is 1832
     
-    let nextId = 1;
+    let nextId = startingId + 1;
 
     try {
         await runTransaction(db, async (transaction) => {
             const metadataDoc = await transaction.get(metadataRef);
-            if (!metadataDoc.exists()) {
-                transaction.set(metadataRef, { lastId: 1 });
+            if (!metadataDoc.exists() || metadataDoc.data().lastId < startingId) {
+                // If it doesn't exist or is lower than our new starting point, set it.
+                transaction.set(metadataRef, { lastId: nextId });
             } else {
                 const currentId = metadataDoc.data().lastId;
                 nextId = currentId + 1;
@@ -99,7 +101,7 @@ const getNextStudentId = async (): Promise<string> => {
         throw new Error("Could not generate a new student ID.");
     }
 
-    return `S${String(nextId).padStart(3, '0')}`;
+    return `STU${nextId}`;
 };
 
 
@@ -127,6 +129,7 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
 
     const studentForFirestore = {
         ...studentData,
+        studentId: newStudentId, // Also save the ID inside the document
         status: "Active",
         enrollmentDate: serverTimestamp() 
     };
