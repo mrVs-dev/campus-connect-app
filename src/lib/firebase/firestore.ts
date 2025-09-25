@@ -114,6 +114,7 @@ export async function getStudents(): Promise<Student[]> {
         const studentDataWithDates = convertTimestampsToDates(data);
         return {
             ...studentDataWithDates,
+            studentId: doc.id,
         } as Student;
     });
 }
@@ -126,7 +127,6 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
 
     const studentForFirestore = {
         ...studentData,
-        studentId: newStudentId,
         status: "Active",
         enrollmentDate: serverTimestamp() 
     };
