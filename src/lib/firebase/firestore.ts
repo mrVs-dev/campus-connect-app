@@ -14,7 +14,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment } from "../types";
+import type { Student, Admission, Assessment, Teacher } from "../types";
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -271,3 +271,31 @@ export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmen
         };
     }
 }
+
+// --- Teachers Collection ---
+
+export async function getTeachers(): Promise<Teacher[]> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const teachersCollection = collection(db, 'teachers');
+    const snapshot = await getDocs(teachersCollection);
+    return snapshot.docs.map(doc => ({
+        ...(doc.data() as Omit<Teacher, 'teacherId'>),
+        teacherId: doc.id,
+    }));
+}
+
+export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const teachersCollection = collection(db, 'teachers');
+    const teacherForFirestore = {
+        ...teacherData,
+        status: 'Active' as const,
+    };
+    const docRef = await addDoc(teachersCollection, teacherForFirestore);
+    return {
+        ...teacherForFirestore,
+        teacherId: docRef.id,
+    };
+}
+
+    

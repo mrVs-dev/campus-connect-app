@@ -51,8 +51,9 @@ export interface Teacher {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
-  assignedSubjects: string[];
+  phone?: string;
+  assignedSubjects?: string[];
+  status: 'Active' | 'Inactive';
 }
 
 export interface Subject {
@@ -93,3 +94,5 @@ export interface Admission {
   schoolYear: string;
   students: StudentAdmission[];
 }
+
+    

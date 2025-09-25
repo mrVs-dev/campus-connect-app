@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/components/dashboard/overview";
@@ -11,7 +11,8 @@ import { StudentList } from "@/components/dashboard/student-list";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB } from "@/lib/firebase/firestore";
+import { TeacherList } from "@/components/dashboard/teacher-list";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -60,6 +61,7 @@ function DashboardContent() {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
+  const [teachers, setTeachers] = React.useState<Teacher[]>([]);
   const [loadingData, setLoadingData] = React.useState(true);
   const { toast } = useToast();
 
@@ -70,14 +72,16 @@ function DashboardContent() {
         return;
       }
       try {
-        const [studentsData, admissionsData, assessmentsData] = await Promise.all([
+        const [studentsData, admissionsData, assessmentsData, teachersData] = await Promise.all([
           getStudents(), 
           getAdmissions(),
-          getAssessments()
+          getAssessments(),
+          getTeachers()
         ]);
         setStudents(studentsData);
         setAdmissions(admissionsData);
         setAssessments(assessmentsData);
+        setTeachers(teachersData);
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
         toast({
@@ -246,6 +250,26 @@ function DashboardContent() {
       });
     }
   };
+  
+  const handleAddTeacher = async (teacherData: Omit<Teacher, 'teacherId' | 'status'>) => {
+    try {
+      const newTeacher = await addTeacher(teacherData);
+      setTeachers(prev => [...prev, newTeacher]);
+      toast({
+        title: "Teacher Added",
+        description: `${newTeacher.firstName} ${newTeacher.lastName} has been added.`,
+      });
+      return true;
+    } catch (error) {
+      console.error("Error adding teacher:", error);
+      toast({
+        title: "Failed to Add Teacher",
+        description: "There was an error adding the new teacher. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -279,9 +303,10 @@ function DashboardContent() {
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
         <Tabs defaultValue="dashboard" className="flex flex-col gap-4">
-          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-5 self-start">
+          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-6 self-start">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
+            <TabsTrigger value="teachers">Teachers</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
             <TabsTrigger value="admissions">Admissions</TabsTrigger>
             <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
@@ -321,6 +346,10 @@ function DashboardContent() {
               onImportStudents={handleImportStudents}
               onDeleteStudent={handleDeleteStudent}
             />
+          </TabsContent>
+          
+          <TabsContent value="teachers">
+            <TeacherList teachers={teachers} onAddTeacher={handleAddTeacher} />
           </TabsContent>
 
           <TabsContent value="assessments">
@@ -375,3 +404,5 @@ export default function DashboardPage() {
   
   return <DashboardContent />;
 }
+
+    
