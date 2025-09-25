@@ -14,7 +14,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from "recharts";
+import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
 import { addDays, format, isWithinInterval } from "date-fns";
@@ -37,13 +37,6 @@ import {
 } from "@/components/ui/select";
 import type { Student } from "@/lib/types";
 
-
-const programShortNames: Record<string, string> = {
-  'English International': 'English',
-  'Khmer National': 'Khmer',
-  'English as Second Language (ESL)': 'ESL',
-  'Chinese as Second Language (CSL)': 'CSL',
-};
 
 function DatePickerWithRange({
   className,
@@ -169,21 +162,36 @@ export function Overview({ students }: OverviewProps) {
 
   const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--muted-foreground))"];
 
-  const enrollmentByProgram = students.reduce((acc, student) => {
-    if (student.enrollments) {
-      student.enrollments.forEach(enrollment => {
-        const programName = programs.find(p => p.id === enrollment.programId)?.name || 'Unknown';
-        const shortName = programShortNames[programName] || programName;
-        acc[shortName] = (acc[shortName] || 0) + 1;
-      });
-    }
-    return acc;
-  }, {} as Record<string, number>);
+  const enrollmentsByProgramAndLevel = React.useMemo(() => {
+    const programData: Record<string, { total: number; levels: Record<string, number> }> = {};
 
-  const chartData = Object.entries(enrollmentByProgram).map(([name, value]) => ({
-    name,
-    students: value,
-  }));
+    programs.forEach(p => {
+        programData[p.name] = { total: 0, levels: {} };
+    });
+
+    students.forEach(student => {
+        if (student.enrollments) {
+            student.enrollments.forEach(enrollment => {
+                const programName = programs.find(p => p.id === enrollment.programId)?.name;
+                if (programName) {
+                    programData[programName].total++;
+                    const levelName = enrollment.level;
+                    programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
+                }
+            });
+        }
+    });
+
+    return Object.entries(programData)
+      .map(([name, data]) => ({
+        name,
+        ...data,
+        levels: Object.entries(data.levels)
+          .map(([level, count]) => ({ level, students: count }))
+          .sort((a,b) => a.level.localeCompare(b.level)), // Sort levels
+      }))
+      .filter(p => p.total > 0);
+  }, [students]);
 
   const chartConfig = {
     students: {
@@ -201,99 +209,117 @@ export function Overview({ students }: OverviewProps) {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle>Student Population</CardTitle>
-           <Select value={statusFilter} onValueChange={(value: Student['status'] | 'All') => setStatusFilter(value)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
-              <SelectItem value="Graduated">Graduated</SelectItem>
-              <SelectItem value="All">All</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardHeader>
-        <CardContent>
-           <div className="flex flex-col space-y-2">
-              <p className="text-3xl font-bold">{totalStudents}</p>
-              <p className="text-xs text-muted-foreground">Total students</p>
-              <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                      <User className="h-4 w-4 text-primary" />
-                      <span>{genderDistribution['Male'] || 0} Male</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                      <User className="h-4 w-4 text-accent" />
-                      <span>{genderDistribution['Female'] || 0} Female</span>
-                  </div>
-              </div>
-           </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="col-span-1 md:col-span-2">
-        <CardHeader>
-            <div className="flex items-start justify-between">
-                <div>
-                    <CardTitle>Enrollments</CardTitle>
-                    <CardDescription>Number of new enrollments in the selected date range.</CardDescription>
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle>Student Population</CardTitle>
+            <Select value={statusFilter} onValueChange={(value: Student['status'] | 'All') => setStatusFilter(value)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Inactive">Inactive</SelectItem>
+                <SelectItem value="Graduated">Graduated</SelectItem>
+                <SelectItem value="All">All</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col space-y-2">
+                <p className="text-3xl font-bold">{totalStudents}</p>
+                <p className="text-xs text-muted-foreground">Total students</p>
+                <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-primary" />
+                        <span>{genderDistribution['Male'] || 0} Male</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-accent" />
+                        <span>{genderDistribution['Female'] || 0} Female</span>
+                    </div>
                 </div>
-                <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
             </div>
-        </CardHeader>
-        <CardContent>
-           <div className="grid grid-cols-2 items-center gap-4">
-             <div className="flex flex-col space-y-2">
-                <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
-                <p className="text-xs text-muted-foreground">Total enrollments in period</p>
-             </div>
-             <ChartContainer config={chartConfig} className="h-[150px] w-full">
-                <PieChart accessibilityLayer>
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel />}
-                  />
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} fill="#8884d8">
-                     {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                     ))}
-                  </Pie>
-                </PieChart>
-             </ChartContainer>
-           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+              <div className="flex items-start justify-between">
+                  <div>
+                      <CardTitle>Enrollments</CardTitle>
+                      <CardDescription>New enrollments in the selected date range.</CardDescription>
+                  </div>
+                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+              </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 items-center gap-4">
+              <div className="flex flex-col space-y-2">
+                  <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
+                  <p className="text-xs text-muted-foreground">Total enrollments in period</p>
+              </div>
+              <ChartContainer config={chartConfig} className="h-[100px] w-full">
+                  <PieChart accessibilityLayer>
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel />}
+                    />
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} fill="#8884d8">
+                      {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+              </ChartContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card className="col-span-1 md:col-span-2 lg:col-span-1">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle>Admission by Program</CardTitle>
-          <BarChart className="h-4 w-4 text-muted-foreground" />
+      <Card>
+        <CardHeader>
+          <CardTitle>Admissions by Program</CardTitle>
+          <CardDescription>Student distribution across different programs and levels.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <RechartsBarChart data={chartData} accessibilityLayer layout="vertical" margin={{ left: 10, right: 10 }}>
-              <CartesianGrid horizontal={false} />
-              <YAxis
-                dataKey="name"
-                type="category"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                interval={0}
-                width={50}
-              />
-              <XAxis type="number" tickLine={false} axisLine={false} />
-              <ChartTooltip
-                cursor={false}
-                content={<ChartTooltipContent indicator="dot" />}
-              />
-              <Bar dataKey="students" fill="var(--color-students)" radius={4} barSize={20} />
-            </RechartsBarChart>
-          </ChartContainer>
+        <CardContent className="grid gap-6">
+          {enrollmentsByProgramAndLevel.map((program) => (
+            <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
+              <div className="flex flex-col space-y-2">
+                <p className="font-semibold text-lg">{program.name}</p>
+                <p className="text-4xl font-bold">{program.total}</p>
+                <p className="text-sm text-muted-foreground">Total Students</p>
+              </div>
+              <div className="md:col-span-2">
+                <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                  <RechartsBarChart 
+                    data={program.levels} 
+                    layout="vertical"
+                    margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
+                  >
+                    <CartesianGrid horizontal={false} />
+                    <YAxis
+                      dataKey="level"
+                      type="category"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      interval={0}
+                      width={80}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} allowDecimals={false} />
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent indicator="dot" />}
+                    />
+                    <Bar dataKey="students" fill="var(--color-students)" radius={4} barSize={15} />
+                  </RechartsBarChart>
+                </ChartContainer>
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>
