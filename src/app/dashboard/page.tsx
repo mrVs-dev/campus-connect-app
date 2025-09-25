@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission } from "@/lib/types";
+import type { Student, Admission, Assessment } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/components/dashboard/overview";
@@ -11,8 +11,7 @@ import { StudentList } from "@/components/dashboard/student-list";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
-import { assessments } from "@/lib/mock-data";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -48,6 +47,7 @@ function MissingFirebaseConfig() {
 function DashboardContent() {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
+  const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [loadingData, setLoadingData] = React.useState(true);
   const { toast } = useToast();
 
@@ -58,9 +58,14 @@ function DashboardContent() {
         return;
       }
       try {
-        const [studentsData, admissionsData] = await Promise.all([getStudents(), getAdmissions()]);
+        const [studentsData, admissionsData, assessmentsData] = await Promise.all([
+          getStudents(), 
+          getAdmissions(),
+          getAssessments()
+        ]);
         setStudents(studentsData);
         setAdmissions(admissionsData);
+        setAssessments(assessmentsData);
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
         toast({
@@ -183,6 +188,35 @@ function DashboardContent() {
     }
   };
 
+  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => {
+    try {
+      const savedAssessment = await saveAssessment(assessmentData);
+      setAssessments(prev => {
+        const existingIndex = prev.findIndex(a => a.assessmentId === savedAssessment.assessmentId);
+        if (existingIndex > -1) {
+            const updatedAssessments = [...prev];
+            updatedAssessments[existingIndex] = savedAssessment;
+            return updatedAssessments;
+        } else {
+            return [...prev, savedAssessment];
+        }
+      });
+      toast({
+        title: "Assessment Saved",
+        description: `The assessment "${savedAssessment.topic}" has been saved.`,
+      });
+      return savedAssessment;
+    } catch (error) {
+      console.error("Error saving assessment:", error);
+      toast({
+        title: "Save Failed",
+        description: "There was an error saving the assessment. Please try again.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
       return students;
@@ -240,6 +274,7 @@ function DashboardContent() {
             <AssessmentList
               assessments={assessments}
               students={students}
+              onSaveAssessment={handleSaveAssessment}
             />
           </TabsContent>
 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -28,9 +29,11 @@ import { GradeEntrySheet } from "./grade-entry-sheet";
 export function AssessmentList({
   assessments,
   students,
+  onSaveAssessment,
 }: {
   assessments: Assessment[];
   students: Student[];
+  onSaveAssessment: (assessment: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => Promise<Assessment | null>;
 }) {
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
   const [selectedAssessment, setSelectedAssessment] = React.useState<Assessment | null>(null);
@@ -96,6 +99,7 @@ export function AssessmentList({
       <NewAssessmentDialog 
         open={isNewAssessmentOpen}
         onOpenChange={setIsNewAssessmentOpen}
+        onSave={onSaveAssessment}
       />
       <GradeEntrySheet
         assessment={selectedAssessment}
@@ -106,6 +110,7 @@ export function AssessmentList({
             setSelectedAssessment(null);
           }
         }}
+        onSaveGrades={onSaveAssessment}
       />
     </>
   );

@@ -1,5 +1,7 @@
+
 "use client";
 
+import * as React from "react";
 import type { Assessment, Student } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +29,7 @@ interface GradeEntrySheetProps {
   students: Student[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSaveGrades: (assessment: Assessment) => Promise<Assessment | null>;
 }
 
 export function GradeEntrySheet({
@@ -34,7 +37,38 @@ export function GradeEntrySheet({
   students,
   open,
   onOpenChange,
+  onSaveGrades,
 }: GradeEntrySheetProps) {
+  const [scores, setScores] = React.useState<Record<string, number>>({});
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (assessment) {
+      setScores(assessment.scores || {});
+    }
+  }, [assessment]);
+
+  const handleScoreChange = (studentId: string, value: string) => {
+    const score = parseInt(value, 10);
+    if (!isNaN(score)) {
+      setScores(prev => ({ ...prev, [studentId]: score }));
+    } else {
+      // Allow clearing the input
+      const newScores = { ...scores };
+      delete newScores[studentId];
+      setScores(newScores);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!assessment) return;
+    setIsSaving(true);
+    const updatedAssessment = { ...assessment, scores };
+    await onSaveGrades(updatedAssessment);
+    setIsSaving(false);
+    onOpenChange(false);
+  };
+
   if (!assessment) return null;
 
   return (
@@ -70,7 +104,8 @@ export function GradeEntrySheet({
                     <TableCell className="text-right">
                       <Input
                         type="number"
-                        defaultValue={assessment.scores[student.studentId] || ""}
+                        value={scores[student.studentId] || ""}
+                        onChange={(e) => handleScoreChange(student.studentId, e.target.value)}
                         max={assessment.totalMarks}
                         min={0}
                         className="w-24 ml-auto"
@@ -83,8 +118,8 @@ export function GradeEntrySheet({
           </ScrollArea>
         </div>
         <SheetFooter className="mt-auto pt-4 border-t">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button>Save Grades</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={isSaving}>{isSaving ? "Saving..." : "Save Grades"}</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

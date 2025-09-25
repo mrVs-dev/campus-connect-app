@@ -14,7 +14,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Student, Admission } from "../types";
+import type { Student, Admission, Assessment } from "../types";
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -137,7 +137,6 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
     await setDoc(studentDocRef, dataWithTimestamps);
     
-    // We can be optimistic and not fetch the doc again for the enrollmentDate
     const newStudent: Student = {
         ...studentData,
         studentId: newStudentId,
@@ -155,21 +154,19 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
   const newStudents: Student[] = [];
 
   for (const student of studentsData) {
-    // Generate a new Firestore document reference with a unique ID
     const newDocRef = doc(collection(db, 'students'));
-    const newStudentId = newDocRef.id;
+    const studentId = newDocRef.id;
 
-    const studentForFirestore: Student = {
+    const studentForFirestore: Omit<Student, 'enrollmentDate'> & { enrollmentDate: any } = {
       ...student,
-      studentId: newStudentId, // Assign the generated ID to the student data
+      studentId, 
       status: 'Active',
-      enrollmentDate: serverTimestamp() as any, // Cast to any for serverTimestamp
+      enrollmentDate: serverTimestamp(),
     };
   
-    // Firestore doesn't allow `undefined` values. We need to clean the object.
     const cleanedStudentData = Object.entries(studentForFirestore).reduce((acc, [key, value]) => {
       if (value !== undefined) {
-        acc[key as keyof Student] = value;
+        (acc as any)[key] = value;
       }
       return acc;
     }, {} as Partial<Student>);
@@ -179,9 +176,9 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
     
     newStudents.push({
       ...student,
-      studentId: newStudentId,
+      studentId: studentId,
       status: 'Active',
-      enrollmentDate: new Date(), // Optimistic date
+      enrollmentDate: new Date(),
     });
   }
   
@@ -222,4 +219,39 @@ export async function saveAdmission(admissionData: Admission): Promise<void> {
     const admissionDoc = doc(db, 'admissions', admissionData.admissionId);
     const cleanedAdmission = JSON.parse(JSON.stringify(admissionData));
     await setDoc(admissionDoc, cleanedAdmission);
+}
+
+// --- Assessments Collection ---
+
+export async function getAssessments(): Promise<Assessment[]> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const assessmentsCollection = collection(db, 'assessments');
+    const snapshot = await getDocs(assessmentsCollection);
+    return snapshot.docs.map(doc => ({
+        ...doc.data(),
+        assessmentId: doc.id,
+    } as Assessment));
+}
+
+export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment): Promise<Assessment> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    
+    if ('assessmentId' in assessmentData) {
+        // Update existing assessment
+        const assessmentDoc = doc(db, 'assessments', assessmentData.assessmentId);
+        await setDoc(assessmentDoc, assessmentData, { merge: true });
+        return assessmentData;
+    } else {
+        // Create new assessment
+        const assessmentsCollection = collection(db, 'assessments');
+        const newDocRef = await addDoc(assessmentsCollection, {
+            ...assessmentData,
+            teacherId: "T001", // Placeholder teacher ID
+        });
+        return {
+            ...assessmentData,
+            assessmentId: newDocRef.id,
+            teacherId: "T001",
+        };
+    }
 }
