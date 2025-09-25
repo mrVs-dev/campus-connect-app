@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { Student, Assessment } from "@/lib/types";
-import { Upload, MoreHorizontal, Trash2 } from "lucide-react";
+import { Upload, MoreHorizontal, ArrowUpDown } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -43,6 +43,8 @@ import { StudentPerformanceSheet } from "./student-performance-sheet";
 import { StudentImportDialog } from "./student-import-dialog";
 import { programs } from "@/lib/program-data";
 
+type SortableKey = 'studentId' | 'firstName' | 'sex' | 'status';
+
 export function StudentList({
   students,
   assessments,
@@ -61,13 +63,40 @@ export function StudentList({
   );
   const [isImportOpen, setIsImportOpen] = React.useState(false);
   const [studentToDelete, setStudentToDelete] = React.useState<Student | null>(null);
+  const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>({ key: 'firstName', direction: 'asc'});
 
+  const sortedStudents = React.useMemo(() => {
+    let sortableStudents = [...students];
+    if (sortConfig !== null) {
+      sortableStudents.sort((a, b) => {
+        const aValue = a[sortConfig.key] || '';
+        const bValue = b[sortConfig.key] || '';
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableStudents;
+  }, [students, sortConfig]);
+  
+  const requestSort = (key: SortableKey) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
-  const formatAddress = (address?: Student["address"]) => {
-    if (!address) return "N/A";
-    const parts = [address.village, address.commune, address.district].filter(Boolean);
-    return parts.length > 0 ? parts.join(', ') : "N/A";
-  }
+  const getSortIndicator = (key: SortableKey) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return null;
+    }
+    return sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽';
+  };
 
   const getProgramInfo = (enrollments?: Student["enrollments"]) => {
     if (!enrollments || enrollments.length === 0) {
@@ -99,7 +128,7 @@ export function StudentList({
               <CardTitle>Class Roster</CardTitle>
               <CardDescription>
                 A list of all students. Click a student to view their
-                performance.
+                performance or a header to sort.
               </CardDescription>
             </div>
             <Button
@@ -119,17 +148,37 @@ export function StudentList({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Student ID</TableHead>
-                <TableHead>Gender</TableHead>
-                <TableHead className="hidden md:table-cell">Status</TableHead>
+                <TableHead>
+                   <Button variant="ghost" onClick={() => requestSort('firstName')}>
+                    Student
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => requestSort('studentId')}>
+                    Student ID
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead>
+                  <Button variant="ghost" onClick={() => requestSort('sex')}>
+                    Gender
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
+                <TableHead className="hidden md:table-cell">
+                  <Button variant="ghost" onClick={() => requestSort('status')}>
+                    Status
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => {
+              {sortedStudents.map((student) => {
                 const { programNames, levels } = getProgramInfo(student.enrollments);
                 return (
                   <TableRow
