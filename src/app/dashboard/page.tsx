@@ -288,7 +288,7 @@ function DashboardContent() {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Overview students={students} />
+            <Overview students={studentsWithLatestEnrollments} />
           </TabsContent>
 
           <TabsContent value="students">
