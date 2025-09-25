@@ -11,11 +11,23 @@ import { StudentList } from "@/components/dashboard/student-list";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 function MissingFirebaseConfig() {
   return (
@@ -217,6 +229,24 @@ function DashboardContent() {
     }
   };
 
+  const deleteAllStudents = async () => {
+    try {
+      await deleteAllStudentsFromDB();
+      setStudents([]);
+      toast({
+        title: "All Students Deleted",
+        description: "All student records have been removed from the database.",
+      });
+    } catch (error) {
+      console.error("Error deleting all students:", error);
+      toast({
+        title: "Deletion Failed",
+        description: "There was an error deleting all students. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
       return students;
@@ -262,6 +292,28 @@ function DashboardContent() {
           </TabsContent>
 
           <TabsContent value="students">
+             <div className="mb-4 flex justify-end">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">Delete All Students</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete all student records
+                      from the database.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={deleteAllStudents}>
+                      Yes, delete all students
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
             <StudentList 
               students={studentsWithLatestEnrollments}
               assessments={assessments}

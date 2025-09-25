@@ -154,12 +154,11 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
   const newStudents: Student[] = [];
 
   for (const student of studentsData) {
-    const newDocRef = doc(collection(db, 'students'));
-    const studentId = newDocRef.id;
+    const studentsCollection = collection(db, "students");
+    const newDocRef = doc(studentsCollection); // Auto-generate ID
 
-    const studentForFirestore: Omit<Student, 'enrollmentDate'> & { enrollmentDate: any } = {
+    const studentForFirestore: Omit<Student, 'studentId' | 'enrollmentDate'> & { enrollmentDate: any } = {
       ...student,
-      studentId, 
       status: 'Active',
       enrollmentDate: serverTimestamp(),
     };
@@ -176,7 +175,7 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
     
     newStudents.push({
       ...student,
-      studentId: studentId,
+      studentId: newDocRef.id,
       status: 'Active',
       enrollmentDate: new Date(),
     });
@@ -197,6 +196,23 @@ export async function deleteStudent(studentId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const studentDoc = doc(db, 'students', studentId);
     await deleteDoc(studentDoc);
+}
+
+export async function deleteAllStudents(): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const studentsCollection = collection(db, 'students');
+    const snapshot = await getDocs(studentsCollection);
+    
+    if (snapshot.empty) {
+        return;
+    }
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
 }
 
 
