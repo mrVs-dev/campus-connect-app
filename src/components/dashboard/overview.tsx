@@ -15,7 +15,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from "recharts";
-import { subjects } from "@/lib/mock-data";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
 import { addDays, format, isWithinInterval } from "date-fns";
@@ -106,7 +105,7 @@ export function Overview({ students }: OverviewProps) {
       return students;
     }
     return students.filter(student => 
-      student.enrollmentDate && isWithinInterval(student.enrollmentDate, { start: dateRange.from!, end: dateRange.to! })
+      student.enrollmentDate && isWithinInterval(new Date(student.enrollmentDate), { start: dateRange.from!, end: dateRange.to! })
     );
   }, [dateRange, students]);
 
@@ -114,14 +113,16 @@ export function Overview({ students }: OverviewProps) {
 
   const genderDistribution = React.useMemo(() => {
     return students.reduce((acc, student) => {
-      acc[student.sex] = (acc[student.sex] || 0) + 1;
+      const sex = student.sex || 'Other';
+      acc[sex] = (acc[sex] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
   }, [students]);
 
   const enrollmentGenderDistribution = React.useMemo(() => {
      return filteredStudents.reduce((acc, student) => {
-      acc[student.sex] = (acc[student.sex] || 0) + 1;
+      const sex = student.sex || 'Other';
+      acc[sex] = (acc[sex] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
   }, [filteredStudents]);
