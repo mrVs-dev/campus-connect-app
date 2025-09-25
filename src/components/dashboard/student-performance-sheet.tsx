@@ -222,7 +222,7 @@ export function StudentPerformanceSheet({
                 <StudentDetail label="Full English Name" value={fullName} />
                 <StudentDetail label="Full Khmer Name" value={khmerFullName} />
                 <StudentDetail label="Student ID" value={student.studentId} />
-                <StudentDetail label="Sex" value={student.sex} />
+                <StudentDetail label="Gender" value={student.sex} />
                 <StudentDetail label="Date of Birth" value={student.dateOfBirth ? format(new Date(student.dateOfBirth), "MMMM d, yyyy") : "N/A"} />
                 <StudentDetail label="Place of Birth" value={student.placeOfBirth} />
                 <StudentDetail label="Nationality" value={student.nationality} />

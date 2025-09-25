@@ -121,8 +121,7 @@ export function StudentList({
               <TableRow>
                 <TableHead>Student</TableHead>
                 <TableHead>Student ID</TableHead>
-                <TableHead>Programs</TableHead>
-                <TableHead>Grade/Levels</TableHead>
+                <TableHead>Gender</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
@@ -163,20 +162,7 @@ export function StudentList({
                       </div>
                     </TableCell>
                     <TableCell>{student.studentId}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        {programNames.map((name, index) => (
-                          <span key={index} className="text-sm">{name}</span>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        {levels.map((level, index) => (
-                          <span key={index} className="text-sm text-muted-foreground">{level}</span>
-                        ))}
-                      </div>
-                    </TableCell>
+                    <TableCell>{student.sex || 'N/A'}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge
                         variant={
