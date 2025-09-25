@@ -158,7 +158,6 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
     
     const studentForFirestore: Partial<Student> = {
       ...student,
-      studentId: newDocRef.id,
       status: 'Active',
       enrollmentDate: serverTimestamp() as any, // Cast to any for serverTimestamp
     };
