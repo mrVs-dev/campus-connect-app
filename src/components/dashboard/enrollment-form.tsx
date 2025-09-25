@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
+  middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
   khmerFirstName: z.string().optional(),
   khmerLastName: z.string().optional(),
@@ -83,6 +84,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: "",
+      middleName: "",
       lastName: "",
       khmerFirstName: "",
       khmerLastName: "",
@@ -138,11 +140,18 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                 <CardDescription>Enter the student's personal details.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <FormField control={form.control} name="firstName" render={({ field }) => (
                     <FormItem>
                       <FormLabel>First Name (English)</FormLabel>
                       <FormControl><Input placeholder="John" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                   <FormField control={form.control} name="middleName" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Middle Name (English)</FormLabel>
+                      <FormControl><Input placeholder="Lee" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

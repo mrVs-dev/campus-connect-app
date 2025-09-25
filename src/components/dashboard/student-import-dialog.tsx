@@ -26,15 +26,16 @@ interface StudentImportDialogProps {
 // Function to find a value in a row object with case-insensitive and flexible key matching
 const findValue = (row: any, keys: string[]): string | undefined => {
     for (const key of keys) {
-        if (row[key] !== undefined) return row[key];
+        if (row[key] !== undefined && row[key] !== null) return String(row[key]);
     }
-    // Try case-insensitive matching
-    const lowerCaseKeys = keys.map(k => k.toLowerCase());
+    // Try case-insensitive, space-insensitive, and underscore-insensitive matching
+    const lowerCaseKeys = keys.map(k => k.toLowerCase().replace(/[\s_]/g, ''));
     for (const rowKey in row) {
-        const lowerCaseRowKey = rowKey.toLowerCase().replace(/[\s_]/g, '');
-        const simplifiedKeys = lowerCaseKeys.map(k => k.replace(/[\s_]/g, ''));
-        if (simplifiedKeys.includes(lowerCaseRowKey)) {
-            return row[rowKey];
+        if (row[rowKey] !== undefined && row[rowKey] !== null) {
+            const lowerCaseRowKey = rowKey.toLowerCase().replace(/[\s_]/g, '');
+            if (lowerCaseKeys.includes(lowerCaseRowKey)) {
+                return String(row[rowKey]);
+            }
         }
     }
     return undefined;
@@ -82,8 +83,28 @@ export function StudentImportDialog({
             const enrollmentDateStr = findValue(row, ['enrollmentDate', 'Enrollment Date']);
             const enrollmentDate = enrollmentDateStr ? new Date(enrollmentDateStr) : new Date();
 
+            const guardians = [];
+            const guardian1Name = findValue(row, ['guardian1_name', 'Guardian 1 Name']);
+            if (guardian1Name) {
+                guardians.push({
+                    relation: findValue(row, ['guardian1_relation', 'Guardian 1 Relation']) || 'Guardian',
+                    name: guardian1Name,
+                    mobiles: findValue(row, ['guardian1_mobiles', 'Guardian 1 Mobiles'])?.split(',') || [],
+                });
+            }
+
+            const guardian2Name = findValue(row, ['guardian2_name', 'Guardian 2 Name']);
+            if (guardian2Name) {
+                 guardians.push({
+                    relation: findValue(row, ['guardian2_relation', 'Guardian 2 Relation']) || 'Guardian',
+                    name: guardian2Name,
+                    mobiles: findValue(row, ['guardian2_mobiles', 'Guardian 2 Mobiles'])?.split(',') || [],
+                });
+            }
+
             const student: Omit<Student, 'studentId' | 'avatarUrl'> = {
               firstName: findValue(row, ['firstName', 'First Name']) || '',
+              middleName: findValue(row, ['middleName', 'Middle Name']) || '',
               lastName: findValue(row, ['lastName', 'Last Name']) || '',
               khmerFirstName: findValue(row, ['khmerFirstName', 'Khmer First Name']) || '',
               khmerLastName: findValue(row, ['khmerLastName', 'Khmer Last Name']) || '',
@@ -92,8 +113,8 @@ export function StudentImportDialog({
               enrollmentDate: enrollmentDate && !isNaN(enrollmentDate.getTime()) ? enrollmentDate : new Date(),
               placeOfBirth: findValue(row, ['placeOfBirth', 'Place of Birth']) || '',
               nationality: findValue(row, ['nationality']) || '',
-              nationalId: findValue(row, ['nationalId', 'National ID']) || undefined,
-              status: 'Active', // Default status for imported students
+              nationalId: findValue(row, ['nationalId', 'National ID']),
+              status: 'Active',
               previousSchool: findValue(row, ['previousSchool', 'Previous School']),
               address: {
                 village: findValue(row, ['address.village', 'village', 'Village']),
@@ -102,13 +123,7 @@ export function StudentImportDialog({
                 street: findValue(row, ['address.street', 'street', 'Street']),
                 house: findValue(row, ['address.house', 'house', 'House No']),
               },
-              guardians: [
-                {
-                  relation: findValue(row, ['guardian.relation', 'Guardian Relation']) || 'Guardian',
-                  name: findValue(row, ['guardian.name', 'Guardian Name']) || '',
-                  mobiles: findValue(row, ['guardian.mobiles', 'Guardian Mobiles'])?.split(',') || [],
-                },
-              ],
+              guardians: guardians.length > 0 ? guardians : undefined,
               mediaConsent: findValue(row, ['mediaConsent', 'Media Consent'])?.toLowerCase() === 'true',
               emergencyContact: {
                 name: findValue(row, ['emergencyContact.name', 'Emergency Contact Name']),
