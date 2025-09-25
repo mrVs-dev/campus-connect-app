@@ -20,7 +20,7 @@ import type { Student } from "@/lib/types";
 interface StudentImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImport: (students: Omit<Student, 'studentId' | 'avatarUrl'>[]) => void;
+  onImport: (students: Partial<Student>[]) => void;
 }
 
 // Function to find a value in a row object with case-insensitive and flexible key matching
@@ -107,7 +107,8 @@ export function StudentImportDialog({
                 });
             }
 
-            const student: Omit<Student, 'studentId' | 'avatarUrl'> = {
+            const student: Partial<Student> = {
+              studentId: findValue(row, ['studentId', 'Student ID']),
               firstName: findValue(row, ['firstName', 'First Name']) || '',
               middleName: findValue(row, ['middleName', 'Middle Name']),
               lastName: findValue(row, ['lastName', 'Last Name']) || '',
@@ -137,11 +138,6 @@ export function StudentImportDialog({
                 phone: findValue(row, ['emergencyContact.phone', 'Emergency Contact Phone']),
               },
             };
-            
-            // Remove enrollments if they are empty
-            if (student.enrollments && student.enrollments.length === 0) {
-                delete student.enrollments;
-            }
 
             return student;
           });

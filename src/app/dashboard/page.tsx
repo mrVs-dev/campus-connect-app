@@ -153,7 +153,7 @@ function DashboardContent() {
   };
 
 
-  const handleImportStudents = async (importedStudents: Omit<Student, 'studentId' | 'avatarUrl'>[]) => {
+  const handleImportStudents = async (importedStudents: Partial<Student>[]) => {
     try {
       const newStudents = await importStudents(importedStudents);
       setStudents(prev => [...prev, ...newStudents]);

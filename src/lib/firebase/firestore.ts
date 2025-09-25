@@ -147,20 +147,23 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     return newStudent;
 }
 
-export async function importStudents(studentsData: Omit<Student, 'studentId' | 'avatarUrl'>[]): Promise<Student[]> {
+export async function importStudents(studentsData: Partial<Student>[]): Promise<Student[]> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   
   const batch = writeBatch(db);
   const newStudents: Student[] = [];
+  const studentsCollection = collection(db, "students");
 
   for (const student of studentsData) {
-    const studentsCollection = collection(db, "students");
-    const newDocRef = doc(studentsCollection);
+    // Use provided studentId or generate a new one
+    const studentId = student.studentId || doc(studentsCollection).id;
+    const newDocRef = doc(studentsCollection, studentId);
 
-    const studentForFirestore: Omit<Student, 'studentId' | 'enrollmentDate'> & { enrollmentDate: any } = {
+    const studentForFirestore = {
       ...student,
       // If enrollmentDate is not provided in CSV, use server timestamp
       enrollmentDate: student.enrollmentDate ? student.enrollmentDate : serverTimestamp(),
+      status: student.status || "Active", // Default to active if not specified
     };
   
     // Remove any fields with undefined values before sending to Firestore
@@ -175,7 +178,7 @@ export async function importStudents(studentsData: Omit<Student, 'studentId' | '
     batch.set(newDocRef, dataWithTimestamps);
     
     newStudents.push({
-      ...student,
+      ...(student as Student), // We can be optimistic about the structure
       studentId: newDocRef.id,
       enrollmentDate: student.enrollmentDate || new Date(),
     });

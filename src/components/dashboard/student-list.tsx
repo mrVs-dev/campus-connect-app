@@ -53,7 +53,7 @@ export function StudentList({
   students: Student[];
   assessments: Assessment[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
-  onImportStudents: (students: Omit<Student, 'studentId' | 'avatarUrl'>[]) => void;
+  onImportStudents: (students: Partial<Student>[]) => void;
   onDeleteStudent: (studentId: string) => void;
 }) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(
