@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, Users, User, Calendar as CalendarIcon } from "lucide-react";
+import { BarChart, Users, User, Calendar as CalendarIcon, XIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -59,7 +59,7 @@ function DatePickerWithRange({
   }, [date, onDateChange]);
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -96,6 +96,17 @@ function DatePickerWithRange({
           />
         </PopoverContent>
       </Popover>
+      {date && (
+         <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setDate(undefined)}
+            className="h-8 w-8"
+          >
+            <XIcon className="h-4 w-4" />
+            <span className="sr-only">Clear</span>
+        </Button>
+      )}
     </div>
   )
 }
