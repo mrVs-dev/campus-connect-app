@@ -2,13 +2,14 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
 
 import type { Admission, Enrollment, Student } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -164,6 +165,8 @@ interface AdmissionFormProps {
 
 function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, onCancel }: AdmissionFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+
   const form = useForm<AdmissionFormValues>({
     resolver: zodResolver(admissionFormSchema),
     defaultValues: {
@@ -182,6 +185,13 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
   });
   
   const selectedStudentIds = new Set(fields.map(f => f.studentId));
+
+  const filteredStudents = React.useMemo(() => {
+    if (!searchQuery) return activeStudents;
+    return activeStudents.filter(student => 
+      `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, activeStudents]);
 
   const handleStudentSelect = (studentId: string, checked: boolean) => {
     if (checked) {
@@ -217,9 +227,18 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
             <CardHeader>
                 <CardTitle>Select Students</CardTitle>
                 <CardDescription>Choose the active students to include in this admission year.</CardDescription>
+                 <div className="relative pt-2">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search student name..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-60 overflow-y-auto p-4 border rounded-md">
-                {activeStudents.map(student => (
+                {filteredStudents.map(student => (
                     <FormField
                         key={student.studentId}
                         control={form.control}
@@ -232,7 +251,7 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
                                         onCheckedChange={(checked) => handleStudentSelect(student.studentId, !!checked)}
                                     />
                                 </FormControl>
-                                <FormLabel className="font-normal">
+                                <FormLabel className="font-normal cursor-pointer flex-1">
                                     {student.firstName} {student.lastName}
                                 </FormLabel>
                             </FormItem>
@@ -241,31 +260,34 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
                 ))}
             </CardContent>
         </Card>
-
+        
         {fields.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Assign Programs and Levels</h3>
-            <Accordion type="multiple" className="w-full space-y-2">
-              {fields.map((field, index) => {
-                const student = activeStudents.find(s => s.studentId === field.studentId);
-                return (
-                  <AccordionItem value={field.studentId} key={field.keyId} className="border rounded-md px-4">
-                    <AccordionTrigger className="hover:no-underline">
-                        <span className="font-medium">{student?.firstName} {student?.lastName}</span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <StudentEnrollmentFields studentIndex={index} />
-                      <FormField
-                        control={form.control}
-                        name={`students.${index}.enrollments`}
-                        render={() => <FormMessage className="mt-2" />}
-                      />
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          </div>
+          <>
+            <BulkEnrollmentControl />
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Individual Assignments</h3>
+              <Accordion type="multiple" className="w-full space-y-2">
+                {fields.map((field, index) => {
+                  const student = activeStudents.find(s => s.studentId === field.studentId);
+                  return (
+                    <AccordionItem value={field.studentId} key={field.keyId} className="border rounded-md px-4">
+                      <AccordionTrigger className="hover:no-underline">
+                          <span className="font-medium">{student?.firstName} {student?.lastName}</span>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <StudentEnrollmentFields studentIndex={index} />
+                        <FormField
+                          control={form.control}
+                          name={`students.${index}.enrollments`}
+                          render={() => <FormMessage className="mt-2" />}
+                        />
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </div>
+          </>
         )}
 
         <div className="flex justify-end gap-2 pt-4">
@@ -277,6 +299,61 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
       </form>
     </Form>
   );
+}
+
+function BulkEnrollmentControl() {
+    const { control, setValue, getValues } = useFormContext<AdmissionFormValues>();
+    const [programId, setProgramId] = React.useState('');
+    const [level, setLevel] = React.useState('');
+    const levels = React.useMemo(() => getLevelsForProgram(programId), [programId]);
+    const selectedStudentsCount = getValues("students").length;
+
+    const handleApplyToAll = () => {
+        if (!programId || !level) return;
+        getValues("students").forEach((_, index) => {
+            setValue(`students.${index}.enrollments`, [{ programId, level }]);
+        });
+    };
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Bulk Assign Program</CardTitle>
+                <CardDescription>Apply a program and level to all {selectedStudentsCount} selected student(s).</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col md:flex-row items-end gap-4">
+                <FormItem className="flex-1 w-full">
+                    <FormLabel>Program</FormLabel>
+                    <Select onValueChange={(value) => { setProgramId(value); setLevel(''); }} value={programId}>
+                        <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {programs.map((program) => (
+                                <SelectItem key={program.id} value={program.id}>{program.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </FormItem>
+                <FormItem className="flex-1 w-full">
+                    <FormLabel>Level / Grade</FormLabel>
+                    <Select onValueChange={setLevel} value={level} disabled={!programId}>
+                        <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Select a level" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {levels.map(level => (
+                                <SelectItem key={level} value={level}>{level}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </FormItem>
+                <Button type="button" onClick={handleApplyToAll} disabled={!programId || !level}>
+                    Apply to All
+                </Button>
+            </CardContent>
+        </Card>
+    );
 }
 
 function StudentEnrollmentFields({ studentIndex }: { studentIndex: number }) {
@@ -385,3 +462,5 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
         </div>
       );
 }
+
+    
