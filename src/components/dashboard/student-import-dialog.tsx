@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import type { Student } from "@/lib/types";
 
 interface StudentImportDialogProps {
@@ -65,7 +65,7 @@ export function StudentImportDialog({
 
   const handleImport = () => {
     if (!file) {
-      toast({
+      useToast().toast({
         title: "No file selected",
         description: "Please select a CSV file to import.",
         variant: "destructive",
@@ -78,6 +78,7 @@ export function StudentImportDialog({
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      encoding: "UTF-8",
       complete: (results) => {
         try {
           if (results.errors.length > 0) {
@@ -148,14 +149,14 @@ export function StudentImportDialog({
           
           onImport(parsedStudents);
 
-          toast({
+          useToast().toast({
             title: "Import Successful",
             description: `${results.data.length} student records are being processed.`,
           });
           onOpenChange(false);
           setFile(null);
         } catch (error: any) {
-           toast({
+           useToast().toast({
             title: "Import Failed",
             description: error.message || "Please check the CSV file format and data.",
             variant: "destructive",
@@ -165,7 +166,7 @@ export function StudentImportDialog({
         }
       },
       error: (error) => {
-        toast({
+        useToast().toast({
           title: "Import Failed",
           description: error.message,
           variant: "destructive",
