@@ -28,6 +28,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Student } from "@/lib/types";
 
 
@@ -99,8 +106,9 @@ interface OverviewProps {
 
 export function Overview({ students }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>();
+  const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   
-  const filteredStudents = React.useMemo(() => {
+  const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) {
       return students;
     }
@@ -109,23 +117,30 @@ export function Overview({ students }: OverviewProps) {
     );
   }, [dateRange, students]);
 
-  const totalStudents = students.length;
+  const populationStudents = React.useMemo(() => {
+    if (statusFilter === 'All') {
+      return students;
+    }
+    return students.filter(student => student.status === statusFilter);
+  }, [students, statusFilter]);
+
+  const totalStudents = populationStudents.length;
 
   const genderDistribution = React.useMemo(() => {
-    return students.reduce((acc, student) => {
+    return populationStudents.reduce((acc, student) => {
       const sex = student.sex || 'Other';
       acc[sex] = (acc[sex] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-  }, [students]);
+  }, [populationStudents]);
 
   const enrollmentGenderDistribution = React.useMemo(() => {
-     return filteredStudents.reduce((acc, student) => {
+     return enrollmentFilteredStudents.reduce((acc, student) => {
       const sex = student.sex || 'Other';
       acc[sex] = (acc[sex] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-  }, [filteredStudents]);
+  }, [enrollmentFilteredStudents]);
 
   const pieData = [
     { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0 },
@@ -171,12 +186,22 @@ export function Overview({ students }: OverviewProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>Student Population</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
+           <Select value={statusFilter} onValueChange={(value: Student['status'] | 'All') => setStatusFilter(value)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Inactive">Inactive</SelectItem>
+              <SelectItem value="Graduated">Graduated</SelectItem>
+              <SelectItem value="All">All</SelectItem>
+            </SelectContent>
+          </Select>
         </CardHeader>
         <CardContent>
            <div className="flex flex-col space-y-2">
               <p className="text-3xl font-bold">{totalStudents}</p>
-              <p className="text-xs text-muted-foreground">Total students enrolled</p>
+              <p className="text-xs text-muted-foreground">Total students</p>
               <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1">
                       <User className="h-4 w-4 text-primary" />
@@ -204,7 +229,7 @@ export function Overview({ students }: OverviewProps) {
         <CardContent>
            <div className="grid grid-cols-2 items-center gap-4">
              <div className="flex flex-col space-y-2">
-                <p className="text-3xl font-bold">{filteredStudents.length}</p>
+                <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
                 <p className="text-xs text-muted-foreground">Total enrollments in period</p>
              </div>
              <ChartContainer config={chartConfig} className="h-[150px] w-full">
