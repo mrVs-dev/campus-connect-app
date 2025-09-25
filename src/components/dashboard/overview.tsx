@@ -17,7 +17,7 @@ import {
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
-import { addDays, format, isWithinInterval, startOfQuarter, endOfQuarter } from "date-fns";
+import { addDays, format, isWithinInterval } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -47,16 +47,13 @@ const programShortNames: Record<string, string> = {
 
 function DatePickerWithRange({
   className,
+  value,
   onDateChange,
-}: React.HTMLAttributes<HTMLDivElement> & { onDateChange: (range: DateRange | undefined) => void }) {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: startOfQuarter(new Date()),
-    to: endOfQuarter(new Date()),
-  });
-
-  React.useEffect(() => {
-    onDateChange(date);
-  }, [date, onDateChange]);
+}: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
+  
+  const handleDateSelect = (newDate: DateRange | undefined) => {
+    onDateChange(newDate);
+  };
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -67,18 +64,18 @@ function DatePickerWithRange({
             variant={"outline"}
             className={cn(
               "w-[240px] justify-start text-left font-normal",
-              !date && "text-muted-foreground"
+              !value && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date?.from ? (
-              date.to ? (
+            {value?.from ? (
+              value.to ? (
                 <>
-                  {format(date.from, "LLL dd, y")} -{" "}
-                  {format(date.to, "LLL dd, y")}
+                  {format(value.from, "LLL dd, y")} -{" "}
+                  {format(value.to, "LLL dd, y")}
                 </>
               ) : (
-                format(date.from, "LLL dd, y")
+                format(value.from, "LLL dd, y")
               )
             ) : (
               <span>Pick a date</span>
@@ -89,18 +86,18 @@ function DatePickerWithRange({
           <Calendar
             initialFocus
             mode="range"
-            defaultMonth={date?.from}
-            selected={date}
-            onSelect={setDate}
+            defaultMonth={value?.from}
+            selected={value}
+            onSelect={handleDateSelect}
             numberOfMonths={2}
           />
         </PopoverContent>
       </Popover>
-      {date && (
+      {value && (
          <Button
             variant="ghost"
             size="icon"
-            onClick={() => setDate(undefined)}
+            onClick={() => onDateChange(undefined)}
             className="h-8 w-8"
           >
             <XIcon className="h-4 w-4" />
@@ -117,8 +114,8 @@ interface OverviewProps {
 
 export function Overview({ students }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-    from: startOfQuarter(new Date()),
-    to: endOfQuarter(new Date()),
+    from: new Date(2025, 6, 21), // July is month 6 (0-indexed)
+    to: new Date(),
   });
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   
@@ -245,7 +242,7 @@ export function Overview({ students }: OverviewProps) {
                     <CardTitle>Enrollments</CardTitle>
                     <CardDescription>Number of new enrollments in the selected date range.</CardDescription>
                 </div>
-                <DatePickerWithRange onDateChange={setDateRange} />
+                <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
             </div>
         </CardHeader>
         <CardContent>
@@ -302,3 +299,5 @@ export function Overview({ students }: OverviewProps) {
     </div>
   );
 }
+
+    
