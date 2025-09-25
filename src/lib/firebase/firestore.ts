@@ -155,18 +155,15 @@ export async function importStudents(studentsData: Partial<Student>[]): Promise<
   const studentsCollection = collection(db, "students");
 
   for (const student of studentsData) {
-    // Use provided studentId or generate a new one
     const studentId = student.studentId || doc(studentsCollection).id;
     const newDocRef = doc(studentsCollection, studentId);
 
     const studentForFirestore = {
       ...student,
-      // If enrollmentDate is not provided in CSV, use server timestamp
       enrollmentDate: student.enrollmentDate ? student.enrollmentDate : serverTimestamp(),
-      status: student.status || "Active", // Default to active if not specified
+      status: student.status || "Active",
     };
   
-    // Remove any fields with undefined values before sending to Firestore
     const cleanedStudentData = Object.entries(studentForFirestore).reduce((acc, [key, value]) => {
       if (value !== undefined) {
         (acc as any)[key] = value;
@@ -178,7 +175,7 @@ export async function importStudents(studentsData: Partial<Student>[]): Promise<
     batch.set(newDocRef, dataWithTimestamps);
     
     newStudents.push({
-      ...(student as Student), // We can be optimistic about the structure
+      ...(cleanedStudentData as Student),
       studentId: newDocRef.id,
       enrollmentDate: student.enrollmentDate || new Date(),
     });
