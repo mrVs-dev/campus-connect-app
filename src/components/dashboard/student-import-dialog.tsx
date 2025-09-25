@@ -161,6 +161,9 @@ export function StudentImportDialog({
           <DialogDescription>
             Upload a CSV file with student data. Make sure the file has a
             header row with column names matching the student fields.
+            <a href="/student_import_template.csv" download className="text-primary hover:underline ml-1">
+              Download Template
+            </a>
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
