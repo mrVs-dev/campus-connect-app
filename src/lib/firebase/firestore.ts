@@ -297,5 +297,3 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         teacherId: docRef.id,
     };
 }
-
-    
