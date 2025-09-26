@@ -244,10 +244,14 @@ export async function getAdmissions(): Promise<Admission[]> {
 }
 
 export async function saveAdmission(admissionData: Admission): Promise<void> {
-    if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
-    const admissionDoc = doc(db, 'admissions', admissionData.admissionId);
-    const cleanedAdmission = JSON.parse(JSON.stringify(admissionData));
-    await setDoc(admissionDoc, cleanedAdmission);
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const admissionDocRef = doc(db, 'admissions', admissionData.schoolYear); // Use school year as ID
+    const admissionForFirestore = {
+        ...admissionData,
+        admissionId: admissionData.schoolYear, // Ensure ID is consistent
+    };
+    const cleanedAdmission = JSON.parse(JSON.stringify(admissionForFirestore));
+    await setDoc(admissionDocRef, cleanedAdmission, { merge: true }); // Use merge to avoid overwriting unrelated data if any
 }
 
 // --- Assessments Collection ---
@@ -310,3 +314,5 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         teacherId: docRef.id,
     };
 }
+
+    
