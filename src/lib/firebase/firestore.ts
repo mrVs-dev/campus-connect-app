@@ -198,6 +198,19 @@ export async function deleteStudent(studentId: string): Promise<void> {
     await deleteDoc(studentDoc);
 }
 
+export async function deleteSelectedStudents(studentIds: string[]): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    if (studentIds.length === 0) return;
+
+    const batch = writeBatch(db);
+    studentIds.forEach(id => {
+        const studentDoc = doc(db, 'students', id);
+        batch.delete(studentDoc);
+    });
+
+    await batch.commit();
+}
+
 export async function deleteAllStudents(): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const studentsCollection = collection(db, 'students');

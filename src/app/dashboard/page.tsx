@@ -12,7 +12,7 @@ import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -151,6 +151,24 @@ function DashboardContent() {
       toast({
         title: "Deletion Failed",
         description: "There was an error deleting the student. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteSelectedStudents = async (studentIds: string[]) => {
+    try {
+      await deleteSelectedStudents(studentIds);
+      setStudents(prev => prev.filter(s => !studentIds.includes(s.studentId)));
+      toast({
+        title: "Students Deleted",
+        description: `${studentIds.length} students have been removed.`,
+      });
+    } catch (error) {
+      console.error("Error deleting selected students:", error);
+      toast({
+        title: "Deletion Failed",
+        description: "There was an error deleting the selected students. Please try again.",
         variant: "destructive",
       });
     }
@@ -313,7 +331,7 @@ function DashboardContent() {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Overview students={students} admissions={admissions} />
+            <Overview students={studentsWithLatestEnrollments} admissions={admissions} />
           </TabsContent>
 
           <TabsContent value="students">
@@ -345,6 +363,7 @@ function DashboardContent() {
               onUpdateStudent={handleUpdateStudent}
               onImportStudents={handleImportStudents}
               onDeleteStudent={handleDeleteStudent}
+              onDeleteSelectedStudents={handleDeleteSelectedStudents}
             />
           </TabsContent>
           

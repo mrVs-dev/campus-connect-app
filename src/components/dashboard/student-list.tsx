@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { Student, Assessment } from "@/lib/types";
-import { Upload, MoreHorizontal, ArrowUpDown } from "lucide-react";
+import { Upload, MoreHorizontal, ArrowUpDown, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -42,6 +42,7 @@ import {
 import { StudentPerformanceSheet } from "./student-performance-sheet";
 import { StudentImportDialog } from "./student-import-dialog";
 import { programs } from "@/lib/program-data";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type SortableKey = 'studentId' | 'firstName' | 'sex' | 'status';
 
@@ -51,12 +52,14 @@ export function StudentList({
   onUpdateStudent,
   onImportStudents,
   onDeleteStudent,
+  onDeleteSelectedStudents,
 }: {
   students: Student[];
   assessments: Assessment[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
   onImportStudents: (students: Partial<Student>[]) => void;
   onDeleteStudent: (studentId: string) => void;
+  onDeleteSelectedStudents: (studentIds: string[]) => void;
 }) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(
     null
@@ -64,6 +67,8 @@ export function StudentList({
   const [isImportOpen, setIsImportOpen] = React.useState(false);
   const [studentToDelete, setStudentToDelete] = React.useState<Student | null>(null);
   const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>({ key: 'firstName', direction: 'asc'});
+  const [selectedStudentIds, setSelectedStudentIds] = React.useState<string[]>([]);
+  const [studentsToDelete, setStudentsToDelete] = React.useState<string[]>([]);
 
   const sortedStudents = React.useMemo(() => {
     let sortableStudents = [...students];
@@ -118,6 +123,38 @@ export function StudentList({
       setStudentToDelete(null);
     }
   };
+  
+  const handleSelectStudent = (studentId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedStudentIds((prev) => [...prev, studentId]);
+    } else {
+      setSelectedStudentIds((prev) => prev.filter((id) => id !== studentId));
+    }
+  };
+
+  const handleSelectAll = (isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedStudentIds(students.map((s) => s.studentId));
+    } else {
+      setSelectedStudentIds([]);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedStudentIds.length > 0) {
+      setStudentsToDelete(selectedStudentIds);
+    }
+  };
+
+  const confirmDeleteSelected = () => {
+    onDeleteSelectedStudents(studentsToDelete);
+    setStudentsToDelete([]);
+    setSelectedStudentIds([]);
+  };
+
+  const numSelected = selectedStudentIds.length;
+  const numStudents = students.length;
+  const areAllSelected = numStudents > 0 && numSelected === numStudents;
 
   return (
     <>
@@ -131,23 +168,43 @@ export function StudentList({
                 performance or a header to sort.
               </CardDescription>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1"
-              onClick={() => setIsImportOpen(true)}
-            >
-              <Upload className="h-3.5 w-3.5" />
-              <span className="sr-only sm-not-sr-only sm:whitespace-nowrap">
-                Import Students
-              </span>
-            </Button>
+             <div className="flex items-center gap-2">
+              {numSelected > 0 && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1"
+                  onClick={handleDeleteSelected}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete ({numSelected})
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                onClick={() => setIsImportOpen(true)}
+              >
+                <Upload className="h-3.5 w-3.5" />
+                <span className="sr-only sm-not-sr-only sm:whitespace-nowrap">
+                  Import Students
+                </span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
+                 <TableHead className="w-12">
+                   <Checkbox
+                    checked={areAllSelected}
+                    onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                    aria-label="Select all"
+                  />
+                 </TableHead>
                 <TableHead>
                    <Button variant="ghost" onClick={() => requestSort('firstName')}>
                     Student
@@ -179,15 +236,21 @@ export function StudentList({
             </TableHeader>
             <TableBody>
               {sortedStudents.map((student) => {
-                const { programNames, levels } = getProgramInfo(student.enrollments);
+                const isSelected = selectedStudentIds.includes(student.studentId);
                 return (
                   <TableRow
                     key={student.studentId}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedStudent(student)}
+                    data-state={isSelected && "selected"}
                   >
                     <TableCell>
-                      <div className="flex items-center gap-4">
+                       <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => handleSelectStudent(student.studentId, Boolean(checked))}
+                        aria-label={`Select ${student.firstName}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-4 cursor-pointer" onClick={() => setSelectedStudent(student)}>
                         <Avatar className="hidden h-9 w-9 sm:flex">
                           <AvatarImage
                             src={student.avatarUrl}
@@ -274,6 +337,20 @@ export function StudentList({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={studentsToDelete.length > 0} onOpenChange={(isOpen) => !isOpen && setStudentsToDelete([])}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the {studentsToDelete.length} selected student records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSelected}>Delete Selected</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
