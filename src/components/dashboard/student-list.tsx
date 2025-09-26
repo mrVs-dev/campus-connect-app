@@ -88,17 +88,14 @@ export function StudentList({
   }, [students, searchQuery]);
 
   const sortedStudents = React.useMemo(() => {
-    let sortableStudents = [...filteredStudents];
-    
-    // Default sort: Active first, then by studentId descending
-    sortableStudents.sort((a, b) => {
+    const defaultSorted = [...filteredStudents].sort((a, b) => {
         if (a.status === 'Active' && b.status !== 'Active') return -1;
         if (b.status === 'Active' && a.status !== 'Active') return 1;
         return (b.studentId || '').localeCompare(a.studentId || '');
     });
 
     if (sortConfig !== null) {
-      sortableStudents.sort((a, b) => {
+      return defaultSorted.toSorted((a, b) => {
         const aValue = a[sortConfig.key] || '';
         const bValue = b[sortConfig.key] || '';
         if (aValue < bValue) {
@@ -110,7 +107,7 @@ export function StudentList({
         return 0;
       });
     }
-    return sortableStudents;
+    return defaultSorted;
   }, [filteredStudents, sortConfig]);
   
   const requestSort = (key: SortableKey) => {
