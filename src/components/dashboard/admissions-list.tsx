@@ -324,18 +324,16 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
   const classesByYearProgram = React.useMemo(() => {
     const data: Record<string, Record<string, { level: string; studentCount: number }[]>> = {};
 
-    // First, initialize data structure with all existing admission years to show them even if they have no classes/students.
+    // Initialize with all admission years to show them even if empty
     for (const admission of admissions) {
         if (!data[admission.schoolYear]) {
             data[admission.schoolYear] = {};
         }
     }
 
-    // Next, process all student enrollments to find existing classes and their student counts.
+    // Process all enrollments to find classes and count students
     for (const admission of admissions) {
       const year = admission.schoolYear;
-      if (!data[year]) data[year] = {};
-      
       const classMap = new Map<string, number>(); // Key: 'programId::level'
 
       for (const studentAdmission of admission.students) {
@@ -345,40 +343,30 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
         }
       }
       
-      // Also, we need to find "empty" classes. An empty class is a unique program/level combo
-      // that exists in some student's enrollments somewhere in the system but has 0 students
-      // for *this specific admission year*. This logic is complex. A simpler way is to ensure
-      // that when a class is created, its admission year record is created.
-      // The current logic handles this by creating the admission year shell.
-      
+      // Since an admission year document exists, we can assume it's a place to hold classes.
+      // We will create shells for all programs to ensure they are available for grouping.
+      for (const program of programs) {
+        if (!data[year][program.id]) {
+            data[year][program.id] = [];
+        }
+      }
+
       // Populate the main data structure from the classMap
       for (const [classKey, count] of classMap.entries()) {
         const [programId, level] = classKey.split('::');
         
-        // Ensure programId entry exists for the year
-        if (!data[year][programId]) data[year][programId] = [];
-        
-        // Find if this class already exists in our list
-        const existingClass = data[year][programId].find(c => c.level === level);
+        // Find if this class already exists in our list (it might exist as an empty shell)
+        const existingClass = data[year][programId]?.find(c => c.level === level);
         if (existingClass) {
-          // This case should ideally not happen with Map logic, but as a safeguard:
           existingClass.studentCount = count;
         } else {
-          // Add the new class with its student count
+          // If the programId group doesn't even exist, create it
+          if (!data[year][programId]) data[year][programId] = [];
           data[year][programId].push({ level, studentCount: count });
         }
       }
     }
     
-     // Ensure empty programs defined in program-data also show up for grouping
-    for (const year in data) {
-        for (const program of programs) {
-            if (!data[year][program.id]) {
-                data[year][program.id] = [];
-            }
-        }
-    }
-
     return data;
   }, [admissions]);
 
@@ -410,11 +398,11 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
             <div key={year}>
               <h3 className="text-xl font-semibold mb-4 border-b pb-2">{year}</h3>
               <div className="space-y-6">
-                {Object.keys(classesByYearProgram[year]).length > 0 ? (
+                {Object.values(classesByYearProgram[year]).some(p => p.length > 0) ? (
                     Object.entries(classesByYearProgram[year])
-                      .filter(([_, classes]) => classes.length > 0) // Only show programs that have classes
                       .map(([programId, classes]) => {
                        const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
+                       if (classes.length === 0) return null; // Don't render program group if it has no classes
                        return (
                          <div key={programId}>
                            <h4 className="text-lg font-medium mb-3">{programName}</h4>
@@ -435,7 +423,7 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
                        )
                     })
                 ) : (
-                    <p className="text-sm text-muted-foreground">No classes with students found for this year. You can create a new class.</p>
+                    <p className="text-sm text-muted-foreground">No classes found for this year. You can create a new class.</p>
                 )}
               </div>
             </div>
