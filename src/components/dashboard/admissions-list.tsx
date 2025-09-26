@@ -329,13 +329,17 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
         classMap[admission.schoolYear] = {};
       }
       // Ensure a class "shell" exists even if there are no students yet.
+      // This is crucial for showing newly created, empty classes.
        for (const program of programs) {
         const levels = getLevelsForProgram(program.id);
         for (const level of levels) {
           const classKey = `${program.id}::${level}`;
           const hasStudents = admission.students.some(sa => sa.enrollments.some(e => e.programId === program.id && e.level === level));
-          if (hasStudents && !classMap[admission.schoolYear][classKey]) {
-            classMap[admission.schoolYear][classKey] = { studentIds: new Set() };
+          // Show class if it has students OR if the admission year exists (implying a class might have been created but is empty)
+          if (hasStudents || (!classMap[admission.schoolYear][classKey] && admission.students)) {
+             if (!classMap[admission.schoolYear][classKey]) {
+                classMap[admission.schoolYear][classKey] = { studentIds: new Set() };
+             }
           }
         }
       }
@@ -974,7 +978,3 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
-
-    
-
-    

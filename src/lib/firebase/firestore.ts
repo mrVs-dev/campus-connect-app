@@ -245,7 +245,7 @@ export async function getAdmissions(): Promise<Admission[]> {
 }
 
 export async function saveAdmission(admissionData: Admission): Promise<void> {
-    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const admissionDocRef = doc(db, 'admissions', admissionData.schoolYear); // Use school year as ID
     
     const admissionForFirestore = {
