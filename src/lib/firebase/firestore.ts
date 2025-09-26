@@ -14,7 +14,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment } from "../types";
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -254,6 +254,62 @@ export async function saveAdmission(admissionData: Admission): Promise<void> {
     await setDoc(admissionDocRef, cleanedAdmission, { merge: true }); // Use merge to avoid overwriting unrelated data if any
 }
 
+export async function moveStudentsToClass(studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    
+    const admissionRef = doc(db, 'admissions', schoolYear);
+
+    await runTransaction(db, async (transaction) => {
+        const admissionDoc = await transaction.get(admissionRef);
+        let admissionData: Admission;
+
+        if (!admissionDoc.exists()) {
+            // If the admission year doesn't exist, we can't move students.
+            // Or we could create it, but for now, let's throw an error.
+            throw new Error(`Admission year ${schoolYear} does not exist.`);
+        } else {
+            admissionData = { admissionId: admissionDoc.id, ...admissionDoc.data() } as Admission;
+        }
+
+        const studentSet = new Set(studentIds);
+        
+        // Update existing student admissions
+        admissionData.students.forEach(studentAdmission => {
+            if (studentSet.has(studentAdmission.studentId)) {
+                let enrollments = studentAdmission.enrollments || [];
+                
+                // 1. Remove from the 'from' class if specified
+                if (fromClass) {
+                    enrollments = enrollments.filter(e => 
+                        !(e.programId === fromClass.programId && e.level === fromClass.level)
+                    );
+                }
+
+                // 2. Add to the 'to' class if not already there
+                const alreadyEnrolled = enrollments.some(e => 
+                    e.programId === toClass.programId && e.level === toClass.level
+                );
+                if (!alreadyEnrolled) {
+                    enrollments.push(toClass);
+                }
+                
+                studentAdmission.enrollments = enrollments;
+                studentSet.delete(studentAdmission.studentId); // Mark as processed
+            }
+        });
+
+        // Add students who were not in the admission year at all
+        studentSet.forEach(studentId => {
+            admissionData.students.push({
+                studentId: studentId,
+                enrollments: [toClass]
+            });
+        });
+
+        transaction.set(admissionRef, admissionData);
+    });
+}
+
 // --- Assessments Collection ---
 
 export async function getAssessments(): Promise<Assessment[]> {
@@ -314,5 +370,3 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         teacherId: docRef.id,
     };
 }
-
-    

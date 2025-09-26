@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/components/dashboard/overview";
@@ -12,7 +12,7 @@ import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -65,36 +65,38 @@ function DashboardContent() {
   const [loadingData, setLoadingData] = React.useState(true);
   const { toast } = useToast();
 
-  React.useEffect(() => {
-    async function fetchData() {
-      if (!isFirebaseConfigured) {
-        setLoadingData(false);
-        return;
-      }
-      try {
-        const [studentsData, admissionsData, assessmentsData, teachersData] = await Promise.all([
-          getStudents(), 
-          getAdmissions(),
-          getAssessments(),
-          getTeachers()
-        ]);
-        setStudents(studentsData);
-        setAdmissions(admissionsData);
-        setAssessments(assessmentsData);
-        setTeachers(teachersData);
-      } catch (error) {
-        console.error("Failed to fetch initial data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load data from the server. Please check your Firebase connection and configuration.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingData(false);
-      }
+  const fetchData = React.useCallback(async () => {
+    if (!isFirebaseConfigured) {
+      setLoadingData(false);
+      return;
     }
-    fetchData();
+    try {
+      setLoadingData(true);
+      const [studentsData, admissionsData, assessmentsData, teachersData] = await Promise.all([
+        getStudents(), 
+        getAdmissions(),
+        getAssessments(),
+        getTeachers()
+      ]);
+      setStudents(studentsData);
+      setAdmissions(admissionsData);
+      setAssessments(assessmentsData);
+      setTeachers(teachersData);
+    } catch (error) {
+      console.error("Failed to fetch initial data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load data from the server. Please check your Firebase connection and configuration.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingData(false);
+    }
   }, [toast]);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
     try {
@@ -196,16 +198,9 @@ function DashboardContent() {
   const handleSaveAdmission = async (admissionData: Admission) => {
     try {
       await saveAdmission(admissionData);
-      setAdmissions(prev => {
-        const existingIndex = prev.findIndex(a => a.admissionId === admissionData.admissionId);
-        if (existingIndex > -1) {
-            const updatedAdmissions = [...prev];
-            updatedAdmissions[existingIndex] = admissionData;
-            return updatedAdmissions;
-        } else {
-            return [...prev, admissionData];
-        }
-      });
+      // Refetch admissions data to ensure UI is up-to-date
+      const updatedAdmissions = await getAdmissions();
+      setAdmissions(updatedAdmissions);
       toast({
         title: "Admissions Saved",
         description: `Admission data for ${admissionData.schoolYear} has been saved.`,
@@ -219,6 +214,25 @@ function DashboardContent() {
         variant: "destructive",
       });
       return false;
+    }
+  };
+  
+  const handleMoveStudents = async (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => {
+    try {
+      await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass);
+      // Refetch admissions data to reflect the changes.
+      await fetchData();
+      toast({
+        title: "Students Moved",
+        description: `${studentIds.length} students have been moved successfully.`,
+      });
+    } catch (error) {
+      console.error("Error moving students:", error);
+      toast({
+        title: "Move Failed",
+        description: "There was an error moving the students. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -295,16 +309,22 @@ function DashboardContent() {
     }
 
     const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
-    const latestAdmission = sortedAdmissions[0];
+    
+    // Create a map to hold the most recent enrollments for each student
+    const studentEnrollmentMap = new Map<string, Enrollment[]>();
 
-    if (!latestAdmission) {
-      return students;
-    }
-
-    const admissionMap = new Map(latestAdmission.students.map(s => [s.studentId, s.enrollments]));
+    // Iterate through all admissions to populate the map
+    sortedAdmissions.forEach(admission => {
+      admission.students.forEach(studentAdmission => {
+        // Only update if we haven't seen this student in a more recent year
+        if (!studentEnrollmentMap.has(studentAdmission.studentId)) {
+          studentEnrollmentMap.set(studentAdmission.studentId, studentAdmission.enrollments);
+        }
+      });
+    });
 
     return students.map(student => {
-      const latestEnrollments = admissionMap.get(student.studentId);
+      const latestEnrollments = studentEnrollmentMap.get(student.studentId);
       if (latestEnrollments) {
         return { ...student, enrollments: latestEnrollments };
       }
@@ -360,10 +380,12 @@ function DashboardContent() {
             <StudentList 
               students={studentsWithLatestEnrollments}
               assessments={assessments}
+              admissions={admissions}
               onUpdateStudent={handleUpdateStudent}
               onImportStudents={handleImportStudents}
               onDeleteStudent={handleDeleteStudent}
               onDeleteSelectedStudents={handleDeleteSelectedStudents}
+              onMoveStudents={handleMoveStudents}
             />
           </TabsContent>
           

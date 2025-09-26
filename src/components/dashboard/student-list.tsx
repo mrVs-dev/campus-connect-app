@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import type { Student, Assessment } from "@/lib/types";
-import { Upload, MoreHorizontal, ArrowUpDown, Trash2 } from "lucide-react";
+import type { Student, Assessment, Admission, Enrollment } from "@/lib/types";
+import { Upload, MoreHorizontal, ArrowUpDown, Trash2, Move } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StudentPerformanceSheet } from "./student-performance-sheet";
 import { StudentImportDialog } from "./student-import-dialog";
+import { MoveStudentsDialog } from "./move-students-dialog";
 import { programs } from "@/lib/program-data";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -49,22 +50,27 @@ type SortableKey = 'studentId' | 'firstName' | 'sex' | 'status';
 export function StudentList({
   students,
   assessments,
+  admissions,
   onUpdateStudent,
   onImportStudents,
   onDeleteStudent,
   onDeleteSelectedStudents,
+  onMoveStudents,
 }: {
   students: Student[];
   assessments: Assessment[];
+  admissions: Admission[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
   onImportStudents: (students: Partial<Student>[]) => void;
   onDeleteStudent: (studentId: string) => void;
   onDeleteSelectedStudents: (studentIds: string[]) => void;
+  onMoveStudents: (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => void;
 }) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(
     null
   );
   const [isImportOpen, setIsImportOpen] = React.useState(false);
+  const [isMoveOpen, setIsMoveOpen] = React.useState(false);
   const [studentToDelete, setStudentToDelete] = React.useState<Student | null>(null);
   const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>({ key: 'firstName', direction: 'asc'});
   const [selectedStudentIds, setSelectedStudentIds] = React.useState<string[]>([]);
@@ -94,22 +100,6 @@ export function StudentList({
       direction = 'desc';
     }
     setSortConfig({ key, direction });
-  };
-
-  const getSortIndicator = (key: SortableKey) => {
-    if (!sortConfig || sortConfig.key !== key) {
-      return null;
-    }
-    return sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽';
-  };
-
-  const getProgramInfo = (enrollments?: Student["enrollments"]) => {
-    if (!enrollments || enrollments.length === 0) {
-      return { programNames: ["N/A"], levels: [""] };
-    }
-    const programNames = enrollments.map(e => programs.find(p => p.id === e.programId)?.name || 'Unknown');
-    const levels = enrollments.map(e => e.level);
-    return { programNames, levels };
   };
 
   const handleDeleteClick = (e: React.MouseEvent, student: Student) => {
@@ -152,6 +142,12 @@ export function StudentList({
     setSelectedStudentIds([]);
   };
 
+  const handleMove = (schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => {
+    onMoveStudents(selectedStudentIds, schoolYear, fromClass, toClass);
+    setIsMoveOpen(false);
+    setSelectedStudentIds([]);
+  };
+
   const numSelected = selectedStudentIds.length;
   const numStudents = students.length;
   const areAllSelected = numStudents > 0 && numSelected === numStudents;
@@ -170,15 +166,26 @@ export function StudentList({
             </div>
              <div className="flex items-center gap-2">
               {numSelected > 0 && (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="gap-1"
-                  onClick={handleDeleteSelected}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete ({numSelected})
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={() => setIsMoveOpen(true)}
+                  >
+                    <Move className="h-3.5 w-3.5" />
+                    Move ({numSelected})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1"
+                    onClick={handleDeleteSelected}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete ({numSelected})
+                  </Button>
+                </>
               )}
               <Button
                 size="sm"
@@ -218,10 +225,7 @@ export function StudentList({
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button variant="ghost" onClick={() => requestSort('sex')}>
-                    Gender
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
+                  Current Class
                 </TableHead>
                 <TableHead className="hidden md:table-cell">
                   <Button variant="ghost" onClick={() => requestSort('status')}>
@@ -237,6 +241,13 @@ export function StudentList({
             <TableBody>
               {sortedStudents.map((student) => {
                 const isSelected = selectedStudentIds.includes(student.studentId);
+                const { programNames, levels } = React.useMemo(() => {
+                    const enrollments = student.enrollments || [];
+                    const programNames = enrollments.map(e => programs.find(p => p.id === e.programId)?.name || 'Unknown');
+                    const levels = enrollments.map(e => e.level);
+                    return { programNames, levels };
+                }, [student.enrollments]);
+
                 return (
                   <TableRow
                     key={student.studentId}
@@ -274,7 +285,17 @@ export function StudentList({
                       </div>
                     </TableCell>
                     <TableCell>{student.studentId}</TableCell>
-                    <TableCell>{student.sex || 'N/A'}</TableCell>
+                    <TableCell>
+                       {programNames.length > 0 ? (
+                            programNames.map((name, index) => (
+                                <div key={index} className="text-sm">
+                                    <span className="font-medium">{name}</span> - <span>{levels[index]}</span>
+                                </div>
+                            ))
+                        ) : (
+                            <span className="text-muted-foreground">Not Assigned</span>
+                        )}
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge
                         variant={
@@ -325,6 +346,13 @@ export function StudentList({
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
         onImport={onImportStudents}
+      />
+      <MoveStudentsDialog
+        open={isMoveOpen}
+        onOpenChange={setIsMoveOpen}
+        admissions={admissions}
+        onMove={handleMove}
+        selectedStudentCount={numSelected}
       />
       <AlertDialog open={!!studentToDelete} onOpenChange={(isOpen) => !isOpen && setStudentToDelete(null)}>
         <AlertDialogContent>
