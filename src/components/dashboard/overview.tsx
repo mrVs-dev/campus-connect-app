@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, Users, User, Calendar as CalendarIcon, XIcon } from "lucide-react";
+import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -173,13 +173,11 @@ export function Overview({ students, admissions }: OverviewProps) {
     
     admissionsToConsider.forEach(admission => {
       admission.students.forEach(studentAdmission => {
-        // Find the student record to ensure they match other filters if needed in the future
         const student = students.find(s => s.studentId === studentAdmission.studentId);
         if (student) {
            studentAdmission.enrollments.forEach(enrollment => {
                 const programName = programs.find(p => p.id === enrollment.programId)?.name;
                 if (programName) {
-                    // This is where we count each enrollment, not each student
                     programData[programName].total++;
                     const levelName = enrollment.level;
                     programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
@@ -200,6 +198,10 @@ export function Overview({ students, admissions }: OverviewProps) {
       .filter(p => p.total > 0);
   }, [students, admissions, admissionYearFilter]);
 
+  const totalAdmissions = React.useMemo(() => {
+    return enrollmentsByProgramAndLevel.reduce((acc, program) => acc + program.total, 0);
+  }, [enrollmentsByProgramAndLevel]);
+
   const chartConfig = {
     students: {
       label: "Students",
@@ -219,7 +221,7 @@ export function Overview({ students, admissions }: OverviewProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>Student Population</CardTitle>
@@ -238,8 +240,8 @@ export function Overview({ students, admissions }: OverviewProps) {
           <CardContent>
             <div className="flex flex-col space-y-2">
                 <p className="text-3xl font-bold">{totalStudents}</p>
-                <p className="text-xs text-muted-foreground">Total students</p>
-                <div className="flex items-center gap-4 text-sm">
+                <p className="text-xs text-muted-foreground">Total students (headcount)</p>
+                <div className="flex items-center gap-4 text-sm pt-2">
                     <div className="flex items-center gap-1">
                         <User className="h-4 w-4 text-primary" />
                         <span>{genderDistribution['Male'] || 0} Male</span>
@@ -254,11 +256,25 @@ export function Overview({ students, admissions }: OverviewProps) {
         </Card>
         
         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle>Total Admissions</CardTitle>
+              <BookOpenCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+             <div className="flex flex-col space-y-2">
+                <p className="text-3xl font-bold">{totalAdmissions}</p>
+                <p className="text-xs text-muted-foreground">Total program enrollments</p>
+                 <p className="text-xs text-muted-foreground pt-4">Filtered by <span className="font-semibold">{admissionYearFilter === 'All' ? 'All Years' : admissionYearFilter}</span></p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader>
               <div className="flex items-start justify-between">
                   <div>
                       <CardTitle>New Student Enrollments</CardTitle>
-                      <CardDescription>Headcount of new students in the selected date range.</CardDescription>
+                      <CardDescription>Headcount of new students in a date range.</CardDescription>
                   </div>
                   <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
               </div>
@@ -267,7 +283,7 @@ export function Overview({ students, admissions }: OverviewProps) {
             <div className="grid grid-cols-2 items-center gap-4">
               <div className="flex flex-col space-y-2">
                   <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
-                  <p className="text-xs text-muted-foreground">Total new students in period</p>
+                  <p className="text-xs text-muted-foreground">New students in period</p>
               </div>
               <ChartContainer config={chartConfig} className="h-[100px] w-full">
                   <PieChart accessibilityLayer>
