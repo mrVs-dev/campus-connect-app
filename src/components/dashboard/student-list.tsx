@@ -277,12 +277,9 @@ export function StudentList({
             <TableBody>
               {sortedStudents.map((student) => {
                 const isSelected = selectedStudentIds.includes(student.studentId);
-                const { programNames, levels } = React.useMemo(() => {
-                    const enrollments = student.enrollments || [];
-                    const programNames = enrollments.map(e => programs.find(p => p.id === e.programId)?.name || 'Unknown');
-                    const levels = enrollments.map(e => e.level);
-                    return { programNames, levels };
-                }, [student.enrollments]);
+                const enrollments = student.enrollments || [];
+                const programNames = enrollments.map(e => programs.find(p => p.id === e.programId)?.name || 'Unknown');
+                const levels = enrollments.map(e => e.level);
 
                 return (
                   <TableRow
@@ -432,3 +429,5 @@ export function StudentList({
     </>
   );
 }
+
+    
