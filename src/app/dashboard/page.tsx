@@ -13,7 +13,7 @@ import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass } from "@/lib/firebase/firestore";
-import { useToast, type Toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,16 +57,11 @@ function MissingFirebaseConfig() {
   );
 }
 
-interface DashboardContentProps {
-  toast: ({ ...props }: Toast) => {
-    id: string;
-    dismiss: () => void;
-    update: (props: any) => void;
-  };
-}
+export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
 
-
-function DashboardContent({ toast }: DashboardContentProps) {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
@@ -80,13 +75,10 @@ function DashboardContent({ toast }: DashboardContentProps) {
 
     const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
     
-    // Create a map to hold the most recent enrollments for each student
     const studentEnrollmentMap = new Map<string, Enrollment[]>();
 
-    // Iterate through all admissions to populate the map
     sortedAdmissions.forEach(admission => {
       admission.students.forEach(studentAdmission => {
-        // Only update if we haven't seen this student in a more recent year
         if (!studentEnrollmentMap.has(studentAdmission.studentId)) {
           studentEnrollmentMap.set(studentAdmission.studentId, studentAdmission.enrollments);
         }
@@ -130,10 +122,18 @@ function DashboardContent({ toast }: DashboardContentProps) {
       setLoadingData(false);
     }
   }, [toast]);
+  
+  React.useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (user) {
+      fetchData();
+    }
+  }, [user, fetchData]);
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
     try {
@@ -213,7 +213,6 @@ function DashboardContent({ toast }: DashboardContentProps) {
     }
   };
 
-
   const handleImportStudents = async (importedStudents: Partial<Student>[]) => {
     try {
       const newStudents = await importStudents(importedStudents);
@@ -235,7 +234,6 @@ function DashboardContent({ toast }: DashboardContentProps) {
   const handleSaveAdmission = async (admissionData: Admission, isNewClass: boolean = false) => {
     try {
       await saveAdmission(admissionData, isNewClass);
-      // Refetch admissions data to ensure UI is up-to-date
       const updatedAdmissions = await getAdmissions();
       setAdmissions(updatedAdmissions);
       toast({
@@ -257,7 +255,6 @@ function DashboardContent({ toast }: DashboardContentProps) {
   const handleMoveStudents = async (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => {
     try {
       await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass);
-      // Refetch admissions data to reflect the changes.
       await fetchData();
       toast({
         title: "Students Moved",
@@ -340,8 +337,16 @@ function DashboardContent({ toast }: DashboardContentProps) {
     }
   };
 
-  if (loadingData) {
-    return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading application data...</div>;
+  if (!isFirebaseConfigured) {
+    return <MissingFirebaseConfig />;
+  }
+
+  if (authLoading || loadingData || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        Loading application data...
+      </div>
+    );
   }
 
   return (
@@ -425,34 +430,3 @@ function DashboardContent({ toast }: DashboardContentProps) {
     </div>
   );
 }
-
-export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
-  const { toast } = useToast();
-
-  React.useEffect(() => {
-    if (authLoading) {
-      return; 
-    }
-    if (!user) {
-      router.replace('/login');
-    }
-  }, [user, authLoading, router]);
-
-  if (!isFirebaseConfigured) {
-    return <MissingFirebaseConfig />;
-  }
-  
-  if (authLoading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        Verifying your session...
-      </div>
-    );
-  }
-  
-  return <DashboardContent toast={toast} />;
-}
-
-    
