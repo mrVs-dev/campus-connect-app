@@ -41,6 +41,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { programs, getLevelsForProgram } from "@/lib/program-data";
+import { Label } from "@/components/ui/label";
 
 // Schemas for forms
 const studentAdmissionSchema = z.object({
@@ -802,5 +803,3 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
-
-    
