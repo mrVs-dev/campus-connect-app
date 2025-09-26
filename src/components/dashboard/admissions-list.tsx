@@ -54,10 +54,17 @@ const studentAdmissionSchema = z.object({
     .min(1, "At least one program is required for admission."),
 });
 
+const bulkEnrollmentSchema = z.object({
+  programId: z.string().min(1, "Program is required"),
+  level: z.string().min(1, "Level is required"),
+});
+
 const admissionFormSchema = z.object({
   schoolYear: z.string().min(1, "School year is required"),
   students: z.array(studentAdmissionSchema),
+  bulkEnrollments: z.array(bulkEnrollmentSchema),
 });
+
 
 type AdmissionFormValues = z.infer<typeof admissionFormSchema>;
 
@@ -83,11 +90,8 @@ export function AdmissionsList({
     const nextYear = currentYear + 1;
     const newSchoolYear = `${currentYear}-${nextYear}`;
 
-    if (admissions.some(a => a.schoolYear === newSchoolYear)) {
-      setEditingYear(newSchoolYear);
-    } else {
-      setEditingYear(newSchoolYear);
-    }
+    // Don't pre-populate with any data for a new admission
+    setEditingYear(newSchoolYear);
   };
   
   const handleEdit = (admission: Admission) => {
@@ -185,6 +189,7 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
     defaultValues: {
       schoolYear: schoolYear,
       students: defaultStudents,
+      bulkEnrollments: [{ programId: "", level: "" }],
     },
   });
 
@@ -195,13 +200,14 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
   });
   
   const selectedStudentIds = new Set(fields.map(f => f.studentId));
+  const availableStudents = activeStudents.filter(s => !selectedStudentIds.has(s.studentId));
 
-  const filteredStudents = React.useMemo(() => {
-    if (!searchQuery) return activeStudents;
-    return activeStudents.filter(student => 
+  const filteredAvailableStudents = React.useMemo(() => {
+    if (!searchQuery) return availableStudents;
+    return availableStudents.filter(student => 
       `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [searchQuery, activeStudents]);
+  }, [searchQuery, availableStudents]);
 
   const handleStudentSelect = (studentId: string, checked: boolean) => {
     if (checked) {
@@ -237,8 +243,8 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
 
         <Card>
             <CardHeader>
-                <CardTitle>Select Students</CardTitle>
-                <CardDescription>Choose the active students to include in this admission year.</CardDescription>
+                <CardTitle>Select Students to Add</CardTitle>
+                <CardDescription>Choose students to add to this admission year.</CardDescription>
                  <div className="relative pt-2">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -250,11 +256,11 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
                 </div>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-60 overflow-y-auto p-4 border rounded-md">
-                {filteredStudents.map(student => (
+                {filteredAvailableStudents.map(student => (
                     <FormItem key={student.studentId} className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3">
                         <FormControl>
                             <Checkbox
-                                checked={selectedStudentIds.has(student.studentId)}
+                                checked={false} // Always unchecked as we are only adding
                                 onCheckedChange={(checked) => handleStudentSelect(student.studentId, !!checked)}
                                 id={`student-${student.studentId}`}
                             />
@@ -271,13 +277,13 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
           <>
             <BulkEnrollmentControl />
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Individual Assignments</h3>
+              <h3 className="text-lg font-semibold">Individual Assignments ({fields.length} student(s) in this admission)</h3>
               <Accordion type="multiple" className="w-full space-y-2">
                 {fields.map((field, index) => {
                   const student = activeStudents.find(s => s.studentId === field.studentId);
                   return (
                     <AccordionItem value={field.studentId} key={field.keyId} className="border rounded-md px-4">
-                      <AccordionTrigger className="hover:no-underline">
+                      <AccordionTrigger className="hover:no-underline flex justify-between w-full">
                           <span className="font-medium">{student?.firstName} {student?.lastName}</span>
                       </AccordionTrigger>
                       <AccordionContent>
@@ -287,6 +293,9 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
                           name={`students.${index}.enrollments`}
                           render={() => <FormMessage className="mt-2" />}
                         />
+                         <Button type="button" variant="link" className="text-destructive px-0 mt-2" onClick={() => handleStudentSelect(field.studentId, false)}>
+                           Remove from this admission
+                          </Button>
                       </AccordionContent>
                     </AccordionItem>
                   );
@@ -308,59 +317,111 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
 }
 
 function BulkEnrollmentControl() {
-    const { control, setValue, getValues } = useFormContext<AdmissionFormValues>();
-    const [programId, setProgramId] = React.useState('');
-    const [level, setLevel] = React.useState('');
-    const levels = React.useMemo(() => getLevelsForProgram(programId), [programId]);
-    const selectedStudentsCount = getValues("students").length;
+  const { control, setValue, getValues } = useFormContext<AdmissionFormValues>();
+  const selectedStudentsCount = getValues("students").length;
 
-    const handleApplyToAll = () => {
-        if (!programId || !level) return;
-        getValues("students").forEach((_, index) => {
-            setValue(`students.${index}.enrollments`, [{ programId, level }]);
-        });
-    };
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "bulkEnrollments",
+  });
+
+  const handleApplyToAll = () => {
+    const bulkEnrollments = getValues("bulkEnrollments").filter(e => e.programId && e.level);
+    if (bulkEnrollments.length === 0) return;
     
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Bulk Assign Program</CardTitle>
-                <CardDescription>Apply a program and level to all {selectedStudentsCount} selected student(s).</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col md:flex-row items-end gap-4">
-                <FormItem className="flex-1 w-full">
-                    <FormLabel>Program</FormLabel>
-                    <Select onValueChange={(value) => { setProgramId(value); setLevel(''); }} value={programId}>
-                        <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            {programs.map((program) => (
-                                <SelectItem key={program.id} value={program.id}>{program.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </FormItem>
-                <FormItem className="flex-1 w-full">
-                    <FormLabel>Level / Grade</FormLabel>
-                    <Select onValueChange={setLevel} value={level} disabled={!programId}>
-                        <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select a level" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            {levels.map(level => (
-                                <SelectItem key={level} value={level}>{level}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </FormItem>
-                <Button type="button" onClick={handleApplyToAll} disabled={!programId || !level}>
-                    Apply to All
-                </Button>
-            </CardContent>
-        </Card>
-    );
+    getValues("students").forEach((_, index) => {
+        setValue(`students.${index}.enrollments`, bulkEnrollments);
+    });
+  };
+    
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Bulk Assign Programs</CardTitle>
+        <CardDescription>
+          Configure programs and levels below, then click "Apply to All" to assign them to all {selectedStudentsCount} selected student(s). This will overwrite any individual assignments.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {fields.map((field, index) => (
+          <BulkEnrollmentRow key={field.id} index={index} onRemove={() => remove(index)} isOnlyOne={fields.length === 1} />
+        ))}
+        <div className="flex items-center justify-between pt-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => append({ programId: "", level: "" })}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Program
+          </Button>
+          <Button type="button" onClick={handleApplyToAll}>
+            Apply to All
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
+
+function BulkEnrollmentRow({ index, onRemove, isOnlyOne }: { index: number; onRemove: () => void; isOnlyOne: boolean; }) {
+  const { control, watch, setValue } = useFormContext<AdmissionFormValues>();
+  const programId = watch(`bulkEnrollments.${index}.programId`);
+  const levels = React.useMemo(() => getLevelsForProgram(programId), [programId]);
+
+  return (
+    <div className="flex items-end gap-4 p-4 border rounded-md relative bg-muted/50">
+      <FormField
+        control={control}
+        name={`bulkEnrollments.${index}.programId`}
+        render={({ field }) => (
+          <FormItem className="flex-1">
+            <FormLabel>Program</FormLabel>
+            <Select onValueChange={(value) => { field.onChange(value); setValue(`bulkEnrollments.${index}.level`, ''); }} value={field.value}>
+              <FormControl>
+                <SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {programs.map((program) => (
+                  <SelectItem key={program.id} value={program.id}>{program.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name={`bulkEnrollments.${index}.level`}
+        render={({ field }) => (
+          <FormItem className="flex-1">
+            <FormLabel>Level / Grade</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value} disabled={!programId}>
+              <FormControl>
+                <SelectTrigger><SelectValue placeholder="Select a level" /></SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {levels.map(level => (
+                  <SelectItem key={level} value={level}>{level}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      {!isOnlyOne && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9"
+          onClick={onRemove}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
 
 function StudentEnrollmentFields({ studentIndex }: { studentIndex: number }) {
   const { control } = useFormContext<AdmissionFormValues>();
@@ -468,5 +529,7 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
         </div>
       );
 }
+
+    
 
     

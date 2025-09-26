@@ -107,10 +107,7 @@ interface OverviewProps {
 }
 
 export function Overview({ students, admissions }: OverviewProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-    from: new Date(2025, 6, 21),
-    to: new Date(),
-  });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
   
@@ -182,6 +179,7 @@ export function Overview({ students, admissions }: OverviewProps) {
            studentAdmission.enrollments.forEach(enrollment => {
                 const programName = programs.find(p => p.id === enrollment.programId)?.name;
                 if (programName) {
+                    // This is where we count each enrollment, not each student
                     programData[programName].total++;
                     const levelName = enrollment.level;
                     programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
@@ -307,42 +305,48 @@ export function Overview({ students, admissions }: OverviewProps) {
             </Select>
         </CardHeader>
         <CardContent className="grid gap-6">
-          {enrollmentsByProgramAndLevel.map((program) => (
-            <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
-              <div className="flex flex-col space-y-2">
-                <p className="font-semibold text-lg">{program.name}</p>
-                <p className="text-4xl font-bold">{program.total}</p>
-                <p className="text-sm text-muted-foreground">Total Enrollments</p>
+          {enrollmentsByProgramAndLevel.length > 0 ? (
+            enrollmentsByProgramAndLevel.map((program) => (
+              <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
+                <div className="flex flex-col space-y-2">
+                  <p className="font-semibold text-lg">{program.name}</p>
+                  <p className="text-4xl font-bold">{program.total}</p>
+                  <p className="text-sm text-muted-foreground">Total Enrollments</p>
+                </div>
+                <div className="md:col-span-2">
+                  <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                    <RechartsBarChart 
+                      data={program.levels} 
+                      layout="vertical"
+                      margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
+                    >
+                      <CartesianGrid horizontal={false} />
+                      <YAxis
+                        dataKey="level"
+                        type="category"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        interval={0}
+                        width={80}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} allowDecimals={false} />
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent indicator="dot" />}
+                      />
+                      <Bar dataKey="students" fill="var(--color-students)" radius={4} barSize={15} />
+                    </RechartsBarChart>
+                  </ChartContainer>
+                </div>
               </div>
-              <div className="md:col-span-2">
-                <ChartContainer config={chartConfig} className="h-[200px] w-full">
-                  <RechartsBarChart 
-                    data={program.levels} 
-                    layout="vertical"
-                    margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
-                  >
-                    <CartesianGrid horizontal={false} />
-                    <YAxis
-                      dataKey="level"
-                      type="category"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={8}
-                      interval={0}
-                      width={80}
-                      tick={{ fontSize: 12 }}
-                    />
-                    <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} allowDecimals={false} />
-                    <ChartTooltip
-                      cursor={false}
-                      content={<ChartTooltipContent indicator="dot" />}
-                    />
-                    <Bar dataKey="students" fill="var(--color-students)" radius={4} barSize={15} />
-                  </RechartsBarChart>
-                </ChartContainer>
-              </div>
+            ))
+          ) : (
+            <div className="text-center text-muted-foreground py-8">
+              No admission data available for the selected year.
             </div>
-          ))}
+          )}
         </CardContent>
       </Card>
     </div>
