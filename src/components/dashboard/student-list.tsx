@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import type { Student, Assessment, Admission, Enrollment } from "@/lib/types";
-import { Upload, MoreHorizontal, ArrowUpDown, Trash2, Move } from "lucide-react";
+import { Upload, MoreHorizontal, ArrowUpDown, Trash2, Move, Search, Edit } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,10 +43,11 @@ import {
 import { StudentPerformanceSheet } from "./student-performance-sheet";
 import { StudentImportDialog } from "./student-import-dialog";
 import { MoveStudentsDialog } from "./move-students-dialog";
+import { EditStudentSheet } from "./edit-student-sheet";
 import { programs } from "@/lib/program-data";
 import { Checkbox } from "@/components/ui/checkbox";
 
-type SortableKey = 'studentId' | 'firstName' | 'sex' | 'status';
+type SortableKey = 'studentId' | 'firstName' | 'status';
 
 export function StudentList({
   students,
@@ -66,18 +68,35 @@ export function StudentList({
   onDeleteSelectedStudents: (studentIds: string[]) => void;
   onMoveStudents: (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => void;
 }) {
-  const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(
-    null
-  );
+  const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(null);
+  const [studentToEdit, setStudentToEdit] = React.useState<Student | null>(null);
   const [isImportOpen, setIsImportOpen] = React.useState(false);
   const [isMoveOpen, setIsMoveOpen] = React.useState(false);
   const [studentToDelete, setStudentToDelete] = React.useState<Student | null>(null);
-  const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>({ key: 'firstName', direction: 'asc'});
+  const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = React.useState<string[]>([]);
   const [studentsToDelete, setStudentsToDelete] = React.useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  const filteredStudents = React.useMemo(() => {
+    if (!searchQuery) {
+      return students;
+    }
+    return students.filter(student =>
+      `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [students, searchQuery]);
 
   const sortedStudents = React.useMemo(() => {
-    let sortableStudents = [...students];
+    let sortableStudents = [...filteredStudents];
+    
+    // Default sort: Active first, then by studentId descending
+    sortableStudents.sort((a, b) => {
+        if (a.status === 'Active' && b.status !== 'Active') return -1;
+        if (b.status === 'Active' && a.status !== 'Active') return 1;
+        return (b.studentId || '').localeCompare(a.studentId || '');
+    });
+
     if (sortConfig !== null) {
       sortableStudents.sort((a, b) => {
         const aValue = a[sortConfig.key] || '';
@@ -92,7 +111,7 @@ export function StudentList({
       });
     }
     return sortableStudents;
-  }, [students, sortConfig]);
+  }, [filteredStudents, sortConfig]);
   
   const requestSort = (key: SortableKey) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -105,6 +124,11 @@ export function StudentList({
   const handleDeleteClick = (e: React.MouseEvent, student: Student) => {
     e.stopPropagation();
     setStudentToDelete(student);
+  };
+  
+  const handleEditClick = (e: React.MouseEvent, student: Student) => {
+    e.stopPropagation();
+    setStudentToEdit(student);
   };
   
   const confirmDelete = () => {
@@ -124,7 +148,7 @@ export function StudentList({
 
   const handleSelectAll = (isSelected: boolean) => {
     if (isSelected) {
-      setSelectedStudentIds(students.map((s) => s.studentId));
+      setSelectedStudentIds(sortedStudents.map((s) => s.studentId));
     } else {
       setSelectedStudentIds([]);
     }
@@ -147,24 +171,40 @@ export function StudentList({
     setIsMoveOpen(false);
     setSelectedStudentIds([]);
   };
+  
+  const handleUpdateStudent = (studentId: string, updatedData: Partial<Student>) => {
+    onUpdateStudent(studentId, updatedData);
+    setStudentToEdit(null); // Close the sheet on save
+  };
+
 
   const numSelected = selectedStudentIds.length;
-  const numStudents = students.length;
+  const numStudents = sortedStudents.length;
   const areAllSelected = numStudents > 0 && numSelected === numStudents;
 
   return (
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-4">
+             <div className="flex-1">
               <CardTitle>Class Roster</CardTitle>
               <CardDescription>
-                A list of all students. Click a student to view their
-                performance or a header to sort.
+                A list of all students. Default sort is Active, then newest.
               </CardDescription>
             </div>
-             <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search students..."
+                  className="w-full pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
+          </div>
+           <div className="mt-4 flex items-center justify-end gap-2">
               {numSelected > 0 && (
                 <>
                   <Button
@@ -199,7 +239,6 @@ export function StudentList({
                 </span>
               </Button>
             </div>
-          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -318,7 +357,12 @@ export function StudentList({
                             <DropdownMenuItem onSelect={() => setSelectedStudent(student)}>
                               View Details
                             </DropdownMenuItem>
+                             <DropdownMenuItem onSelect={(e) => handleEditClick(e, student)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Profile
+                            </DropdownMenuItem>
                             <DropdownMenuItem onSelect={(e) => handleDeleteClick(e, student)} className="text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -341,6 +385,12 @@ export function StudentList({
           }
         }}
         onUpdateStudent={onUpdateStudent}
+      />
+       <EditStudentSheet
+        student={studentToEdit}
+        open={!!studentToEdit}
+        onOpenChange={(isOpen) => !isOpen && setStudentToEdit(null)}
+        onSave={handleUpdateStudent}
       />
       <StudentImportDialog
         open={isImportOpen}
