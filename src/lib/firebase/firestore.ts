@@ -252,20 +252,10 @@ export async function saveAdmission(admissionData: Admission): Promise<void> {
         ...admissionData,
         admissionId: admissionData.schoolYear, // Ensure ID is consistent
     };
-
-    const docSnap = await getDoc(admissionDocRef);
-    if (!docSnap.exists() && admissionData.students.length === 0) {
-        // This handles the "Create Class" case where we just want to create the admission year shell.
-        await setDoc(admissionDocRef, { 
-            admissionId: admissionData.schoolYear,
-            schoolYear: admissionData.schoolYear,
-            students: [],
-        });
-    } else {
-        // For all other cases (adding/updating students), use set with merge.
-        const cleanedAdmission = JSON.parse(JSON.stringify(admissionForFirestore));
-        await setDoc(admissionDocRef, cleanedAdmission, { merge: true });
-    }
+    
+    // Use set with merge to handle both creation of new admission years and updates to existing ones.
+    const cleanedAdmission = JSON.parse(JSON.stringify(admissionForFirestore));
+    await setDoc(admissionDocRef, cleanedAdmission, { merge: true });
 }
 
 

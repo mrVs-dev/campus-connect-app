@@ -236,11 +236,13 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
     const existingAdmission = admissions.find(a => a.schoolYear === values.schoolYear);
     
     // Check if class already exists
-    const classExists = existingAdmission?.students.some(s => s.enrollments.some(e => e.programId === values.programId && e.level === values.level));
-    if (classExists) {
-        form.setError("level", { message: "This class already exists for the selected school year." });
-        setIsSubmitting(false);
-        return;
+    if (existingAdmission) {
+      const classExists = existingAdmission.students.some(s => s.enrollments.some(e => e.programId === values.programId && e.level === values.level));
+      if (classExists) {
+          form.setError("level", { message: "This class already exists for the selected school year." });
+          setIsSubmitting(false);
+          return;
+      }
     }
     
     // If admission year doesn't exist, create it. Otherwise, use existing.
@@ -324,47 +326,44 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
   const classesByYearProgram = React.useMemo(() => {
     const data: Record<string, Record<string, { level: string; studentCount: number }[]>> = {};
 
-    // Initialize with all admission years to show them even if empty
+    // First, initialize the data structure with all years and programs to ensure they are rendered.
     for (const admission of admissions) {
         if (!data[admission.schoolYear]) {
             data[admission.schoolYear] = {};
         }
+        for (const program of programs) {
+            if (!data[admission.schoolYear][program.id]) {
+                data[admission.schoolYear][program.id] = [];
+            }
+        }
     }
 
-    // Process all enrollments to find classes and count students
+    // Now, populate with actual class data and student counts.
     for (const admission of admissions) {
-      const year = admission.schoolYear;
-      const classMap = new Map<string, number>(); // Key: 'programId::level'
+        const year = admission.schoolYear;
+        const classMap = new Map<string, number>(); // Key: 'programId::level'
 
-      for (const studentAdmission of admission.students) {
-        for (const enrollment of studentAdmission.enrollments) {
-          const classKey = `${enrollment.programId}::${enrollment.level}`;
-          classMap.set(classKey, (classMap.get(classKey) || 0) + 1);
+        for (const studentAdmission of admission.students) {
+            for (const enrollment of studentAdmission.enrollments) {
+                const classKey = `${enrollment.programId}::${enrollment.level}`;
+                classMap.set(classKey, (classMap.get(classKey) || 0) + 1);
+            }
         }
-      }
-      
-      // Since an admission year document exists, we can assume it's a place to hold classes.
-      // We will create shells for all programs to ensure they are available for grouping.
-      for (const program of programs) {
-        if (!data[year][program.id]) {
-            data[year][program.id] = [];
-        }
-      }
-
-      // Populate the main data structure from the classMap
-      for (const [classKey, count] of classMap.entries()) {
-        const [programId, level] = classKey.split('::');
         
-        // Find if this class already exists in our list (it might exist as an empty shell)
-        const existingClass = data[year][programId]?.find(c => c.level === level);
-        if (existingClass) {
-          existingClass.studentCount = count;
-        } else {
-          // If the programId group doesn't even exist, create it
-          if (!data[year][programId]) data[year][programId] = [];
-          data[year][programId].push({ level, studentCount: count });
+        // Populate the main data structure from the classMap
+        for (const [classKey, count] of classMap.entries()) {
+            const [programId, level] = classKey.split('::');
+            
+            // This ensures program group exists if it wasn't pre-initialized (edge case)
+            if (!data[year][programId]) data[year][programId] = [];
+            
+            const existingClassIndex = data[year][programId].findIndex(c => c.level === level);
+            if (existingClassIndex > -1) {
+                data[year][programId][existingClassIndex].studentCount = count;
+            } else {
+                data[year][programId].push({ level, studentCount: count });
+            }
         }
-      }
     }
     
     return data;
@@ -398,9 +397,8 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
             <div key={year}>
               <h3 className="text-xl font-semibold mb-4 border-b pb-2">{year}</h3>
               <div className="space-y-6">
-                {Object.values(classesByYearProgram[year]).some(p => p.length > 0) ? (
-                    Object.entries(classesByYearProgram[year])
-                      .map(([programId, classes]) => {
+                 {Object.entries(classesByYearProgram[year])
+                    .map(([programId, classes]) => {
                        const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
                        if (classes.length === 0) return null; // Don't render program group if it has no classes
                        return (
@@ -422,9 +420,9 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
                          </div>
                        )
                     })
-                ) : (
+                    .filter(Boolean).length === 0 ? (
                     <p className="text-sm text-muted-foreground">No classes found for this year. You can create a new class.</p>
-                )}
+                ) : null}
               </div>
             </div>
           ))
@@ -1002,7 +1000,5 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
-
-    
 
     
