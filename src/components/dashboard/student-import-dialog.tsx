@@ -86,7 +86,12 @@ export function StudentImportDialog({
             throw new Error(`CSV Parsing Error: ${results.errors[0].message}`);
           }
 
-          const parsedStudents = results.data.map((row: any) => {
+          const validData = results.data.filter((row: any) => {
+            const firstName = findValue(row, ['firstName', 'First Name']);
+            return firstName && firstName.trim() !== '';
+          });
+
+          const parsedStudents = validData.map((row: any) => {
             const statusStr = findValue(row, ['status']) || 'Active';
             const status : Student['status'] = statusStr.toLowerCase() === 'inactive' ? 'Inactive' : (statusStr.toLowerCase() === 'graduated' ? 'Graduated' : 'Active');
 
@@ -152,7 +157,7 @@ export function StudentImportDialog({
 
           toast({
             title: "Import Successful",
-            description: `${results.data.length} student records are being processed.`,
+            description: `${parsedStudents.length} student records are being processed.`,
           });
           onOpenChange(false);
           setFile(null);
