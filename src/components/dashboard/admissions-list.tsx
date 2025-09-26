@@ -127,7 +127,7 @@ export function AdmissionsList({
       <CardContent>
         {editingYear ? (
           <AdmissionForm
-            key={editingYear} // Add key to force re-mount on year change
+            key={editingYear} 
             schoolYear={editingYear}
             activeStudents={activeStudents}
             existingAdmission={editingAdmission}
@@ -196,10 +196,12 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
 
   const handleStudentSelect = (studentId: string, checked: boolean) => {
     if (checked) {
-      append({
-        studentId,
-        enrollments: [{ programId: "", level: "" }],
-      });
+      if (!selectedStudentIds.has(studentId)) {
+        append({
+          studentId,
+          enrollments: [{ programId: "", level: "" }],
+        });
+      }
     } else {
       const indexToRemove = fields.findIndex(f => f.studentId === studentId);
       if (indexToRemove > -1) {
@@ -240,24 +242,18 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-60 overflow-y-auto p-4 border rounded-md">
                 {filteredStudents.map(student => (
-                    <FormField
-                        key={student.studentId}
-                        control={form.control}
-                        name="students"
-                        render={() => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={selectedStudentIds.has(student.studentId)}
-                                        onCheckedChange={(checked) => handleStudentSelect(student.studentId, !!checked)}
-                                    />
-                                </FormControl>
-                                <FormLabel className="font-normal cursor-pointer flex-1">
-                                    {student.firstName} {student.lastName}
-                                </FormLabel>
-                            </FormItem>
-                        )}
-                    />
+                    <FormItem key={student.studentId} className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3">
+                        <FormControl>
+                            <Checkbox
+                                checked={selectedStudentIds.has(student.studentId)}
+                                onCheckedChange={(checked) => handleStudentSelect(student.studentId, !!checked)}
+                                id={`student-${student.studentId}`}
+                            />
+                        </FormControl>
+                        <FormLabel htmlFor={`student-${student.studentId}`} className="font-normal cursor-pointer flex-1">
+                            {student.firstName} {student.lastName}
+                        </FormLabel>
+                    </FormItem>
                 ))}
             </CardContent>
         </Card>
