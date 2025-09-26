@@ -263,6 +263,8 @@ function ClassEditor({ admissions, allStudents, classInfo, onSave, onCancel }: {
     });
     
     const selectedStudentIds = new Set(form.watch('studentIds'));
+    
+    // Available students are all active students not already selected for *this* class roster
     const availableStudents = allStudents.filter(s => !selectedStudentIds.has(s.studentId));
 
     const filteredAvailableStudents = React.useMemo(() => {
