@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
 
-import type { Admission, Enrollment, Student } from "@/lib/types";
+import type { Admission, Student } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -127,6 +127,7 @@ export function AdmissionsList({
       <CardContent>
         {editingYear ? (
           <AdmissionForm
+            key={editingYear} // Add key to force re-mount on year change
             schoolYear={editingYear}
             activeStudents={activeStudents}
             existingAdmission={editingAdmission}
@@ -210,7 +211,7 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
   async function onSubmit(values: AdmissionFormValues) {
     setIsSubmitting(true);
     const newAdmission: Admission = {
-        admissionId: values.schoolYear,
+        admissionId: existingAdmission?.admissionId || values.schoolYear,
         schoolYear: values.schoolYear,
         students: values.students
     };
