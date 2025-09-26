@@ -261,11 +261,6 @@ function ClassEditor({ admissions, allStudents, classInfo, onSave, onCancel }: {
             studentIds: studentsInClass,
         }
     });
-
-    const { fields } = useFieldArray({
-        control: form.control,
-        name: "studentIds"
-    });
     
     const selectedStudentIds = new Set(form.watch('studentIds'));
     const availableStudents = allStudents.filter(s => !selectedStudentIds.has(s.studentId));
@@ -803,3 +798,5 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
+
+    

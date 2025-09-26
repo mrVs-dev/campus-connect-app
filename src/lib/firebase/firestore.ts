@@ -264,9 +264,11 @@ export async function moveStudentsToClass(studentIds: string[], schoolYear: stri
         let admissionData: Admission;
 
         if (!admissionDoc.exists()) {
-            // If the admission year doesn't exist, we can't move students.
-            // Or we could create it, but for now, let's throw an error.
-            throw new Error(`Admission year ${schoolYear} does not exist.`);
+            admissionData = {
+                admissionId: schoolYear,
+                schoolYear: schoolYear,
+                students: []
+            };
         } else {
             admissionData = { admissionId: admissionDoc.id, ...admissionDoc.data() } as Admission;
         }
@@ -370,3 +372,5 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         teacherId: docRef.id,
     };
 }
+
+    
