@@ -321,43 +321,49 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
 
 // Class-based View Components
 function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Admission[], students: Student[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
-  const classesByYear = React.useMemo(() => {
-    const classMap: Record<string, Record<string, { studentIds: Set<string> }>> = {};
+  const classesByYearProgram = React.useMemo(() => {
+    const data: Record<string, Record<string, { level: string; studentCount: number }[]>> = {};
 
     for (const admission of admissions) {
-      if (!classMap[admission.schoolYear]) {
-        classMap[admission.schoolYear] = {};
-      }
-      // Ensure a class "shell" exists even if there are no students yet.
-      // This is crucial for showing newly created, empty classes.
-       for (const program of programs) {
-        const levels = getLevelsForProgram(program.id);
-        for (const level of levels) {
-          const classKey = `${program.id}::${level}`;
-          const hasStudents = admission.students.some(sa => sa.enrollments.some(e => e.programId === program.id && e.level === level));
-          // Show class if it has students OR if the admission year exists (implying a class might have been created but is empty)
-          if (hasStudents || (!classMap[admission.schoolYear][classKey] && admission.students)) {
-             if (!classMap[admission.schoolYear][classKey]) {
-                classMap[admission.schoolYear][classKey] = { studentIds: new Set() };
-             }
-          }
-        }
+      const year = admission.schoolYear;
+      if (!data[year]) {
+        data[year] = {};
       }
 
+      // Initialize all possible programs and levels to ensure empty classes are shown
+      for (const program of programs) {
+        if (!data[year][program.id]) {
+          data[year][program.id] = [];
+        }
+        const levels = getLevelsForProgram(program.id);
+        for (const level of levels) {
+           const hasClass = admission.students.some(sa => sa.enrollments.some(e => e.programId === program.id && e.level === level));
+           if (hasClass && !data[year][program.id].some(c => c.level === level)) {
+              data[year][program.id].push({ level, studentCount: 0 });
+           }
+        }
+      }
+      
+      // Populate student counts
       for (const studentAdmission of admission.students) {
         for (const enrollment of studentAdmission.enrollments) {
-          const classKey = `${enrollment.programId}::${enrollment.level}`;
-          if (!classMap[admission.schoolYear][classKey]) {
-            classMap[admission.schoolYear][classKey] = { studentIds: new Set() };
+          const { programId, level } = enrollment;
+          if (!data[year][programId]) {
+            data[year][programId] = [];
           }
-          classMap[admission.schoolYear][classKey].studentIds.add(studentAdmission.studentId);
+          let classInfo = data[year][programId].find(c => c.level === level);
+          if (!classInfo) {
+            classInfo = { level, studentCount: 0 };
+            data[year][programId].push(classInfo);
+          }
+          classInfo.studentCount++;
         }
       }
     }
-    return classMap;
+    return data;
   }, [admissions]);
 
-  const sortedYears = Object.keys(classesByYear).sort((a, b) => b.localeCompare(a));
+  const sortedYears = Object.keys(classesByYearProgram).sort((a, b) => b.localeCompare(a));
 
   return (
     <Card className="border-0 shadow-none">
@@ -379,27 +385,33 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
           </Button>
         </div>
       </CardHeader>
-       <CardContent className="space-y-6 pt-4">
+       <CardContent className="space-y-8 pt-4">
         {sortedYears.length > 0 ? (
           sortedYears.map(year => (
             <div key={year}>
-              <h3 className="text-lg font-semibold mb-2">{year}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(classesByYear[year]).map(([classKey, data]) => {
-                  const [programId, level] = classKey.split('::');
-                  const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
-                  return (
-                    <Card key={classKey}>
-                      <CardHeader>
-                        <CardTitle className="text-base">{programName}</CardTitle>
-                        <CardDescription>{level}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="flex items-center justify-between">
-                        <p className="text-sm">{data.studentIds.size} student(s)</p>
-                        <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, level)}>Edit Class</Button>
-                      </CardContent>
-                    </Card>
-                  );
+              <h3 className="text-xl font-semibold mb-4 border-b pb-2">{year}</h3>
+              <div className="space-y-6">
+                {Object.entries(classesByYearProgram[year]).map(([programId, classes]) => {
+                   if (classes.length === 0) return null;
+                   const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
+                   return (
+                     <div key={programId}>
+                       <h4 className="text-lg font-medium mb-3">{programName}</h4>
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {classes.sort((a,b) => a.level.localeCompare(b.level)).map(classInfo => (
+                           <Card key={classInfo.level}>
+                              <CardHeader>
+                                <CardTitle className="text-base">{classInfo.level}</CardTitle>
+                                <CardDescription>{classInfo.studentCount} student(s)</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, classInfo.level)}>Edit Class</Button>
+                              </CardContent>
+                            </Card>
+                        ))}
+                       </div>
+                     </div>
+                   )
                 })}
               </div>
             </div>
