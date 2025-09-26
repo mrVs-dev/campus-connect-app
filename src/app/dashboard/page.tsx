@@ -195,9 +195,9 @@ function DashboardContent() {
     }
   };
 
-  const handleSaveAdmission = async (admissionData: Admission) => {
+  const handleSaveAdmission = async (admissionData: Admission, isNewClass: boolean = false) => {
     try {
-      await saveAdmission(admissionData);
+      await saveAdmission(admissionData, isNewClass);
       // Refetch admissions data to ensure UI is up-to-date
       const updatedAdmissions = await getAdmissions();
       setAdmissions(updatedAdmissions);

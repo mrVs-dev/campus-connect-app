@@ -93,6 +93,5 @@ export interface Admission {
   admissionId: string; // e.g., '2025-2026'
   schoolYear: string;
   students: StudentAdmission[];
+  classes?: Enrollment[]; // To store empty class definitions
 }
-
-    

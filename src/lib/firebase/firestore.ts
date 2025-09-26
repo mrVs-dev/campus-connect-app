@@ -244,18 +244,20 @@ export async function getAdmissions(): Promise<Admission[]> {
     });
 }
 
-export async function saveAdmission(admissionData: Admission): Promise<void> {
-    if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
-    const admissionDocRef = doc(db, 'admissions', admissionData.schoolYear); // Use school year as ID
-    
-    const admissionForFirestore = {
-        ...admissionData,
-        admissionId: admissionData.schoolYear, // Ensure ID is consistent
-    };
-    
-    // Use set with merge to handle both creation of new admission years and updates to existing ones.
-    const cleanedAdmission = JSON.parse(JSON.stringify(admissionForFirestore));
-    await setDoc(admissionDocRef, cleanedAdmission, { merge: true });
+export async function saveAdmission(admissionData: Admission, isNewClass: boolean = false): Promise<void> {
+    if (!db) throw new Error("Firestore is not initialized");
+    const admissionDocRef = doc(db, 'admissions', admissionData.schoolYear);
+
+    // Sanitize data before saving
+    const cleanedData = JSON.parse(JSON.stringify(admissionData));
+
+    if (isNewClass) {
+        // Use set with merge to create the doc if it doesn't exist or add the new class to it
+        await setDoc(admissionDocRef, cleanedData, { merge: true });
+    } else {
+        // Use set without merge to overwrite the entire document for roster updates
+        await setDoc(admissionDocRef, cleanedData);
+    }
 }
 
 
@@ -272,7 +274,8 @@ export async function moveStudentsToClass(studentIds: string[], schoolYear: stri
             admissionData = {
                 admissionId: schoolYear,
                 schoolYear: schoolYear,
-                students: []
+                students: [],
+                classes: [],
             };
         } else {
             admissionData = { admissionId: admissionDoc.id, ...admissionDoc.data() } as Admission;
@@ -377,5 +380,3 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         teacherId: docRef.id,
     };
 }
-
-    

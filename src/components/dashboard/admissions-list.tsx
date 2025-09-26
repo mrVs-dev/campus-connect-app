@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
 
-import type { Admission, Student, Enrollment } from "@/lib/types";
+import type { Admission, Student, Enrollment, StudentAdmission } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -80,7 +80,7 @@ type AdmissionFormValues = z.infer<typeof admissionFormSchema>;
 interface AdmissionsListProps {
   admissions: Admission[];
   students: Student[];
-  onSave: (admission: Admission) => Promise<boolean>;
+  onSave: (admission: Admission, isNewClass?: boolean) => Promise<boolean>;
 }
 
 // Main Component
@@ -120,8 +120,8 @@ export function AdmissionsList({
     setEditingClass(null);
   };
 
-  const handleSaveAdmission = async (admissionData: Admission) => {
-    const success = await onSave(admissionData);
+  const handleSaveAdmission = async (admissionData: Admission, isNewClass: boolean = false) => {
+    const success = await onSave(admissionData, isNewClass);
     if (success) {
       handleCancel();
     }
@@ -174,7 +174,6 @@ export function AdmissionsList({
             <TabsContent value="classes">
               <ClassList 
                 admissions={admissions} 
-                students={students} 
                 onEditClass={handleEditClass}
                 onCreateClass={() => setIsCreateClassOpen(true)}
               />
@@ -207,7 +206,7 @@ const createClassSchema = z.object({
 });
 type CreateClassFormValues = z.infer<typeof createClassSchema>;
 
-function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: boolean, onOpenChange: (open: boolean) => void, admissions: Admission[], onSave: (admission: Admission) => Promise<boolean> }) {
+function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: boolean, onOpenChange: (open: boolean) => void, admissions: Admission[], onSave: (admission: Admission, isNewClass?: boolean) => Promise<boolean> }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const form = useForm<CreateClassFormValues>({
     resolver: zodResolver(createClassSchema),
@@ -237,20 +236,27 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
     
     // Check if class already exists
     if (existingAdmission) {
-      const classExists = existingAdmission.students.some(s => s.enrollments.some(e => e.programId === values.programId && e.level === values.level));
-      if (classExists) {
-          form.setError("level", { message: "This class already exists for the selected school year." });
-          setIsSubmitting(false);
-          return;
-      }
+        const classExists = existingAdmission.classes?.some(c => c.programId === values.programId && c.level === values.level) || 
+                          existingAdmission.students.some(s => s.enrollments.some(e => e.programId === values.programId && e.level === values.level));
+        if (classExists) {
+            form.setError("level", { message: "This class already exists for the selected school year." });
+            setIsSubmitting(false);
+            return;
+        }
     }
     
     // If admission year doesn't exist, create it. Otherwise, use existing.
-    const admissionToSave = existingAdmission 
+    const admissionToSave: Admission = existingAdmission 
       ? JSON.parse(JSON.stringify(existingAdmission)) // Deep copy
-      : { admissionId: values.schoolYear, schoolYear: values.schoolYear, students: [] };
+      : { admissionId: values.schoolYear, schoolYear: values.schoolYear, students: [], classes: [] };
     
-    const success = await onSave(admissionToSave);
+    // Add the new empty class definition
+    if (!admissionToSave.classes) {
+        admissionToSave.classes = [];
+    }
+    admissionToSave.classes.push({ programId: values.programId, level: values.level });
+    
+    const success = await onSave(admissionToSave, true);
     if (success) {
       onOpenChange(false);
     }
@@ -322,50 +328,52 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
 
 
 // Class-based View Components
-function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Admission[], students: Student[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
+function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Admission[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
   const classesByYearProgram = React.useMemo(() => {
-    const data: Record<string, Record<string, { level: string; studentCount: number }[]>> = {};
+    type ClassInfo = { level: string; studentCount: number };
+    type ProgramData = Record<string, ClassInfo[]>;
+    const data: Record<string, ProgramData> = {};
 
-    // First, initialize the data structure with all years and programs to ensure they are rendered.
-    for (const admission of admissions) {
-        if (!data[admission.schoolYear]) {
-            data[admission.schoolYear] = {};
-        }
-        for (const program of programs) {
-            if (!data[admission.schoolYear][program.id]) {
-                data[admission.schoolYear][program.id] = [];
-            }
-        }
-    }
+    admissions.forEach(admission => {
+      const year = admission.schoolYear;
+      if (!data[year]) {
+        data[year] = {};
+        programs.forEach(p => { data[year][p.id] = [] });
+      }
 
-    // Now, populate with actual class data and student counts.
-    for (const admission of admissions) {
-        const year = admission.schoolYear;
-        const classMap = new Map<string, number>(); // Key: 'programId::level'
+      const classStudentCount = new Map<string, number>(); // key: programId::level
 
-        for (const studentAdmission of admission.students) {
-            for (const enrollment of studentAdmission.enrollments) {
-                const classKey = `${enrollment.programId}::${enrollment.level}`;
-                classMap.set(classKey, (classMap.get(classKey) || 0) + 1);
+      // Count students in each class
+      admission.students.forEach(student => {
+        student.enrollments.forEach(enrollment => {
+          const key = `${enrollment.programId}::${enrollment.level}`;
+          classStudentCount.set(key, (classStudentCount.get(key) || 0) + 1);
+        });
+      });
+
+      const allKnownClasses = new Set<string>();
+
+      // Add classes with students
+      for (const [key, count] of classStudentCount.entries()) {
+        const [programId, level] = key.split('::');
+        if (!data[year][programId]) data[year][programId] = [];
+        data[year][programId].push({ level, studentCount: count });
+        allKnownClasses.add(key);
+      }
+      
+      // Add empty classes
+      if (admission.classes) {
+        admission.classes.forEach(cls => {
+            const key = `${cls.programId}::${cls.level}`;
+            if (!allKnownClasses.has(key)) {
+               if (!data[year][cls.programId]) data[year][cls.programId] = [];
+               data[year][cls.programId].push({ level: cls.level, studentCount: 0 });
+               allKnownClasses.add(key);
             }
-        }
-        
-        // Populate the main data structure from the classMap
-        for (const [classKey, count] of classMap.entries()) {
-            const [programId, level] = classKey.split('::');
-            
-            // This ensures program group exists if it wasn't pre-initialized (edge case)
-            if (!data[year][programId]) data[year][programId] = [];
-            
-            const existingClassIndex = data[year][programId].findIndex(c => c.level === level);
-            if (existingClassIndex > -1) {
-                data[year][programId][existingClassIndex].studentCount = count;
-            } else {
-                data[year][programId].push({ level, studentCount: count });
-            }
-        }
-    }
-    
+        });
+      }
+    });
+
     return data;
   }, [admissions]);
 
@@ -701,7 +709,11 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
     const newAdmission: Admission = {
       admissionId: existingAdmission?.admissionId || values.schoolYear,
       schoolYear: values.schoolYear,
-      students: values.students
+      students: values.students.map(s => ({
+        studentId: s.studentId,
+        enrollments: s.enrollments,
+      })),
+      classes: existingAdmission?.classes || [],
     };
     await onSave(newAdmission);
     setIsSubmitting(false);
@@ -1000,5 +1012,3 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
-
-    
