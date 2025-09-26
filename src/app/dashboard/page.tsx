@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const [teachers, setTeachers] = React.useState<Teacher[]>([]);
   const [loadingData, setLoadingData] = React.useState(true);
 
+  // Memoize the derived student data to prevent expensive recalculations on every render
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
       return students;
@@ -93,6 +94,7 @@ export default function DashboardPage() {
       return student;
     });
   }, [students, admissions]);
+
 
   const fetchData = React.useCallback(async () => {
     if (!isFirebaseConfigured) {
@@ -141,7 +143,7 @@ export default function DashboardPage() {
       setStudents(prev => [...prev, newStudent]);
       toast({
         title: "Enrollment Successful",
-        description: `${newStudent.firstName} has been added to the roster.`,
+        description: `${newStudent.firstName} has been added with ID ${newStudent.studentId}.`,
       });
       return true;
     } catch (error) {
