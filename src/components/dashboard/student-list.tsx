@@ -194,7 +194,7 @@ export function StudentList({
                 onClick={() => setIsImportOpen(true)}
               >
                 <Upload className="h-3.5 w-3.5" />
-                <span className="sr-only sm-not-sr-only sm:whitespace-nowrap">
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                   Import Students
                 </span>
               </Button>
@@ -251,7 +251,7 @@ export function StudentList({
                 return (
                   <TableRow
                     key={student.studentId}
-                    data-state={isSelected && "selected"}
+                    data-state={isSelected ? "selected" : undefined}
                   >
                     <TableCell>
                        <Checkbox
