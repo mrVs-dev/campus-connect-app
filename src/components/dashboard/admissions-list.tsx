@@ -83,7 +83,6 @@ export function AdmissionsList({
     const nextYear = currentYear + 1;
     const newSchoolYear = `${currentYear}-${nextYear}`;
 
-    // Prevent creating a new year if it already exists to avoid confusion
     if (admissions.some(a => a.schoolYear === newSchoolYear)) {
       setEditingYear(newSchoolYear);
     } else {
@@ -174,8 +173,6 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   
-  // This is the key fix: Initialize the form with existing students ONLY IF we are editing.
-  // Otherwise, start with an empty array for new admissions.
   const defaultStudents = existingAdmission
     ? existingAdmission.students.map(s => ({
         ...s,

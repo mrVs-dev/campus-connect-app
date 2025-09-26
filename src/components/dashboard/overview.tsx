@@ -108,7 +108,7 @@ interface OverviewProps {
 
 export function Overview({ students, admissions }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-    from: new Date(2025, 6, 21), // July is month 6 (0-indexed)
+    from: new Date(2025, 6, 21),
     to: new Date(),
   });
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
@@ -118,7 +118,6 @@ export function Overview({ students, admissions }: OverviewProps) {
     if (!dateRange?.from) {
       return students;
     }
-    // Make sure to include the whole day for the 'to' date
     const toDate = dateRange.to ? addDays(dateRange.to, 1) : undefined;
     
     return students.filter(student => {
@@ -174,18 +173,13 @@ export function Overview({ students, admissions }: OverviewProps) {
     const admissionsToConsider = admissionYearFilter === 'All'
       ? admissions
       : admissions.filter(a => a.schoolYear === admissionYearFilter);
-
-    const studentEnrollmentsMap = new Map<string, any[]>();
+    
     admissionsToConsider.forEach(admission => {
       admission.students.forEach(studentAdmission => {
-        studentEnrollmentsMap.set(studentAdmission.studentId, studentAdmission.enrollments);
-      });
-    });
-    
-    students.forEach(student => {
-        const enrollments = studentEnrollmentsMap.get(student.studentId) || student.enrollments;
-        if (enrollments) {
-            enrollments.forEach(enrollment => {
+        // Find the student record to ensure they match other filters if needed in the future
+        const student = students.find(s => s.studentId === studentAdmission.studentId);
+        if (student) {
+           studentAdmission.enrollments.forEach(enrollment => {
                 const programName = programs.find(p => p.id === enrollment.programId)?.name;
                 if (programName) {
                     programData[programName].total++;
@@ -194,15 +188,16 @@ export function Overview({ students, admissions }: OverviewProps) {
                 }
             });
         }
+      });
     });
-
+    
     return Object.entries(programData)
       .map(([name, data]) => ({
         name,
         ...data,
         levels: Object.entries(data.levels)
           .map(([level, count]) => ({ level, students: count }))
-          .sort((a,b) => a.level.localeCompare(b.level)), // Sort levels
+          .sort((a,b) => a.level.localeCompare(b.level)),
       }))
       .filter(p => p.total > 0);
   }, [students, admissions, admissionYearFilter]);
@@ -265,7 +260,7 @@ export function Overview({ students, admissions }: OverviewProps) {
               <div className="flex items-start justify-between">
                   <div>
                       <CardTitle>Enrollments</CardTitle>
-                      <CardDescription>New enrollments in the selected date range.</CardDescription>
+                      <CardDescription>New student enrollments in the selected date range.</CardDescription>
                   </div>
                   <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
               </div>
@@ -274,7 +269,7 @@ export function Overview({ students, admissions }: OverviewProps) {
             <div className="grid grid-cols-2 items-center gap-4">
               <div className="flex flex-col space-y-2">
                   <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
-                  <p className="text-xs text-muted-foreground">Total enrollments in period</p>
+                  <p className="text-xs text-muted-foreground">Total new students in period</p>
               </div>
               <ChartContainer config={chartConfig} className="h-[100px] w-full">
                   <PieChart accessibilityLayer>
@@ -298,7 +293,7 @@ export function Overview({ students, admissions }: OverviewProps) {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Admission by Program</CardTitle>
-            <CardDescription>Student distribution across different programs and levels.</CardDescription>
+            <CardDescription>Enrollment distribution across different programs and levels.</CardDescription>
           </div>
            <Select value={admissionYearFilter} onValueChange={setAdmissionYearFilter}>
               <SelectTrigger className="w-[180px]">
@@ -317,7 +312,7 @@ export function Overview({ students, admissions }: OverviewProps) {
               <div className="flex flex-col space-y-2">
                 <p className="font-semibold text-lg">{program.name}</p>
                 <p className="text-4xl font-bold">{program.total}</p>
-                <p className="text-sm text-muted-foreground">Total Students</p>
+                <p className="text-sm text-muted-foreground">Total Enrollments</p>
               </div>
               <div className="md:col-span-2">
                 <ChartContainer config={chartConfig} className="h-[200px] w-full">
@@ -353,3 +348,5 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
+
+    
