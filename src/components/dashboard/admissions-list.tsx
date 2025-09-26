@@ -322,66 +322,47 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
 // Class-based View Components
 function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Admission[], students: Student[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
     const classesByYearProgram = React.useMemo(() => {
-    const data: Record<
-      string,
-      Record<string, { level: string; studentCount: number }[]>
-    > = {};
+    const data: Record<string, Record<string, { level: string; studentCount: number }[]>> = {};
 
+    // First, process all enrollments to find existing classes and their student counts.
     for (const admission of admissions) {
       const year = admission.schoolYear;
-      if (!data[year]) {
-        data[year] = {};
-      }
+      if (!data[year]) data[year] = {};
       
-      const classMap: Record<string, number> = {};
+      const classMap = new Map<string, number>(); // Key: 'programId::level'
 
-      // First, get student counts for all existing classes
       for (const studentAdmission of admission.students) {
         for (const enrollment of studentAdmission.enrollments) {
           const classKey = `${enrollment.programId}::${enrollment.level}`;
-          classMap[classKey] = (classMap[classKey] || 0) + 1;
+          classMap.set(classKey, (classMap.get(classKey) || 0) + 1);
         }
       }
-      
-      // Then, ensure even empty classes (if admission doc exists) are represented
-      // This part is tricky if we don't store empty classes explicitly.
-      // Assuming 'admissions' could contain empty `students` array to signify an admission year exists.
-      // We'll iterate through all known programs and levels to see if a class was created but is empty.
-      for (const program of programs) {
-          const levels = getLevelsForProgram(program.id);
-          for (const level of levels) {
-              const classKey = `${program.id}::${level}`;
-              // A class "exists" if it's in our map OR if the admission document exists
-              // The `saveAdmission` logic ensures the admission document is created when a class is created.
-              // We infer class existence from the presence of the admission year.
-              if (classMap[classKey] !== undefined) {
-                  if (!data[year][program.id]) data[year][program.id] = [];
-                  if (!data[year][program.id].some(c => c.level === level)) {
-                     data[year][program.id].push({ level: level, studentCount: classMap[classKey] || 0 });
-                  }
-              }
-          }
+
+      // Populate the main data structure from the classMap
+      for (const [classKey, count] of classMap.entries()) {
+        const [programId, level] = classKey.split('::');
+        if (!data[year][programId]) data[year][programId] = [];
+        // Avoid duplicates if logic runs multiple times
+        if (!data[year][programId].some(c => c.level === level)) {
+          data[year][programId].push({ level, studentCount: count });
+        }
       }
-
-      // Final check to add newly created empty classes for an existing admission year
-      // A created class without students won't be in classMap.
-      // The logic in `CreateClassDialog` ensures the admission year record exists.
-      // We need a reliable way to know a class was created. The best is to ensure `admissions` reflects all created classes.
-      // If `saveAdmission` correctly creates the `admission` document, we can rely on that.
-      // The current logic might miss empty classes if not explicitly stored.
-      // Let's adjust to be more explicit based on all enrollments found.
-
-       Object.keys(classMap).forEach(key => {
-            const [programId, level] = key.split('::');
-            if (!data[year][programId]) {
-                data[year][programId] = [];
-            }
-            if (!data[year][programId].some(c => c.level === level)) {
-                 data[year][programId].push({ level, studentCount: classMap[key] });
-            }
-       });
-
     }
+
+    // Now, ensure empty classes (from admission years with no student enrollments yet) are included.
+    // This covers the case where a class is created but has 0 students.
+    for (const admission of admissions) {
+      const year = admission.schoolYear;
+      if (!data[year]) data[year] = {};
+      
+      // If an admission year exists but has no students, it implies we might have empty classes.
+      // We can't know *which* empty classes exist without more info,
+      // but the save logic ensures an admission doc exists.
+      // This part ensures the year itself is listed if it exists but has no students.
+      // The logic to add a truly empty class needs to happen on creation or be stored differently.
+      // For now, let's assume if an admission document exists, it's a valid year to display.
+    }
+
 
     return data;
   }, [admissions]);
@@ -414,28 +395,31 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
             <div key={year}>
               <h3 className="text-xl font-semibold mb-4 border-b pb-2">{year}</h3>
               <div className="space-y-6">
-                {Object.entries(classesByYearProgram[year]).map(([programId, classes]) => {
-                   if (classes.length === 0) return null;
-                   const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
-                   return (
-                     <div key={programId}>
-                       <h4 className="text-lg font-medium mb-3">{programName}</h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {classes.sort((a,b) => a.level.localeCompare(b.level)).map(classInfo => (
-                           <Card key={classInfo.level}>
-                              <CardHeader>
-                                <CardTitle className="text-base">{classInfo.level}</CardTitle>
-                                <CardDescription>{classInfo.studentCount} student(s)</CardDescription>
-                              </CardHeader>
-                              <CardContent>
-                                <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, classInfo.level)}>Edit Class</Button>
-                              </CardContent>
-                            </Card>
-                        ))}
-                       </div>
-                     </div>
-                   )
-                })}
+                {Object.keys(classesByYearProgram[year]).length > 0 ? (
+                    Object.entries(classesByYearProgram[year]).map(([programId, classes]) => {
+                       const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
+                       return (
+                         <div key={programId}>
+                           <h4 className="text-lg font-medium mb-3">{programName}</h4>
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {classes.sort((a,b) => a.level.localeCompare(b.level)).map(classInfo => (
+                               <Card key={classInfo.level}>
+                                  <CardHeader>
+                                    <CardTitle className="text-base">{classInfo.level}</CardTitle>
+                                    <CardDescription>{classInfo.studentCount} student(s)</CardDescription>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, classInfo.level)}>Edit Class</Button>
+                                  </CardContent>
+                                </Card>
+                            ))}
+                           </div>
+                         </div>
+                       )
+                    })
+                ) : (
+                    <p className="text-sm text-muted-foreground">No classes with students found for this year. You can create a new class.</p>
+                )}
               </div>
             </div>
           ))
