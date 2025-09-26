@@ -1,4 +1,5 @@
 
+
 import { 
   collection, 
   getDocs, 
@@ -246,13 +247,27 @@ export async function getAdmissions(): Promise<Admission[]> {
 export async function saveAdmission(admissionData: Admission): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const admissionDocRef = doc(db, 'admissions', admissionData.schoolYear); // Use school year as ID
+    
     const admissionForFirestore = {
         ...admissionData,
         admissionId: admissionData.schoolYear, // Ensure ID is consistent
     };
-    const cleanedAdmission = JSON.parse(JSON.stringify(admissionForFirestore));
-    await setDoc(admissionDocRef, cleanedAdmission, { merge: true }); // Use merge to avoid overwriting unrelated data if any
+
+    const docSnap = await getDoc(admissionDocRef);
+    if (!docSnap.exists() && admissionData.students.length === 0) {
+        // This handles the "Create Class" case where we just want to create the admission year shell.
+        await setDoc(admissionDocRef, { 
+            admissionId: admissionData.schoolYear,
+            schoolYear: admissionData.schoolYear,
+            students: [],
+        });
+    } else {
+        // For all other cases (adding/updating students), use set with merge.
+        const cleanedAdmission = JSON.parse(JSON.stringify(admissionForFirestore));
+        await setDoc(admissionDocRef, cleanedAdmission, { merge: true });
+    }
 }
+
 
 export async function moveStudentsToClass(studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");

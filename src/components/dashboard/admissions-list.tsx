@@ -18,6 +18,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -83,6 +91,7 @@ export function AdmissionsList({
 }: AdmissionsListProps) {
   const [editingYear, setEditingYear] = React.useState<string | null>(null);
   const [editingClass, setEditingClass] = React.useState<{ year: string; programId: string; level: string } | null>(null);
+  const [isCreateClassOpen, setIsCreateClassOpen] = React.useState(false);
 
   const activeStudents = React.useMemo(() => {
     return students.filter((s) => s.status === "Active");
@@ -148,37 +157,170 @@ export function AdmissionsList({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Admissions Management</CardTitle>
-        <CardDescription>
-          Manage student admissions by class or by school year.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="classes">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="classes">Classes</TabsTrigger>
-            <TabsTrigger value="years">Admission Years</TabsTrigger>
-          </TabsList>
-          <TabsContent value="classes">
-            <ClassList admissions={admissions} students={students} onEditClass={handleEditClass} />
-          </TabsContent>
-          <TabsContent value="years">
-            <AdmissionYearList
-              admissions={admissions}
-              onEditYear={handleEditYear}
-              onCreateNewYear={handleCreateNewYear}
-            />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Admissions Management</CardTitle>
+          <CardDescription>
+            Manage student admissions by class or by school year.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="classes">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="classes">Classes</TabsTrigger>
+              <TabsTrigger value="years">Admission Years</TabsTrigger>
+            </TabsList>
+            <TabsContent value="classes">
+              <ClassList 
+                admissions={admissions} 
+                students={students} 
+                onEditClass={handleEditClass}
+                onCreateClass={() => setIsCreateClassOpen(true)}
+              />
+            </TabsContent>
+            <TabsContent value="years">
+              <AdmissionYearList
+                admissions={admissions}
+                onEditYear={handleEditYear}
+                onCreateNewYear={handleCreateNewYear}
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+      <CreateClassDialog
+        open={isCreateClassOpen}
+        onOpenChange={setIsCreateClassOpen}
+        admissions={admissions}
+        onSave={handleSaveAdmission}
+      />
+    </>
   );
 }
 
+// Class Creation Dialog
+const createClassSchema = z.object({
+  schoolYear: z.string().regex(/^\d{4}-\d{4}$/, "School year must be in YYYY-YYYY format."),
+  programId: z.string().min(1, "Program is required."),
+  level: z.string().min(1, "Level is required."),
+});
+type CreateClassFormValues = z.infer<typeof createClassSchema>;
+
+function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: boolean, onOpenChange: (open: boolean) => void, admissions: Admission[], onSave: (admission: Admission) => Promise<boolean> }) {
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const form = useForm<CreateClassFormValues>({
+    resolver: zodResolver(createClassSchema),
+    defaultValues: {
+      schoolYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      programId: "",
+      level: "",
+    },
+  });
+
+  const watchedProgramId = form.watch("programId");
+  const levels = React.useMemo(() => getLevelsForProgram(watchedProgramId), [watchedProgramId]);
+
+  React.useEffect(() => {
+    if (open) {
+      form.reset({
+        schoolYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+        programId: "",
+        level: "",
+      });
+    }
+  }, [open, form]);
+
+  const onSubmit = async (values: CreateClassFormValues) => {
+    setIsSubmitting(true);
+    const existingAdmission = admissions.find(a => a.schoolYear === values.schoolYear);
+    
+    // Check if class already exists
+    const classExists = existingAdmission?.students.some(s => s.enrollments.some(e => e.programId === values.programId && e.level === values.level));
+    if (classExists) {
+        form.setError("level", { message: "This class already exists for the selected school year." });
+        setIsSubmitting(false);
+        return;
+    }
+    
+    // If admission year doesn't exist, create it. Otherwise, use existing.
+    const admissionToSave = existingAdmission 
+      ? JSON.parse(JSON.stringify(existingAdmission)) // Deep copy
+      : { admissionId: values.schoolYear, schoolYear: values.schoolYear, students: [] };
+    
+    const success = await onSave(admissionToSave);
+    if (success) {
+      onOpenChange(false);
+    }
+    setIsSubmitting(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New Class</DialogTitle>
+          <DialogDescription>Define a new class by specifying its school year, program, and level. You can add students after creating it.</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
+            <FormField
+              control={form.control}
+              name="schoolYear"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>School Year</FormLabel>
+                  <FormControl><Input placeholder="e.g., 2024-2025" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="programId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Program</FormLabel>
+                  <Select onValueChange={(value) => { field.onChange(value); form.setValue('level', ''); }} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {programs.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="level"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Level / Grade</FormLabel>
+                   <Select onValueChange={field.onChange} value={field.value} disabled={!watchedProgramId}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select a level" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                       {levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
+              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Creating..." : "Create Class"}</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 // Class-based View Components
-function ClassList({ admissions, students, onEditClass }: { admissions: Admission[], students: Student[], onEditClass: (year: string, programId: string, level: string) => void }) {
+function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Admission[], students: Student[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
   const classesByYear = React.useMemo(() => {
     const classMap: Record<string, Record<string, { studentIds: Set<string> }>> = {};
 
@@ -186,6 +328,18 @@ function ClassList({ admissions, students, onEditClass }: { admissions: Admissio
       if (!classMap[admission.schoolYear]) {
         classMap[admission.schoolYear] = {};
       }
+      // Ensure a class "shell" exists even if there are no students yet.
+       for (const program of programs) {
+        const levels = getLevelsForProgram(program.id);
+        for (const level of levels) {
+          const classKey = `${program.id}::${level}`;
+          const hasStudents = admission.students.some(sa => sa.enrollments.some(e => e.programId === program.id && e.level === level));
+          if (hasStudents && !classMap[admission.schoolYear][classKey]) {
+            classMap[admission.schoolYear][classKey] = { studentIds: new Set() };
+          }
+        }
+      }
+
       for (const studentAdmission of admission.students) {
         for (const enrollment of studentAdmission.enrollments) {
           const classKey = `${enrollment.programId}::${enrollment.level}`;
@@ -202,35 +356,55 @@ function ClassList({ admissions, students, onEditClass }: { admissions: Admissio
   const sortedYears = Object.keys(classesByYear).sort((a, b) => b.localeCompare(a));
 
   return (
-    <div className="space-y-6 pt-4">
-      {sortedYears.length > 0 ? (
-        sortedYears.map(year => (
-          <div key={year}>
-            <h3 className="text-lg font-semibold mb-2">{year}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(classesByYear[year]).map(([classKey, data]) => {
-                const [programId, level] = classKey.split('::');
-                const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
-                return (
-                  <Card key={classKey}>
-                    <CardHeader>
-                      <CardTitle className="text-base">{programName}</CardTitle>
-                      <CardDescription>{level}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-between">
-                      <p className="text-sm">{data.studentIds.size} student(s)</p>
-                      <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, level)}>Edit Class</Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+    <Card className="border-0 shadow-none">
+       <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Classes</CardTitle>
+            <CardDescription>
+              Create or manage student rosters for individual classes.
+            </CardDescription>
           </div>
-        ))
-      ) : (
-        <p className="text-center text-muted-foreground py-8">No classes found. Create an admission year and add students to see classes here.</p>
-      )}
-    </div>
+          <Button
+            size="sm"
+            className="gap-1"
+            onClick={onCreateClass}
+          >
+            <PlusCircle className="h-3.5 w-3.5" />
+            Create New Class
+          </Button>
+        </div>
+      </CardHeader>
+       <CardContent className="space-y-6 pt-4">
+        {sortedYears.length > 0 ? (
+          sortedYears.map(year => (
+            <div key={year}>
+              <h3 className="text-lg font-semibold mb-2">{year}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(classesByYear[year]).map(([classKey, data]) => {
+                  const [programId, level] = classKey.split('::');
+                  const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
+                  return (
+                    <Card key={classKey}>
+                      <CardHeader>
+                        <CardTitle className="text-base">{programName}</CardTitle>
+                        <CardDescription>{level}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex items-center justify-between">
+                        <p className="text-sm">{data.studentIds.size} student(s)</p>
+                        <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, level)}>Edit Class</Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-center text-muted-foreground py-8">No classes found. Click "Create New Class" to get started.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -800,5 +974,7 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
+
+    
 
     
