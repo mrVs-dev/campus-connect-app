@@ -234,23 +234,25 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
     setIsSubmitting(true);
     const existingAdmission = admissions.find(a => a.schoolYear === values.schoolYear);
     
-    // Check if class already exists
     if (existingAdmission) {
-        const classExists = existingAdmission.classes?.some(c => c.programId === values.programId && c.level === values.level) || 
-                          existingAdmission.students.some(s => s.enrollments.some(e => e.programId === values.programId && e.level === values.level));
-        if (classExists) {
+        const classExistsInStudents = existingAdmission.students.some(s => 
+            s.enrollments.some(e => e.programId === values.programId && e.level === values.level)
+        );
+        const classExistsInDefinitions = existingAdmission.classes?.some(c => 
+            c.programId === values.programId && c.level === values.level
+        );
+
+        if (classExistsInStudents || classExistsInDefinitions) {
             form.setError("level", { message: "This class already exists for the selected school year." });
             setIsSubmitting(false);
             return;
         }
     }
     
-    // If admission year doesn't exist, create it. Otherwise, use existing.
     const admissionToSave: Admission = existingAdmission 
-      ? JSON.parse(JSON.stringify(existingAdmission)) // Deep copy
+      ? JSON.parse(JSON.stringify(existingAdmission))
       : { admissionId: values.schoolYear, schoolYear: values.schoolYear, students: [], classes: [] };
     
-    // Add the new empty class definition
     if (!admissionToSave.classes) {
         admissionToSave.classes = [];
     }
@@ -338,42 +340,40 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
       const year = admission.schoolYear;
       if (!data[year]) {
         data[year] = {};
-        programs.forEach(p => { data[year][p.id] = [] });
       }
 
-      const classStudentCount = new Map<string, number>(); // key: programId::level
+      const classMap = new Map<string, { level: string; studentCount: number }>();
 
-      // Count students in each class
+      // From student enrollments
       admission.students.forEach(student => {
         student.enrollments.forEach(enrollment => {
           const key = `${enrollment.programId}::${enrollment.level}`;
-          classStudentCount.set(key, (classStudentCount.get(key) || 0) + 1);
+          const current = classMap.get(key) || { level: enrollment.level, studentCount: 0 };
+          current.studentCount += 1;
+          classMap.set(key, current);
         });
       });
 
-      const allKnownClasses = new Set<string>();
-
-      // Add classes with students
-      for (const [key, count] of classStudentCount.entries()) {
-        const [programId, level] = key.split('::');
-        if (!data[year][programId]) data[year][programId] = [];
-        data[year][programId].push({ level, studentCount: count });
-        allKnownClasses.add(key);
-      }
-      
-      // Add empty classes
+      // From empty class definitions
       if (admission.classes) {
         admission.classes.forEach(cls => {
-            const key = `${cls.programId}::${cls.level}`;
-            if (!allKnownClasses.has(key)) {
-               if (!data[year][cls.programId]) data[year][cls.programId] = [];
-               data[year][cls.programId].push({ level: cls.level, studentCount: 0 });
-               allKnownClasses.add(key);
-            }
+          const key = `${cls.programId}::${cls.level}`;
+          if (!classMap.has(key)) {
+            classMap.set(key, { level: cls.level, studentCount: 0 });
+          }
         });
       }
+      
+      // Populate the final data structure
+      for (const [key, classInfo] of classMap.entries()) {
+        const [programId] = key.split('::');
+        if (!data[year][programId]) {
+          data[year][programId] = [];
+        }
+        data[year][programId].push(classInfo);
+      }
     });
-
+    
     return data;
   }, [admissions]);
 
@@ -405,32 +405,34 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
             <div key={year}>
               <h3 className="text-xl font-semibold mb-4 border-b pb-2">{year}</h3>
               <div className="space-y-6">
-                 {Object.entries(classesByYearProgram[year])
-                    .map(([programId, classes]) => {
-                       const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
-                       if (classes.length === 0) return null; // Don't render program group if it has no classes
-                       return (
-                         <div key={programId}>
-                           <h4 className="text-lg font-medium mb-3">{programName}</h4>
-                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {classes.sort((a,b) => a.level.localeCompare(b.level)).map(classInfo => (
-                               <Card key={classInfo.level}>
-                                  <CardHeader>
-                                    <CardTitle className="text-base">{classInfo.level}</CardTitle>
-                                    <CardDescription>{classInfo.studentCount} student(s)</CardDescription>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, classInfo.level)}>Edit Class</Button>
-                                  </CardContent>
-                                </Card>
-                            ))}
-                           </div>
-                         </div>
-                       )
-                    })
-                    .filter(Boolean).length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No classes found for this year. You can create a new class.</p>
-                ) : null}
+                 {programs.map(program => {
+                    const programId = program.id;
+                    const programClasses = classesByYearProgram[year]?.[programId];
+                    if (!programClasses || programClasses.length === 0) {
+                      return null;
+                    }
+                    return (
+                      <div key={programId}>
+                        <h4 className="text-lg font-medium mb-3">{program.name}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {programClasses.sort((a, b) => a.level.localeCompare(b.level)).map(classInfo => (
+                            <Card key={classInfo.level}>
+                              <CardHeader>
+                                <CardTitle className="text-base">{classInfo.level}</CardTitle>
+                                <CardDescription>{classInfo.studentCount} student(s)</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, classInfo.level)}>Edit Class</Button>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                {Object.values(classesByYearProgram[year] || {}).every(p => p.length === 0) && (
+                     <p className="text-sm text-muted-foreground">No classes found for this year. You can create a new class.</p>
+                )}
               </div>
             </div>
           ))
@@ -1012,3 +1014,5 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
+
+    

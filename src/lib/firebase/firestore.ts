@@ -248,14 +248,13 @@ export async function saveAdmission(admissionData: Admission, isNewClass: boolea
     if (!db) throw new Error("Firestore is not initialized");
     const admissionDocRef = doc(db, 'admissions', admissionData.schoolYear);
 
-    // Sanitize data before saving
     const cleanedData = JSON.parse(JSON.stringify(admissionData));
 
+    // When adding a new class, we must merge to avoid overwriting the whole year.
+    // When editing a roster (not a new class), we overwrite the whole document.
     if (isNewClass) {
-        // Use set with merge to create the doc if it doesn't exist or add the new class to it
         await setDoc(admissionDocRef, cleanedData, { merge: true });
     } else {
-        // Use set without merge to overwrite the entire document for roster updates
         await setDoc(admissionDocRef, cleanedData);
     }
 }
@@ -380,3 +379,5 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         teacherId: docRef.id,
     };
 }
+
+    
