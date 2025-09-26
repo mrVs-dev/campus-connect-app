@@ -215,7 +215,7 @@ export function Overview({ students, admissions }: OverviewProps) {
     },
   };
 
-  const admissionYears = ['All', ...admissions.map(a => a.schoolYear).sort((a, b) => b.localeCompare(a))];
+  const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
 
   return (
     <div className="flex flex-col gap-4">
@@ -257,8 +257,8 @@ export function Overview({ students, admissions }: OverviewProps) {
           <CardHeader>
               <div className="flex items-start justify-between">
                   <div>
-                      <CardTitle>Enrollments</CardTitle>
-                      <CardDescription>New student enrollments in the selected date range.</CardDescription>
+                      <CardTitle>New Student Enrollments</CardTitle>
+                      <CardDescription>Headcount of new students in the selected date range.</CardDescription>
                   </div>
                   <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
               </div>
@@ -290,8 +290,8 @@ export function Overview({ students, admissions }: OverviewProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Admission by Program</CardTitle>
-            <CardDescription>Enrollment distribution across different programs and levels.</CardDescription>
+            <CardTitle>Program Admissions</CardTitle>
+            <CardDescription>Total program enrollments across programs and levels.</CardDescription>
           </div>
            <Select value={admissionYearFilter} onValueChange={setAdmissionYearFilter}>
               <SelectTrigger className="w-[180px]">
@@ -311,7 +311,7 @@ export function Overview({ students, admissions }: OverviewProps) {
                 <div className="flex flex-col space-y-2">
                   <p className="font-semibold text-lg">{program.name}</p>
                   <p className="text-4xl font-bold">{program.total}</p>
-                  <p className="text-sm text-muted-foreground">Total Enrollments</p>
+                  <p className="text-sm text-muted-foreground">Total Admissions</p>
                 </div>
                 <div className="md:col-span-2">
                   <ChartContainer config={chartConfig} className="h-[200px] w-full">
@@ -352,5 +352,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-    
