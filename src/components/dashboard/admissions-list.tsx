@@ -321,7 +321,7 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
 
 // Class-based View Components
 function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Admission[], students: Student[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
-    const classesByYearProgram = React.useMemo(() => {
+  const classesByYearProgram = React.useMemo(() => {
     const data: Record<string, Record<string, { level: string; studentCount: number }[]>> = {};
 
     // First, initialize data structure with all existing admission years to show them even if they have no classes/students.
@@ -344,7 +344,13 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
           classMap.set(classKey, (classMap.get(classKey) || 0) + 1);
         }
       }
-
+      
+      // Also, we need to find "empty" classes. An empty class is a unique program/level combo
+      // that exists in some student's enrollments somewhere in the system but has 0 students
+      // for *this specific admission year*. This logic is complex. A simpler way is to ensure
+      // that when a class is created, its admission year record is created.
+      // The current logic handles this by creating the admission year shell.
+      
       // Populate the main data structure from the classMap
       for (const [classKey, count] of classMap.entries()) {
         const [programId, level] = classKey.split('::');
@@ -362,6 +368,15 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
           data[year][programId].push({ level, studentCount: count });
         }
       }
+    }
+    
+     // Ensure empty programs defined in program-data also show up for grouping
+    for (const year in data) {
+        for (const program of programs) {
+            if (!data[year][program.id]) {
+                data[year][program.id] = [];
+            }
+        }
     }
 
     return data;
@@ -396,7 +411,9 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
               <h3 className="text-xl font-semibold mb-4 border-b pb-2">{year}</h3>
               <div className="space-y-6">
                 {Object.keys(classesByYearProgram[year]).length > 0 ? (
-                    Object.entries(classesByYearProgram[year]).map(([programId, classes]) => {
+                    Object.entries(classesByYearProgram[year])
+                      .filter(([_, classes]) => classes.length > 0) // Only show programs that have classes
+                      .map(([programId, classes]) => {
                        const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
                        return (
                          <div key={programId}>
@@ -997,5 +1014,7 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
+
+    
 
     
