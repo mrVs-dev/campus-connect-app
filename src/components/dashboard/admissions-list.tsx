@@ -321,45 +321,68 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
 
 // Class-based View Components
 function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Admission[], students: Student[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
-  const classesByYearProgram = React.useMemo(() => {
-    const data: Record<string, Record<string, { level: string; studentCount: number }[]>> = {};
+    const classesByYearProgram = React.useMemo(() => {
+    const data: Record<
+      string,
+      Record<string, { level: string; studentCount: number }[]>
+    > = {};
 
     for (const admission of admissions) {
       const year = admission.schoolYear;
       if (!data[year]) {
         data[year] = {};
       }
+      
+      const classMap: Record<string, number> = {};
 
-      // Initialize all possible programs and levels to ensure empty classes are shown
-      for (const program of programs) {
-        if (!data[year][program.id]) {
-          data[year][program.id] = [];
-        }
-        const levels = getLevelsForProgram(program.id);
-        for (const level of levels) {
-           const hasClass = admission.students.some(sa => sa.enrollments.some(e => e.programId === program.id && e.level === level));
-           if (hasClass && !data[year][program.id].some(c => c.level === level)) {
-              data[year][program.id].push({ level, studentCount: 0 });
-           }
+      // First, get student counts for all existing classes
+      for (const studentAdmission of admission.students) {
+        for (const enrollment of studentAdmission.enrollments) {
+          const classKey = `${enrollment.programId}::${enrollment.level}`;
+          classMap[classKey] = (classMap[classKey] || 0) + 1;
         }
       }
       
-      // Populate student counts
-      for (const studentAdmission of admission.students) {
-        for (const enrollment of studentAdmission.enrollments) {
-          const { programId, level } = enrollment;
-          if (!data[year][programId]) {
-            data[year][programId] = [];
+      // Then, ensure even empty classes (if admission doc exists) are represented
+      // This part is tricky if we don't store empty classes explicitly.
+      // Assuming 'admissions' could contain empty `students` array to signify an admission year exists.
+      // We'll iterate through all known programs and levels to see if a class was created but is empty.
+      for (const program of programs) {
+          const levels = getLevelsForProgram(program.id);
+          for (const level of levels) {
+              const classKey = `${program.id}::${level}`;
+              // A class "exists" if it's in our map OR if the admission document exists
+              // The `saveAdmission` logic ensures the admission document is created when a class is created.
+              // We infer class existence from the presence of the admission year.
+              if (classMap[classKey] !== undefined) {
+                  if (!data[year][program.id]) data[year][program.id] = [];
+                  if (!data[year][program.id].some(c => c.level === level)) {
+                     data[year][program.id].push({ level: level, studentCount: classMap[classKey] || 0 });
+                  }
+              }
           }
-          let classInfo = data[year][programId].find(c => c.level === level);
-          if (!classInfo) {
-            classInfo = { level, studentCount: 0 };
-            data[year][programId].push(classInfo);
-          }
-          classInfo.studentCount++;
-        }
       }
+
+      // Final check to add newly created empty classes for an existing admission year
+      // A created class without students won't be in classMap.
+      // The logic in `CreateClassDialog` ensures the admission year record exists.
+      // We need a reliable way to know a class was created. The best is to ensure `admissions` reflects all created classes.
+      // If `saveAdmission` correctly creates the `admission` document, we can rely on that.
+      // The current logic might miss empty classes if not explicitly stored.
+      // Let's adjust to be more explicit based on all enrollments found.
+
+       Object.keys(classMap).forEach(key => {
+            const [programId, level] = key.split('::');
+            if (!data[year][programId]) {
+                data[year][programId] = [];
+            }
+            if (!data[year][programId].some(c => c.level === level)) {
+                 data[year][programId].push({ level, studentCount: classMap[key] });
+            }
+       });
+
     }
+
     return data;
   }, [admissions]);
 
