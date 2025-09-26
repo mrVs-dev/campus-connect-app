@@ -324,7 +324,14 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
     const classesByYearProgram = React.useMemo(() => {
     const data: Record<string, Record<string, { level: string; studentCount: number }[]>> = {};
 
-    // First, process all enrollments to find existing classes and their student counts.
+    // First, initialize data structure with all existing admission years to show them even if they have no classes/students.
+    for (const admission of admissions) {
+        if (!data[admission.schoolYear]) {
+            data[admission.schoolYear] = {};
+        }
+    }
+
+    // Next, process all student enrollments to find existing classes and their student counts.
     for (const admission of admissions) {
       const year = admission.schoolYear;
       if (!data[year]) data[year] = {};
@@ -341,28 +348,21 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
       // Populate the main data structure from the classMap
       for (const [classKey, count] of classMap.entries()) {
         const [programId, level] = classKey.split('::');
+        
+        // Ensure programId entry exists for the year
         if (!data[year][programId]) data[year][programId] = [];
-        // Avoid duplicates if logic runs multiple times
-        if (!data[year][programId].some(c => c.level === level)) {
+        
+        // Find if this class already exists in our list
+        const existingClass = data[year][programId].find(c => c.level === level);
+        if (existingClass) {
+          // This case should ideally not happen with Map logic, but as a safeguard:
+          existingClass.studentCount = count;
+        } else {
+          // Add the new class with its student count
           data[year][programId].push({ level, studentCount: count });
         }
       }
     }
-
-    // Now, ensure empty classes (from admission years with no student enrollments yet) are included.
-    // This covers the case where a class is created but has 0 students.
-    for (const admission of admissions) {
-      const year = admission.schoolYear;
-      if (!data[year]) data[year] = {};
-      
-      // If an admission year exists but has no students, it implies we might have empty classes.
-      // We can't know *which* empty classes exist without more info,
-      // but the save logic ensures an admission doc exists.
-      // This part ensures the year itself is listed if it exists but has no students.
-      // The logic to add a truly empty class needs to happen on creation or be stored differently.
-      // For now, let's assume if an admission document exists, it's a valid year to display.
-    }
-
 
     return data;
   }, [admissions]);
@@ -997,3 +997,5 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentInde
     </div>
   );
 }
+
+    
