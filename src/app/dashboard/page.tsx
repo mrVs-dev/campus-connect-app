@@ -65,6 +65,35 @@ function DashboardContent() {
   const [loadingData, setLoadingData] = React.useState(true);
   const { toast } = useToast();
 
+  const studentsWithLatestEnrollments = React.useMemo(() => {
+    if (!admissions || admissions.length === 0) {
+      return students;
+    }
+
+    const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
+    
+    // Create a map to hold the most recent enrollments for each student
+    const studentEnrollmentMap = new Map<string, Enrollment[]>();
+
+    // Iterate through all admissions to populate the map
+    sortedAdmissions.forEach(admission => {
+      admission.students.forEach(studentAdmission => {
+        // Only update if we haven't seen this student in a more recent year
+        if (!studentEnrollmentMap.has(studentAdmission.studentId)) {
+          studentEnrollmentMap.set(studentAdmission.studentId, studentAdmission.enrollments);
+        }
+      });
+    });
+
+    return students.map(student => {
+      const latestEnrollments = studentEnrollmentMap.get(student.studentId);
+      if (latestEnrollments) {
+        return { ...student, enrollments: latestEnrollments };
+      }
+      return student;
+    });
+  }, [students, admissions]);
+
   const fetchData = React.useCallback(async () => {
     if (!isFirebaseConfigured) {
       setLoadingData(false);
@@ -302,35 +331,6 @@ function DashboardContent() {
       return false;
     }
   };
-
-  const studentsWithLatestEnrollments = React.useMemo(() => {
-    if (!admissions || admissions.length === 0) {
-      return students;
-    }
-
-    const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
-    
-    // Create a map to hold the most recent enrollments for each student
-    const studentEnrollmentMap = new Map<string, Enrollment[]>();
-
-    // Iterate through all admissions to populate the map
-    sortedAdmissions.forEach(admission => {
-      admission.students.forEach(studentAdmission => {
-        // Only update if we haven't seen this student in a more recent year
-        if (!studentEnrollmentMap.has(studentAdmission.studentId)) {
-          studentEnrollmentMap.set(studentAdmission.studentId, studentAdmission.enrollments);
-        }
-      });
-    });
-
-    return students.map(student => {
-      const latestEnrollments = studentEnrollmentMap.get(student.studentId);
-      if (latestEnrollments) {
-        return { ...student, enrollments: latestEnrollments };
-      }
-      return student;
-    });
-  }, [students, admissions]);
 
   if (loadingData) {
     return <div className="flex min-h-screen w-full items-center justify-center bg-background">Loading application data...</div>;
