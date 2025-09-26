@@ -13,7 +13,7 @@ import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass } from "@/lib/firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
+import { useToast, type Toast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,13 +57,21 @@ function MissingFirebaseConfig() {
   );
 }
 
-function DashboardContent() {
+interface DashboardContentProps {
+  toast: ({ ...props }: Toast) => {
+    id: string;
+    dismiss: () => void;
+    update: (props: any) => void;
+  };
+}
+
+
+function DashboardContent({ toast }: DashboardContentProps) {
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [teachers, setTeachers] = React.useState<Teacher[]>([]);
   const [loadingData, setLoadingData] = React.useState(true);
-  const { toast } = useToast();
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -421,6 +429,7 @@ function DashboardContent() {
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (authLoading) {
@@ -443,5 +452,7 @@ export default function DashboardPage() {
     );
   }
   
-  return <DashboardContent />;
+  return <DashboardContent toast={toast} />;
 }
+
+    
