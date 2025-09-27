@@ -92,9 +92,14 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
     try {
-      await updateTeacher(teacherId, updatedData);
+      // Create a clean object with only defined values
+      const dataToSave = Object.fromEntries(
+        Object.entries(updatedData).filter(([, value]) => value !== undefined)
+      );
+
+      await updateTeacher(teacherId, dataToSave);
       setTeachers(prev => 
-        prev.map(t => t.teacherId === teacherId ? { ...t, ...updatedData } : t)
+        prev.map(t => t.teacherId === teacherId ? { ...t, ...dataToSave } : t)
       );
       toast({
         title: "Teacher Updated",
