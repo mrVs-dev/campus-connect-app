@@ -206,7 +206,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
                         <AvatarImage src={teacher.avatarUrl} alt="Avatar" className="object-cover" />
-                        <AvatarFallback>{teacher.firstName[0]}{teacher.lastName[0]}</AvatarFallback>
+                        <AvatarFallback>{teacher.firstName?.[0]}{teacher.lastName?.[0]}</AvatarFallback>
                       </Avatar>
                       <div className="font-medium">{teacher.firstName} {teacher.lastName}</div>
                     </div>

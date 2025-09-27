@@ -438,7 +438,7 @@ export async function getTeachers(): Promise<Teacher[]> {
 }
 
 
-export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>): Promise<Teacher> {
+export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>): Promise<Teacher | null> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teachersCollection = collection(db, 'teachers');
     const teacherForFirestore = {
@@ -446,17 +446,21 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         status: 'Active' as const,
         joinedDate: serverTimestamp(),
     };
-    const docRef = await addDoc(teachersCollection, teacherForFirestore);
-    
-    // Construct the object to return to the client
-    const newTeacher: Teacher = {
-        ...teacherData,
-        teacherId: docRef.id,
-        status: 'Active',
-        joinedDate: new Date(), // Use a client-side date for immediate UI update
-    };
-    return newTeacher;
+    try {
+        const docRef = await addDoc(teachersCollection, teacherForFirestore);
+        const newTeacher: Teacher = {
+            ...teacherData,
+            teacherId: docRef.id,
+            status: 'Active',
+            joinedDate: new Date(),
+        };
+        return newTeacher;
+    } catch (error) {
+        console.error("Error adding teacher to Firestore: ", error);
+        return null;
+    }
 }
+
 
 export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Teacher>): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
