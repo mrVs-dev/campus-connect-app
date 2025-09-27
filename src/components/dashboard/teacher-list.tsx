@@ -59,7 +59,7 @@ type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 
 interface TeacherListProps {
   teachers: Teacher[];
-  onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status'>) => Promise<boolean>;
+  onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status'>) => Promise<Teacher | null>;
 }
 
 export function TeacherList({ teachers: initialTeachers, onAddTeacher }: TeacherListProps) {
@@ -83,8 +83,9 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   });
 
   const handleAddTeacher = async (values: TeacherFormValues) => {
-    const success = await onAddTeacher(values);
-    if (success) {
+    const newTeacher = await onAddTeacher(values);
+    if (newTeacher) {
+      setTeachers(prev => [...prev, newTeacher]);
       form.reset();
       setIsNewTeacherDialogOpen(false);
     }

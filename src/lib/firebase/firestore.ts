@@ -447,12 +447,15 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         joinedDate: serverTimestamp(),
     };
     const docRef = await addDoc(teachersCollection, teacherForFirestore);
-    return {
+    
+    // Construct the object to return to the client
+    const newTeacher: Teacher = {
         ...teacherData,
         teacherId: docRef.id,
         status: 'Active',
-        joinedDate: new Date(),
+        joinedDate: new Date(), // Use a client-side date for immediate UI update
     };
+    return newTeacher;
 }
 
 export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Teacher>): Promise<void> {

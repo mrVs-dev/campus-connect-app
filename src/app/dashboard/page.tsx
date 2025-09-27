@@ -344,12 +344,15 @@ export default function DashboardPage() {
   const handleAddTeacher = async (teacherData: Omit<Teacher, 'teacherId' | 'status'>) => {
     try {
       const newTeacher = await addTeacher(teacherData);
-      setTeachers(prev => [...prev, newTeacher]);
-      toast({
-        title: "Teacher Added",
-        description: `${newTeacher.firstName} ${newTeacher.lastName} has been added.`,
-      });
-      return true;
+      if (newTeacher) {
+        setTeachers(prev => [...prev, newTeacher]);
+        toast({
+          title: "Teacher Added",
+          description: `${newTeacher.firstName} ${newTeacher.lastName} has been added.`,
+        });
+        return newTeacher;
+      }
+      return null;
     } catch (error) {
       console.error("Error adding teacher:", error);
       toast({
@@ -357,7 +360,7 @@ export default function DashboardPage() {
         description: "There was an error adding the new teacher. Please try again.",
         variant: "destructive",
       });
-      return false;
+      return null;
     }
   };
 
