@@ -1,5 +1,4 @@
 
-
 import { 
   collection, 
   getDocs, 
@@ -439,7 +438,7 @@ export async function getTeachers(): Promise<Teacher[]> {
 }
 
 
-export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher> {
+export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>): Promise<Teacher> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teachersCollection = collection(db, 'teachers');
     const teacherForFirestore = {
@@ -447,10 +446,11 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         status: 'Active' as const,
         joinedDate: serverTimestamp(),
     };
-    const docRef = await addDoc(teachersCollection, convertDatesToTimestamps(teacherForFirestore));
+    const docRef = await addDoc(teachersCollection, teacherForFirestore);
     return {
-        ...teacherForFirestore,
+        ...teacherData,
         teacherId: docRef.id,
+        status: 'Active',
         joinedDate: new Date(),
     };
 }
