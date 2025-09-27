@@ -438,7 +438,7 @@ export async function getTeachers(): Promise<Teacher[]> {
 }
 
 
-export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>): Promise<Teacher | null> {
+export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>): Promise<Teacher> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teachersCollection = collection(db, 'teachers');
     const teacherForFirestore = {
@@ -446,19 +446,15 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         status: 'Active' as const,
         joinedDate: serverTimestamp(),
     };
-    try {
-        const docRef = await addDoc(teachersCollection, teacherForFirestore);
-        const newTeacher: Teacher = {
-            ...teacherData,
-            teacherId: docRef.id,
-            status: 'Active',
-            joinedDate: new Date(),
-        };
-        return newTeacher;
-    } catch (error) {
-        console.error("Error adding teacher to Firestore: ", error);
-        return null;
-    }
+
+    const docRef = await addDoc(teachersCollection, teacherForFirestore);
+    const newTeacher: Teacher = {
+        ...teacherData,
+        teacherId: docRef.id,
+        status: 'Active',
+        joinedDate: new Date(),
+    };
+    return newTeacher;
 }
 
 
