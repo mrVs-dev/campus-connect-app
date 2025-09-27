@@ -182,8 +182,9 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave }: EditTe
                                             <PopoverContent className="w-auto p-0" align="start">
                                                 <Calendar 
                                                   mode="single" 
-                                                  selected={field.value} 
+                                                  selected={field.value}
                                                   onSelect={field.onChange}
+                                                  defaultMonth={field.value || new Date()}
                                                   captionLayout="dropdown-buttons"
                                                   fromYear={1990}
                                                   toYear={new Date().getFullYear()}
