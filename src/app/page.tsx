@@ -13,6 +13,8 @@ export default function HomePage() {
     // Only redirect once the auth state is no longer loading
     if (!loading) {
       if (user) {
+        // For now, all authenticated users go to the main dashboard.
+        // We will add logic here later to redirect teachers to /teacher/dashboard.
         router.replace('/dashboard');
       } else {
         router.replace('/login');
