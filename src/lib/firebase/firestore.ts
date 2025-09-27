@@ -1,4 +1,5 @@
 
+
 import { 
   collection, 
   getDocs, 
@@ -426,7 +427,7 @@ export async function getTeachers(): Promise<Teacher[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teachersCollection = collection(db, 'teachers');
     const snapshot = await getDocs(teachersCollection);
-    const teachers = snapshot.docs.map(doc => {
+    return snapshot.docs.map(doc => {
         const data = doc.data();
         const teacherDataWithDates = convertTimestampsToDates(data);
         return {
@@ -434,7 +435,6 @@ export async function getTeachers(): Promise<Teacher[]> {
             teacherId: doc.id,
         };
     });
-    return teachers;
 }
 
 
@@ -448,6 +448,8 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
     };
 
     const docRef = await addDoc(teachersCollection, teacherForFirestore);
+    
+    // Construct the object to return to the client with a real JS Date
     const newTeacher: Teacher = {
         ...teacherData,
         teacherId: docRef.id,
