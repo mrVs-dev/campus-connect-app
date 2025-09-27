@@ -10,6 +10,7 @@ export type Guardian = {
 export type Enrollment = {
   programId: string;
   level: string;
+  teacherId?: string;
 };
 
 export interface Student {
@@ -68,8 +69,9 @@ export interface Teacher {
   lastName: string;
   email: string;
   phone?: string;
-  assignedSubjects?: string[];
   status: 'Active' | 'Inactive';
+  avatarUrl?: string;
+  joinedDate?: Date;
 }
 
 export interface Subject {

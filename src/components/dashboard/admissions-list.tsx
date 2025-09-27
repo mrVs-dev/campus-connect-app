@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
 
-import type { Admission, Student, Enrollment, StudentAdmission } from "@/lib/types";
+import type { Admission, Student, Enrollment, StudentAdmission, Teacher } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -59,6 +59,7 @@ const studentAdmissionSchema = z.object({
       z.object({
         programId: z.string().min(1, "Program is required"),
         level: z.string().min(1, "Level is required"),
+        teacherId: z.string().optional(),
       })
     )
     .min(1, "At least one program is required for admission."),
@@ -67,6 +68,7 @@ const studentAdmissionSchema = z.object({
 const bulkEnrollmentSchema = z.object({
   programId: z.string().min(1, "Program is required"),
   level: z.string().min(1, "Level is required"),
+  teacherId: z.string().optional(),
 });
 
 const admissionFormSchema = z.object({
@@ -80,6 +82,7 @@ type AdmissionFormValues = z.infer<typeof admissionFormSchema>;
 interface AdmissionsListProps {
   admissions: Admission[];
   students: Student[];
+  teachers: Teacher[];
   onSave: (admission: Admission, isNewClass?: boolean) => Promise<boolean>;
 }
 
@@ -87,6 +90,7 @@ interface AdmissionsListProps {
 export function AdmissionsList({
   admissions,
   students,
+  teachers,
   onSave,
 }: AdmissionsListProps) {
   const [editingYear, setEditingYear] = React.useState<string | null>(null);
@@ -136,6 +140,7 @@ export function AdmissionsList({
             key={editingYear}
             schoolYear={editingYear}
             activeStudents={activeStudents}
+            teachers={teachers}
             existingAdmission={editingAdmission}
             onSave={handleSaveAdmission}
             onCancel={handleCancel}
@@ -149,6 +154,7 @@ export function AdmissionsList({
             key={`${editingClass.year}-${editingClass.programId}-${editingClass.level}`}
             admissions={admissions}
             allStudents={activeStudents}
+            teachers={teachers}
             classInfo={editingClass}
             onSave={handleSaveAdmission}
             onCancel={handleCancel}
@@ -173,7 +179,8 @@ export function AdmissionsList({
             </TabsList>
             <TabsContent value="classes">
               <ClassList 
-                admissions={admissions} 
+                admissions={admissions}
+                teachers={teachers}
                 onEditClass={handleEditClass}
                 onCreateClass={() => setIsCreateClassOpen(true)}
               />
@@ -330,9 +337,9 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
 
 
 // Class-based View Components
-function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Admission[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
+function ClassList({ admissions, teachers, onEditClass, onCreateClass }: { admissions: Admission[], teachers: Teacher[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
   const classesByYearProgram = React.useMemo(() => {
-    type ClassInfo = { level: string; studentCount: number };
+    type ClassInfo = { level: string; studentCount: number; teacherName?: string };
     type ProgramData = Record<string, ClassInfo[]>;
     const data: Record<string, ProgramData> = {};
 
@@ -342,7 +349,7 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
         data[year] = {};
       }
 
-      const classMap = new Map<string, { level: string; studentCount: number }>();
+      const classMap = new Map<string, { level: string; studentCount: number; teacherId?: string }>();
 
       // From student enrollments
       admission.students.forEach(student => {
@@ -350,6 +357,7 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
           const key = `${enrollment.programId}::${enrollment.level}`;
           const current = classMap.get(key) || { level: enrollment.level, studentCount: 0 };
           current.studentCount += 1;
+          if (enrollment.teacherId) current.teacherId = enrollment.teacherId;
           classMap.set(key, current);
         });
       });
@@ -359,7 +367,11 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
         admission.classes.forEach(cls => {
           const key = `${cls.programId}::${cls.level}`;
           if (!classMap.has(key)) {
-            classMap.set(key, { level: cls.level, studentCount: 0 });
+            classMap.set(key, { level: cls.level, studentCount: 0, teacherId: cls.teacherId });
+          } else {
+            const existing = classMap.get(key)!;
+            if (!existing.teacherId) existing.teacherId = cls.teacherId;
+            classMap.set(key, existing);
           }
         });
       }
@@ -370,12 +382,16 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
         if (!data[year][programId]) {
           data[year][programId] = [];
         }
-        data[year][programId].push(classInfo);
+        const teacher = teachers.find(t => t.teacherId === classInfo.teacherId);
+        data[year][programId].push({
+          ...classInfo,
+          teacherName: teacher ? `${teacher.firstName} ${teacher.lastName}` : undefined,
+        });
       }
     });
     
     return data;
-  }, [admissions]);
+  }, [admissions, teachers]);
 
   const sortedYears = Object.keys(classesByYearProgram).sort((a, b) => b.localeCompare(a));
 
@@ -420,6 +436,7 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
                               <CardHeader>
                                 <CardTitle className="text-base">{classInfo.level}</CardTitle>
                                 <CardDescription>{classInfo.studentCount} student(s)</CardDescription>
+                                {classInfo.teacherName && <CardDescription>Teacher: {classInfo.teacherName}</CardDescription>}
                               </CardHeader>
                               <CardContent>
                                 <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, classInfo.level)}>Edit Class</Button>
@@ -446,10 +463,11 @@ function ClassList({ admissions, onEditClass, onCreateClass }: { admissions: Adm
 
 const classEditorFormSchema = z.object({
     studentIds: z.array(z.string()),
+    teacherId: z.string().optional(),
 });
 type ClassEditorFormValues = z.infer<typeof classEditorFormSchema>;
 
-function ClassEditor({ admissions, allStudents, classInfo, onSave, onCancel }: { admissions: Admission[], allStudents: Student[], classInfo: { year: string, programId: string, level: string }, onSave: (admission: Admission) => Promise<boolean>, onCancel: () => void}) {
+function ClassEditor({ admissions, allStudents, teachers, classInfo, onSave, onCancel }: { admissions: Admission[], allStudents: Student[], teachers: Teacher[], classInfo: { year: string, programId: string, level: string }, onSave: (admission: Admission) => Promise<boolean>, onCancel: () => void}) {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState("");
 
@@ -465,10 +483,16 @@ function ClassEditor({ admissions, allStudents, classInfo, onSave, onCancel }: {
         ).map(s => s.studentId);
     }, [admissionForYear, classInfo]);
 
+    const currentTeacherId = React.useMemo(() => {
+        const classDef = admissionForYear.classes?.find(c => c.programId === classInfo.programId && c.level === classInfo.level);
+        return classDef?.teacherId || "";
+    }, [admissionForYear, classInfo]);
+
     const form = useForm<ClassEditorFormValues>({
         resolver: zodResolver(classEditorFormSchema),
         defaultValues: {
             studentIds: studentsInClass,
+            teacherId: currentTeacherId,
         }
     });
     
@@ -499,6 +523,18 @@ function ClassEditor({ admissions, allStudents, classInfo, onSave, onCancel }: {
         const updatedAdmission = JSON.parse(JSON.stringify(admissionForYear)) as Admission;
         const newStudentIdSet = new Set(values.studentIds);
         const originalStudentIdSet = new Set(studentsInClass);
+        const teacherId = values.teacherId || undefined;
+
+        // Update class definition with teacher
+        if (!updatedAdmission.classes) {
+            updatedAdmission.classes = [];
+        }
+        let classDef = updatedAdmission.classes.find(c => c.programId === classInfo.programId && c.level === classInfo.level);
+        if (classDef) {
+            classDef.teacherId = teacherId;
+        } else {
+            updatedAdmission.classes.push({ ...classInfo, teacherId: teacherId });
+        }
 
         // Update student enrollments based on changes
         for (const studentId of newStudentIdSet) {
@@ -507,10 +543,12 @@ function ClassEditor({ admissions, allStudents, classInfo, onSave, onCancel }: {
                 studentAdmission = { studentId, enrollments: [] };
                 updatedAdmission.students.push(studentAdmission);
             }
-            // Add enrollment if it doesn't exist
-            const hasEnrollment = studentAdmission.enrollments.some(e => e.programId === classInfo.programId && e.level === classInfo.level);
-            if (!hasEnrollment) {
-                studentAdmission.enrollments.push({ programId: classInfo.programId, level: classInfo.level });
+            // Add/update enrollment
+            let enrollment = studentAdmission.enrollments.find(e => e.programId === classInfo.programId && e.level === classInfo.level);
+            if (enrollment) {
+                enrollment.teacherId = teacherId;
+            } else {
+                 studentAdmission.enrollments.push({ ...classInfo, teacherId: teacherId });
             }
         }
         
@@ -543,6 +581,30 @@ function ClassEditor({ admissions, allStudents, classInfo, onSave, onCancel }: {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                       <FormField
+                          control={form.control}
+                          name="teacherId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Assign Teacher</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a teacher for this class" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {teachers.map(teacher => (
+                                    <SelectItem key={teacher.teacherId} value={teacher.teacherId}>
+                                      {teacher.firstName} {teacher.lastName}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         <div>
                            <Label>Students in this class ({selectedStudentIds.size})</Label>
                            <div className="mt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-60 overflow-y-auto p-4 border rounded-md">
@@ -654,14 +716,14 @@ function AdmissionYearList({ admissions, onEditYear, onCreateNewYear }: { admiss
   )
 }
 
-function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, onCancel }: { schoolYear: string, activeStudents: Student[], existingAdmission?: Admission, onSave: (admission: Admission) => Promise<boolean>, onCancel: () => void }) {
+function AdmissionForm({ schoolYear, activeStudents, teachers, existingAdmission, onSave, onCancel }: { schoolYear: string, activeStudents: Student[], teachers: Teacher[], existingAdmission?: Admission, onSave: (admission: Admission) => Promise<boolean>, onCancel: () => void }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
   const defaultStudents = existingAdmission
     ? existingAdmission.students.map(s => ({
         ...s,
-        enrollments: s.enrollments || [{ programId: "", level: "" }],
+        enrollments: s.enrollments || [{ programId: "", level: "", teacherId: "" }],
       }))
     : [];
 
@@ -670,7 +732,7 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
     defaultValues: {
       schoolYear: schoolYear,
       students: defaultStudents,
-      bulkEnrollments: [{ programId: "", level: "" }],
+      bulkEnrollments: [{ programId: "", level: "", teacherId: "" }],
     },
   });
 
@@ -760,7 +822,7 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
 
         {fields.length > 0 && (
           <>
-            <BulkEnrollmentControl />
+            <BulkEnrollmentControl teachers={teachers} />
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Individual Assignments ({fields.length} student(s) selected)</h3>
               <Accordion type="multiple" className="w-full space-y-2">
@@ -772,7 +834,7 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
                         <span className="font-medium">{student?.firstName} {student?.lastName}</span>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <StudentEnrollmentFields studentIndex={index} />
+                        <StudentEnrollmentFields studentIndex={index} teachers={teachers}/>
                         <FormField
                           control={form.control}
                           name={`students.${index}.enrollments`}
@@ -802,7 +864,7 @@ function AdmissionForm({ schoolYear, activeStudents, existingAdmission, onSave, 
 }
 
 // Shared Form Control Components
-function BulkEnrollmentControl() {
+function BulkEnrollmentControl({ teachers }: { teachers: Teacher[] }) {
   const { control, setValue, getValues } = useFormContext<AdmissionFormValues>();
   const selectedStudentsCount = getValues("students").length;
 
@@ -830,7 +892,7 @@ function BulkEnrollmentControl() {
       </CardHeader>
       <CardContent className="space-y-4">
         {fields.map((field, index) => (
-          <BulkEnrollmentRow key={field.id} index={index} onRemove={() => remove(index)} isOnlyOne={fields.length === 1} />
+          <BulkEnrollmentRow key={field.id} index={index} onRemove={() => remove(index)} isOnlyOne={fields.length === 1} teachers={teachers} />
         ))}
         <div className="flex items-center justify-between pt-2">
           <Button type="button" variant="outline" size="sm" onClick={() => append({ programId: "", level: "" })}>
@@ -846,7 +908,7 @@ function BulkEnrollmentControl() {
   );
 }
 
-function BulkEnrollmentRow({ index, onRemove, isOnlyOne }: { index: number; onRemove: () => void; isOnlyOne: boolean; }) {
+function BulkEnrollmentRow({ index, onRemove, isOnlyOne, teachers }: { index: number; onRemove: () => void; isOnlyOne: boolean; teachers: Teacher[] }) {
   const { control, watch, setValue } = useFormContext<AdmissionFormValues>();
   const programId = watch(`bulkEnrollments.${index}.programId`);
   const levels = React.useMemo(() => getLevelsForProgram(programId), [programId]);
@@ -908,7 +970,7 @@ function BulkEnrollmentRow({ index, onRemove, isOnlyOne }: { index: number; onRe
   );
 }
 
-function StudentEnrollmentFields({ studentIndex }: { studentIndex: number }) {
+function StudentEnrollmentFields({ studentIndex, teachers }: { studentIndex: number, teachers: Teacher[] }) {
   const { control } = useFormContext<AdmissionFormValues>();
   const { fields, append, remove } = useFieldArray({
     control,
@@ -918,7 +980,7 @@ function StudentEnrollmentFields({ studentIndex }: { studentIndex: number }) {
   return (
     <div className="space-y-4 pt-2">
       {fields.map((field, enrollmentIndex) => (
-        <EnrollmentCard key={field.id} studentIndex={studentIndex} enrollmentIndex={enrollmentIndex} remove={remove} />
+        <EnrollmentCard key={field.id} studentIndex={studentIndex} enrollmentIndex={enrollmentIndex} remove={remove} teachers={teachers} />
       ))}
       <Button
         type="button"
@@ -933,7 +995,7 @@ function StudentEnrollmentFields({ studentIndex }: { studentIndex: number }) {
   );
 }
 
-function EnrollmentCard({ studentIndex, enrollmentIndex, remove }: { studentIndex: number; enrollmentIndex: number; remove: (index: number) => void }) {
+function EnrollmentCard({ studentIndex, enrollmentIndex, remove, teachers }: { studentIndex: number; enrollmentIndex: number; remove: (index: number) => void; teachers: Teacher[] }) {
   const { control, watch, setValue } = useFormContext<AdmissionFormValues>();
   const { fields } = useFieldArray({
     control,

@@ -427,11 +427,17 @@ export async function getTeachers(): Promise<Teacher[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teachersCollection = collection(db, 'teachers');
     const snapshot = await getDocs(teachersCollection);
-    return snapshot.docs.map(doc => ({
-        ...(doc.data() as Omit<Teacher, 'teacherId'>),
-        teacherId: doc.id,
-    }));
+    const teachers = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const teacherDataWithDates = convertTimestampsToDates(data);
+        return {
+            ...(teacherDataWithDates as Omit<Teacher, 'teacherId'>),
+            teacherId: doc.id,
+        };
+    });
+    return teachers;
 }
+
 
 export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
@@ -439,10 +445,19 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
     const teacherForFirestore = {
         ...teacherData,
         status: 'Active' as const,
+        joinedDate: serverTimestamp(),
     };
-    const docRef = await addDoc(teachersCollection, teacherForFirestore);
+    const docRef = await addDoc(teachersCollection, convertDatesToTimestamps(teacherForFirestore));
     return {
         ...teacherForFirestore,
         teacherId: docRef.id,
+        joinedDate: new Date(),
     };
+}
+
+export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Teacher>): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
+    const teacherDoc = doc(db, 'teachers', teacherId);
+    const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
+    await updateDoc(teacherDoc, dataWithTimestamps);
 }

@@ -444,6 +444,7 @@ export default function DashboardPage() {
             <AdmissionsList 
               admissions={admissions}
               students={students}
+              teachers={teachers}
               onSave={handleSaveAdmission}
             />
           </TabsContent>
