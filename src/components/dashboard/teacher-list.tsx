@@ -212,7 +212,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                   </TableCell>
                   <TableCell>{teacher.email}</TableCell>
                   <TableCell>
-                    {teacher.joinedDate ? format(new Date(teacher.joinedDate), "PPP") : 'N/A'}
+                    {teacher.joinedDate ? format(teacher.joinedDate, "PPP") : 'N/A'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={teacher.status === "Active" ? "default" : "secondary"}>
