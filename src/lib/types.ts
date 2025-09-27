@@ -46,6 +46,22 @@ export interface Student {
   deactivationReason?: string;
 }
 
+export type StudentStatusHistory = {
+  historyId: string;
+  studentId: string;
+  studentName: string;
+  previousStatus: Student['status'];
+  newStatus: Student['status'];
+  reason: string;
+  changedBy: {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+  };
+  changeDate: Date;
+};
+
+
 export interface Teacher {
   teacherId: string;
   firstName: string;

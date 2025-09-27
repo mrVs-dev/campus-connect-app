@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/components/dashboard/overview";
@@ -12,7 +12,8 @@ import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass } from "@/lib/firebase/firestore";
+import { StatusHistoryList } from "@/components/dashboard/status-history-list";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -66,6 +67,7 @@ export default function DashboardPage() {
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [teachers, setTeachers] = React.useState<Teacher[]>([]);
+  const [statusHistory, setStatusHistory] = React.useState<StudentStatusHistory[]>([]);
   const [loadingData, setLoadingData] = React.useState(true);
 
   // Memoize the derived student data to prevent expensive recalculations on every render
@@ -103,16 +105,18 @@ export default function DashboardPage() {
     }
     try {
       setLoadingData(true);
-      const [studentsData, admissionsData, assessmentsData, teachersData] = await Promise.all([
+      const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData] = await Promise.all([
         getStudents(), 
         getAdmissions(),
         getAssessments(),
-        getTeachers()
+        getTeachers(),
+        getStudentStatusHistory()
       ]);
       setStudents(studentsData);
       setAdmissions(admissionsData);
       setAssessments(assessmentsData);
       setTeachers(teachersData);
+      setStatusHistory(statusHistoryData);
     } catch (error) {
       console.error("Failed to fetch initial data:", error);
       toast({
@@ -176,6 +180,24 @@ export default function DashboardPage() {
             description: "There was an error updating the student. Please try again.",
             variant: "destructive",
         });
+    }
+  };
+
+  const handleUpdateStudentStatus = async (student: Student, newStatus: Student['status'], reason: string) => {
+    try {
+      await updateStudentStatus(student, newStatus, reason, user);
+      await fetchData(); // Refetch all data to ensure consistency
+      toast({
+        title: "Status Updated",
+        description: `${student.firstName}'s status has been updated to ${newStatus}.`,
+      });
+    } catch (error) {
+      console.error("Error updating student status:", error);
+      toast({
+        title: "Status Update Failed",
+        description: "There was an error updating the student's status. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -356,13 +378,14 @@ export default function DashboardPage() {
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
         <Tabs defaultValue="dashboard" className="flex flex-col gap-4">
-          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-6 self-start">
+          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-7 self-start">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="teachers">Teachers</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
             <TabsTrigger value="admissions">Admissions</TabsTrigger>
             <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
+            <TabsTrigger value="statusHistory">Status History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -397,6 +420,7 @@ export default function DashboardPage() {
               assessments={assessments}
               admissions={admissions}
               onUpdateStudent={handleUpdateStudent}
+              onUpdateStudentStatus={handleUpdateStudentStatus}
               onImportStudents={handleImportStudents}
               onDeleteStudent={handleDeleteStudent}
               onDeleteSelectedStudents={handleDeleteSelectedStudents}
@@ -427,6 +451,11 @@ export default function DashboardPage() {
           <TabsContent value="enrollment">
             <EnrollmentForm onEnroll={handleEnrollStudent} />
           </TabsContent>
+          
+          <TabsContent value="statusHistory">
+            <StatusHistoryList history={statusHistory} />
+          </TabsContent>
+
         </Tabs>
       </main>
     </div>

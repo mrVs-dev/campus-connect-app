@@ -54,6 +54,7 @@ export function StudentList({
   assessments,
   admissions,
   onUpdateStudent,
+  onUpdateStudentStatus,
   onImportStudents,
   onDeleteStudent,
   onDeleteSelectedStudents,
@@ -63,6 +64,7 @@ export function StudentList({
   assessments: Assessment[];
   admissions: Admission[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
+  onUpdateStudentStatus: (student: Student, newStatus: Student['status'], reason: string) => void;
   onImportStudents: (students: Partial<Student>[]) => void;
   onDeleteStudent: (studentId: string) => void;
   onDeleteSelectedStudents: (studentIds: string[]) => void;
@@ -88,14 +90,9 @@ export function StudentList({
   }, [students, searchQuery]);
 
   const sortedStudents = React.useMemo(() => {
-    const defaultSorted = [...filteredStudents].sort((a, b) => {
-        if (a.status === 'Active' && b.status !== 'Active') return -1;
-        if (b.status === 'Active' && a.status !== 'Active') return 1;
-        return (b.studentId || '').localeCompare(a.studentId || '');
-    });
-
+    let sortableStudents = [...filteredStudents];
     if (sortConfig !== null) {
-      return defaultSorted.toSorted((a, b) => {
+      sortableStudents.sort((a, b) => {
         const aValue = a[sortConfig.key] || '';
         const bValue = b[sortConfig.key] || '';
         if (aValue < bValue) {
@@ -106,8 +103,15 @@ export function StudentList({
         }
         return 0;
       });
+    } else {
+      // Default sort: Active first, then by the highest student ID
+      sortableStudents.sort((a, b) => {
+        if (a.status === 'Active' && b.status !== 'Active') return -1;
+        if (b.status === 'Active' && a.status !== 'Active') return 1;
+        return (b.studentId || '').localeCompare(a.studentId || '');
+      });
     }
-    return defaultSorted;
+    return sortableStudents;
   }, [filteredStudents, sortConfig]);
   
   const requestSort = (key: SortableKey) => {
@@ -385,6 +389,7 @@ export function StudentList({
         open={!!studentToEdit}
         onOpenChange={(isOpen) => !isOpen && setStudentToEdit(null)}
         onSave={handleUpdateStudent}
+        onUpdateStatus={onUpdateStudentStatus}
       />
       <StudentImportDialog
         open={isImportOpen}
@@ -429,5 +434,3 @@ export function StudentList({
     </>
   );
 }
-
-    

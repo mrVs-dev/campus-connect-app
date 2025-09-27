@@ -13,9 +13,12 @@ import {
   runTransaction,
   deleteDoc,
   writeBatch,
+  query,
+  orderBy
 } from "firebase/firestore";
+import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory } from "../types";
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -193,6 +196,54 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
     await updateDoc(studentDoc, dataWithTimestamps);
 }
 
+export async function updateStudentStatus(
+    student: Student, 
+    newStatus: Student['status'], 
+    reason: string, 
+    currentUser: User | null
+): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    if (student.status === newStatus) return;
+    if (!currentUser) throw new Error("User must be authenticated to change status.");
+
+    const batch = writeBatch(db);
+
+    const studentDocRef = doc(db, 'students', student.studentId);
+    const historyDocRef = doc(collection(db, 'student_status_history'));
+    
+    const studentUpdateData: Partial<Student> = {
+        status: newStatus
+    };
+
+    if (newStatus === 'Active') {
+        studentUpdateData.deactivationDate = undefined;
+        studentUpdateData.deactivationReason = undefined;
+    } else {
+        studentUpdateData.deactivationDate = new Date();
+        studentUpdateData.deactivationReason = reason;
+    }
+
+    const historyEntry = {
+        studentId: student.studentId,
+        studentName: `${student.firstName} ${student.lastName}`,
+        previousStatus: student.status,
+        newStatus: newStatus,
+        reason: reason,
+        changedBy: {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName
+        },
+        changeDate: serverTimestamp()
+    };
+    
+    batch.update(studentDocRef, convertDatesToTimestamps(studentUpdateData));
+    batch.set(historyDocRef, historyEntry);
+
+    await batch.commit();
+}
+
+
 export async function deleteStudent(studentId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const studentDoc = doc(db, 'students', studentId);
@@ -227,6 +278,22 @@ export async function deleteAllStudents(): Promise<void> {
     });
 
     await batch.commit();
+}
+
+// --- Student Status History ---
+export async function getStudentStatusHistory(): Promise<StudentStatusHistory[]> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const historyCollection = collection(db, 'student_status_history');
+    const q = query(historyCollection, orderBy("changeDate", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        const historyDataWithDates = convertTimestampsToDates(data);
+        return {
+            ...historyDataWithDates,
+            historyId: doc.id,
+        } as StudentStatusHistory;
+    });
 }
 
 
