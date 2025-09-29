@@ -1,5 +1,4 @@
 
-
 import { 
   collection, 
   getDocs, 
@@ -546,9 +545,12 @@ export async function saveAttendance(records: Omit<AttendanceRecord, 'attendance
 
 export async function getSubjects(): Promise<Subject[]> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
-  const subjectsCollection = collection(db, 'subjects');
-  const snapshot = await getDocs(subjectsCollection);
-  if (snapshot.empty) {
+  const settingsDocRef = doc(db, 'settings', 'subjects');
+  const docSnap = await getDoc(settingsDocRef);
+  
+  if (docSnap.exists() && docSnap.data().list) {
+    return docSnap.data().list;
+  } else {
     // If no subjects in DB, return mock data
     return [
         { subjectId: 'SUB001', subjectName: 'Mathematics' },
@@ -557,7 +559,6 @@ export async function getSubjects(): Promise<Subject[]> {
         { subjectId: 'SUB004', subjectName: 'History' },
     ];
   }
-  return snapshot.docs.map(doc => doc.data() as Subject);
 }
 
 export async function saveSubjects(subjects: Subject[]): Promise<void> {
