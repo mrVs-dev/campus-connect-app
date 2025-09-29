@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { useToast } from "@/hooks/use-toast";
 
 interface GradeEntrySheetProps {
   assessment: Assessment | null;
@@ -41,6 +42,7 @@ export function GradeEntrySheet({
 }: GradeEntrySheetProps) {
   const [scores, setScores] = React.useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = React.useState(false);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (assessment) {
@@ -49,14 +51,26 @@ export function GradeEntrySheet({
   }, [assessment]);
 
   const handleScoreChange = (studentId: string, value: string) => {
-    const score = parseInt(value, 10);
-    if (!isNaN(score)) {
-      setScores(prev => ({ ...prev, [studentId]: score }));
-    } else {
-      // Allow clearing the input
+    if (!assessment) return;
+
+    if (value === "") {
       const newScores = { ...scores };
       delete newScores[studentId];
       setScores(newScores);
+      return;
+    }
+
+    const score = parseInt(value, 10);
+    if (!isNaN(score)) {
+      if (score > assessment.totalMarks) {
+        toast({
+          title: "Invalid Score",
+          description: `Score cannot be greater than the total marks of ${assessment.totalMarks}.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      setScores(prev => ({ ...prev, [studentId]: score }));
     }
   };
 
@@ -104,7 +118,7 @@ export function GradeEntrySheet({
                     <TableCell className="text-right">
                       <Input
                         type="number"
-                        value={scores[student.studentId] || ""}
+                        value={scores[student.studentId] ?? ""}
                         onChange={(e) => handleScoreChange(student.studentId, e.target.value)}
                         max={assessment.totalMarks}
                         min={0}
