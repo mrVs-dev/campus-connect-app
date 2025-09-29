@@ -209,9 +209,9 @@ export default function RosterPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 bg-background z-10 w-1/3 min-w-[250px]">Student</TableHead>
-                  <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary min-w-[120px]">Overall (%)</TableHead>
-                  <TableHead className="sticky left-[370px] bg-background z-10 text-center font-semibold text-primary min-w-[120px]">Letter Grade</TableHead>
+                  <TableHead className="sticky left-0 bg-background z-10 w-[250px] min-w-[250px]">Student</TableHead>
+                  <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">Overall (%)</TableHead>
+                  <TableHead className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary">Grade</TableHead>
                   {classAssessments.map(assessment => (
                     <TableHead key={assessment.assessmentId} className="text-center min-w-[150px]">
                       {assessment.topic}
@@ -239,7 +239,7 @@ export default function RosterPage() {
                       </div>
                     </TableCell>
                     <TableCell className="sticky left-[250px] bg-background z-10 text-center font-medium">{student.averageScore}</TableCell>
-                    <TableCell className="sticky left-[370px] bg-background z-10 text-center font-medium">{student.letterGrade}</TableCell>
+                    <TableCell className="sticky left-[350px] bg-background z-10 text-center font-medium">{student.letterGrade}</TableCell>
                     {classAssessments.map(assessment => (
                       <TableCell key={assessment.assessmentId} className="text-center">
                         {assessment.scores[student.studentId] ?? "—"}
@@ -253,7 +253,7 @@ export default function RosterPage() {
                   <TableRow>
                     <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average (%)</TableCell>
                     <TableCell className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">{classAverages.overall}</TableCell>
-                    <TableCell className="sticky left-[370px] bg-background z-10 text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
+                    <TableCell className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
                     {classAssessments.map(assessment => {
                       const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
                       return (
