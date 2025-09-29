@@ -6,7 +6,7 @@ import { PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Teacher } from "@/lib/types";
+import type { Teacher, Subject } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,7 +44,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { format } from "date-fns";
 import { EditTeacherSheet } from "./edit-teacher-sheet";
-import { updateTeacher } from "@/lib/firebase/firestore";
+import { updateTeacher, getSubjects } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -66,12 +66,21 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
   const [teachers, setTeachers] = React.useState(initialTeachers);
+  const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const { toast } = useToast();
 
   React.useEffect(() => {
     setTeachers(initialTeachers);
   }, [initialTeachers]);
   
+  React.useEffect(() => {
+    async function fetchSubjects() {
+      const subjectsData = await getSubjects();
+      setSubjects(subjectsData);
+    }
+    fetchSubjects();
+  }, []);
+
   const form = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherFormSchema),
     defaultValues: {
@@ -271,6 +280,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
         open={!!teacherToEdit}
         onOpenChange={(isOpen) => !isOpen && setTeacherToEdit(null)}
         onSave={handleUpdateTeacher}
+        subjects={subjects}
       />
     </>
   );

@@ -5,7 +5,7 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers, getSubjects, getAssessmentCategories } from "@/lib/firebase/firestore";
-import type { Student, Assessment, Subject, AssessmentCategory } from "@/lib/types";
+import type { Student, Assessment, Subject, AssessmentCategory, Teacher } from "@/lib/types";
 import { programs } from "@/lib/program-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -39,7 +39,7 @@ export default function RosterPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
   const [assessmentToGrade, setAssessmentToGrade] = React.useState<Assessment | null>(null);
-  const [loggedInTeacherId, setLoggedInTeacherId] = React.useState<string | null>(null);
+  const [loggedInTeacher, setLoggedInTeacher] = React.useState<Teacher | null>(null);
 
 
   const fetchData = React.useCallback(async () => {
@@ -69,11 +69,11 @@ export default function RosterPage() {
             setSubjects(subjectsData);
             setAssessmentCategories(categoriesData);
             
-            const loggedInTeacher = teachers.find(t => t.email === user.email);
-            if (!loggedInTeacher) {
+            const currentTeacher = teachers.find(t => t.email === user.email);
+            if (!currentTeacher) {
               throw new Error("Could not identify the logged-in teacher.");
             }
-            setLoggedInTeacherId(loggedInTeacher.teacherId);
+            setLoggedInTeacher(currentTeacher);
 
             const studentIdsInClass = new Set<string>();
             const admission = admissions.find(a => a.schoolYear === schoolYear);
@@ -84,7 +84,7 @@ export default function RosterPage() {
                     const isEnrolledByTeacher = studentAdmission.enrollments.some(e => 
                         e.programId === programId && 
                         e.level === level &&
-                        e.teacherIds?.includes(loggedInTeacher.teacherId)
+                        e.teacherIds?.includes(currentTeacher.teacherId)
                     );
                     if (isEnrolledByTeacher) {
                       studentIdsInClass.add(studentAdmission.studentId);
@@ -93,7 +93,7 @@ export default function RosterPage() {
 
                 // Also find students who are in a class definition assigned to this teacher
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
-                if (classDef && classDef.teacherIds?.includes(loggedInTeacher.teacherId)) {
+                if (classDef && classDef.teacherIds?.includes(currentTeacher.teacherId)) {
                      admission.students.forEach(studentAdmission => {
                         if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
                             studentIdsInClass.add(studentAdmission.studentId);
@@ -207,6 +207,10 @@ export default function RosterPage() {
     );
   }
 
+  const teacherSubjects = loggedInTeacher?.assignedSubjects 
+    ? subjects.filter(s => loggedInTeacher.assignedSubjects?.includes(s.subjectId))
+    : subjects;
+
   return (
     <div className="space-y-6">
        <div className="mb-6">
@@ -313,11 +317,11 @@ export default function RosterPage() {
                 </div>
              </TabsContent>
              <TabsContent value="attendance">
-                {loggedInTeacherId && (
+                {loggedInTeacher && (
                   <AttendanceRoster 
                     students={roster}
                     classId={classId}
-                    teacherId={loggedInTeacherId}
+                    teacherId={loggedInTeacher.teacherId}
                   />
                 )}
              </TabsContent>
@@ -329,7 +333,7 @@ export default function RosterPage() {
         open={isNewAssessmentOpen}
         onOpenChange={setIsNewAssessmentOpen}
         onSave={handleSaveAssessment}
-        subjects={subjects}
+        subjects={teacherSubjects}
         assessmentCategories={assessmentCategories}
       />
       

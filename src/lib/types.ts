@@ -73,6 +73,7 @@ export interface Teacher {
   status: 'Active' | 'Inactive';
   avatarUrl?: string;
   joinedDate?: Date;
+  assignedSubjects?: string[]; // subjectIds
 }
 
 export interface Subject {

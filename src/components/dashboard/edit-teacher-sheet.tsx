@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import * as React from "react";
-import { Calendar as CalendarIcon, User as UserIcon } from "lucide-react";
+import { Calendar as CalendarIcon, User as UserIcon, X } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -30,14 +30,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
-import type { Teacher } from "@/lib/types";
+import type { Teacher, Subject } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
-import 'react-image-crop/dist/ReactCrop.css'
+import 'react-image-crop/dist/ReactCrop.css';
+import { Badge } from "../ui/badge";
+import { Checkbox } from "../ui/checkbox";
 
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -47,6 +50,7 @@ const formSchema = z.object({
   status: z.enum(["Active", "Inactive"]),
   joinedDate: z.date().optional(),
   avatarUrl: z.string().optional(),
+  assignedSubjects: z.array(z.string()).optional(),
 });
 
 type EditTeacherFormValues = z.infer<typeof formSchema>;
@@ -56,9 +60,72 @@ interface EditTeacherSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (teacherId: string, updatedData: Partial<Teacher>) => void;
+  subjects: Subject[];
 }
 
-export function EditTeacherSheet({ teacher, open, onOpenChange, onSave }: EditTeacherSheetProps) {
+function MultiSelectSubject({ subjects, selected, onChange }: { subjects: Subject[], selected: string[], onChange: (selected: string[]) => void }) {
+  const [open, setOpen] = React.useState(false);
+
+  const handleSelect = (subjectId: string) => {
+    const newSelected = selected.includes(subjectId)
+      ? selected.filter(id => id !== subjectId)
+      : [...selected, subjectId];
+    onChange(newSelected);
+  };
+  
+  const selectedSubjects = subjects.filter(t => selected.includes(t.subjectId));
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-auto">
+          <div className="flex gap-1 flex-wrap">
+            {selectedSubjects.length > 0 ? selectedSubjects.map(subject => (
+              <Badge key={subject.subjectId} variant="secondary">
+                {subject.subjectName}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelect(subject.subjectId);
+                    }
+                  }}
+                  onClick={(e) => { e.stopPropagation(); handleSelect(subject.subjectId); }}
+                >
+                  <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                </span>
+              </Badge>
+            )) : "Select subjects..."}
+          </div>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search subjects..." />
+          <CommandList>
+            <CommandEmpty>No subjects found.</CommandEmpty>
+            <CommandGroup>
+              {subjects.map(subject => (
+                <CommandItem
+                  key={subject.subjectId}
+                  onSelect={() => handleSelect(subject.subjectId)}
+                >
+                  <Checkbox className="mr-2" checked={selected.includes(subject.subjectId)} />
+                  {subject.subjectName}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects }: EditTeacherSheetProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
@@ -72,6 +139,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave }: EditTe
       form.reset({
         ...teacher,
         joinedDate: teacher.joinedDate,
+        assignedSubjects: teacher.assignedSubjects || [],
       });
     }
   }, [teacher, form]);
@@ -212,6 +280,21 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave }: EditTe
                                             </FormItem>
                                         )} />
                                     </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="assignedSubjects"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Assigned Subjects</FormLabel>
+                                            <MultiSelectSubject
+                                                subjects={subjects}
+                                                selected={field.value || []}
+                                                onChange={field.onChange}
+                                            />
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </CardContent>
                             </Card>
                         </div>
