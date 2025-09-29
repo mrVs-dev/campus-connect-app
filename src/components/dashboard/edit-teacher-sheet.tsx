@@ -35,7 +35,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
-import type { Teacher, Subject, Admission } from "@/lib/types";
+import type { Teacher, Subject, Admission, UserRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css';
@@ -43,6 +43,7 @@ import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { programs, getLevelsForProgram } from "@/lib/program-data";
 
+const userRoles: UserRole[] = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
 
 const classAssignmentSchema = z.object({
   schoolYear: z.string().min(1, "School year is required"),
@@ -56,6 +57,7 @@ const formSchema = z.object({
   email: z.string().email("Invalid email format"),
   phone: z.string().optional(),
   status: z.enum(["Active", "Inactive"]),
+  role: z.enum(userRoles),
   joinedDate: z.date().optional(),
   avatarUrl: z.string().optional(),
   assignedSubjects: z.array(z.string()).optional(),
@@ -210,7 +212,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="sm:max-w-2xl w-full flex flex-col">
           <SheetHeader>
-            <SheetTitle>Edit Teacher Profile</SheetTitle>
+            <SheetTitle>Edit Staff Profile</SheetTitle>
             <SheetDescription>
               Update the details for {teacher.firstName} {teacher.lastName}.
             </SheetDescription>
@@ -262,7 +264,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
                                             <PopoverTrigger asChild>
                                                 <FormControl>
                                                 <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                                    {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
                                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                 </Button>
                                                 </FormControl>
@@ -300,6 +302,28 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
                                             </FormItem>
                                         )} />
                                     </div>
+                                     <FormField
+                                      control={form.control}
+                                      name="role"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Role</FormLabel>
+                                          <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                              <SelectTrigger>
+                                                <SelectValue placeholder="Select a role" />
+                                              </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                              {userRoles.map(role => (
+                                                <SelectItem key={role} value={role}>{role}</SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
                                     <FormField
                                         control={form.control}
                                         name="assignedSubjects"

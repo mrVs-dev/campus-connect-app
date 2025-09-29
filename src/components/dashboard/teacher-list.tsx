@@ -6,7 +6,7 @@ import { PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Teacher, Subject, Admission } from "@/lib/types";
+import type { Teacher, Subject, Admission, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +40,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { format } from "date-fns";
@@ -47,12 +54,14 @@ import { EditTeacherSheet } from "./edit-teacher-sheet";
 import { updateTeacher, getSubjects, getAdmissions } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
+const userRoles: UserRole[] = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
 
 const teacherFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
+  role: z.enum(userRoles),
 });
 
 type TeacherFormValues = z.infer<typeof teacherFormSchema>;
@@ -93,6 +102,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
       lastName: "",
       email: "",
       phone: "",
+      role: "Teacher",
     },
   });
 
@@ -166,16 +176,16 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-1">
                   <PlusCircle className="h-3.5 w-3.5" />
-                  New Teacher
+                  New Staff
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(handleAddTeacher)}>
                     <DialogHeader>
-                      <DialogTitle>Add New Teacher</DialogTitle>
+                      <DialogTitle>Add New Staff Member</DialogTitle>
                       <DialogDescription>
-                        Enter the details for the new teacher.
+                        Enter the details for the new staff member.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -211,10 +221,32 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                           </FormItem>
                         )}
                       />
+                       <FormField
+                        control={form.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Role</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {userRoles.map(role => (
+                                  <SelectItem key={role} value={role}>{role}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setIsNewTeacherDialogOpen(false)}>Cancel</Button>
-                      <Button type="submit">Save Teacher</Button>
+                      <Button type="submit">Save Staff</Button>
                     </DialogFooter>
                   </form>
                 </Form>
@@ -228,6 +260,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Joined Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead><span className="sr-only">Actions</span></TableHead>
@@ -246,6 +279,9 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                     </div>
                   </TableCell>
                   <TableCell>{teacher.email}</TableCell>
+                   <TableCell>
+                    <Badge variant="outline">{teacher.role}</Badge>
+                  </TableCell>
                   <TableCell>
                     {formatDateSafe(teacher.joinedDate)}
                   </TableCell>

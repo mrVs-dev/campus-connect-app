@@ -1,5 +1,7 @@
 
 
+export type UserRole = 'Admin' | 'Receptionist' | 'Head of Department' | 'Teacher';
+
 export type Guardian = {
   relation: string;
   name: string;
@@ -76,6 +78,7 @@ export interface Teacher {
   email: string;
   phone?: string;
   status: 'Active' | 'Inactive';
+  role: UserRole;
   avatarUrl?: string;
   joinedDate?: Date;
   assignedSubjects?: string[]; // subjectIds
