@@ -43,10 +43,11 @@ type NewAssessmentFormValues = z.infer<typeof formSchema>;
 interface NewAssessmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (assessment: Omit<Assessment, 'assessmentId' | 'teacherId'>) => Promise<Assessment | null>;
+  onSave: (assessment: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => Promise<Assessment | null>;
+  existingAssessment?: Assessment | null;
 }
 
-export function NewAssessmentDialog({ open, onOpenChange, onSave }: NewAssessmentDialogProps) {
+export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssessment }: NewAssessmentDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
 
   const form = useForm<NewAssessmentFormValues>({
@@ -58,19 +59,44 @@ export function NewAssessmentDialog({ open, onOpenChange, onSave }: NewAssessmen
     },
   });
 
+  React.useEffect(() => {
+    if (open) {
+      if (existingAssessment) {
+        form.reset(existingAssessment);
+      } else {
+        form.reset({
+          topic: "",
+          subjectId: "",
+          totalMarks: 100,
+          category: undefined,
+        });
+      }
+    }
+  }, [open, existingAssessment, form]);
+
   const handleSave = async (values: NewAssessmentFormValues) => {
     setIsSaving(true);
-    const newAssessmentData = {
-      ...values,
-      scores: {},
-    };
-    const result = await onSave(newAssessmentData);
+    let result: Assessment | null = null;
+    
+    if (existingAssessment) {
+      const updatedAssessment = { ...existingAssessment, ...values };
+      result = await onSave(updatedAssessment);
+    } else {
+      const newAssessmentData = {
+        ...values,
+        scores: {},
+      };
+      result = await onSave(newAssessmentData);
+    }
+
     if (result) {
         form.reset();
         onOpenChange(false);
     }
     setIsSaving(false);
   };
+  
+  const isEditing = !!existingAssessment;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -78,9 +104,9 @@ export function NewAssessmentDialog({ open, onOpenChange, onSave }: NewAssessmen
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSave)}>
             <DialogHeader>
-              <DialogTitle>Create New Assessment</DialogTitle>
+              <DialogTitle>{isEditing ? "Edit Assessment" : "Create New Assessment"}</DialogTitle>
               <DialogDescription>
-                Fill in the details for the new assessment. Click save when you're done.
+                {isEditing ? "Update the details for this assessment." : "Fill in the details for the new assessment."} Click save when you're done.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -103,7 +129,7 @@ export function NewAssessmentDialog({ open, onOpenChange, onSave }: NewAssessmen
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                        <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a subject" />
@@ -127,7 +153,7 @@ export function NewAssessmentDialog({ open, onOpenChange, onSave }: NewAssessmen
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                        <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a category" />
