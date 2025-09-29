@@ -37,8 +37,12 @@ export default function RosterPage() {
     if (user && typeof classId === 'string') {
         try {
             setLoading(true);
-            const [schoolYear, programId, ...levelParts] = classId.replace(/-/g, ' ').split('_');
-            const level = levelParts.join('_').replace(/ /g, ' ');
+            const classIdParts = classId.split('_');
+            if (classIdParts.length < 3) throw new Error("Invalid class ID format.");
+            
+            const schoolYear = classIdParts[0];
+            const programId = classIdParts[1];
+            const level = classIdParts.slice(2).join('_').replace(/-/g, ' '); // Rejoin level parts and replace dashes with spaces
 
             if (!schoolYear || !programId || !level) {
                 throw new Error("Invalid class information provided.");
@@ -52,23 +56,36 @@ export default function RosterPage() {
 
             const admission = admissions.find(a => a.schoolYear === schoolYear);
             const loggedInTeacher = teachers.find(t => t.email === user.email);
+            const loggedInTeacherId = loggedInTeacher?.teacherId;
 
+            if (!loggedInTeacherId) {
+                throw new Error("Could not identify the logged-in teacher.");
+            }
+            
             const studentIdsInClass = new Set<string>();
 
             if (admission) {
-                // Find students enrolled in this class via direct student admission records
+                // Find students enrolled in this class via direct student admission records and taught by this teacher
                 admission.students.forEach(studentAdmission => {
-                    if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
+                    if (studentAdmission.enrollments.some(e => 
+                        e.programId === programId && 
+                        e.level === level &&
+                        e.teacherIds?.includes(loggedInTeacherId)
+                    )) {
                         studentIdsInClass.add(studentAdmission.studentId);
                     }
                 });
 
-                // Find students in this class via the class definition (for classes assigned to the teacher)
+                // Find students in this class via the class definition if the teacher is assigned
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
-                if (classDef && loggedInTeacher && classDef.teacherIds?.includes(loggedInTeacher.teacherId)) {
-                    // This logic assumes we might need to find all students in a class defined for a teacher,
-                    // even if not explicitly in student_admissions. This makes it more robust.
-                    // For now, we rely on student_admissions, but this structure allows expansion.
+                if (classDef && classDef.teacherIds?.includes(loggedInTeacherId)) {
+                    // This logic is important for classes that might not have students explicitly assigned to a teacher in their enrollment record
+                    // We find all students in that class and add them.
+                     admission.students.forEach(studentAdmission => {
+                        if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
+                            studentIdsInClass.add(studentAdmission.studentId);
+                        }
+                    });
                 }
             } else {
                 console.warn(`No admission data found for school year ${schoolYear}. Roster may be incomplete.`);
@@ -76,7 +93,6 @@ export default function RosterPage() {
 
             const classRosterData = allStudents.filter(s => studentIdsInClass.has(s.studentId));
             
-            // Assessments for this class are any that have at least one student from the roster graded.
             const relevantAssessments = assessments.filter(assessment => 
                 classRosterData.some(student => assessment.scores && assessment.scores[student.studentId] !== undefined)
             );
