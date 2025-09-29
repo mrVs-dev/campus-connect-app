@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/components/dashboard/overview";
@@ -59,6 +59,17 @@ function MissingFirebaseConfig() {
   );
 }
 
+const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
+  { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Head of Department'] },
+  { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department'] },
+  { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
+  { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department'] },
+  { value: "admissions", label: "Admissions", roles: ['Admin', 'Receptionist', 'Head of Department'] },
+  { value: "enrollment", label: "Enrollment", roles: ['Admin', 'Receptionist'] },
+  { value: "statusHistory", label: "Status History", roles: ['Admin'] },
+  { value: "settings", label: "Settings", roles: ['Admin'] },
+];
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -72,6 +83,7 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [loadingData, setLoadingData] = React.useState(true);
+  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
 
   // Memoize the derived student data to prevent expensive recalculations on every render
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -102,7 +114,7 @@ export default function DashboardPage() {
 
 
   const fetchData = React.useCallback(async () => {
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseConfigured || !user) {
       setLoadingData(false);
       return;
     }
@@ -124,6 +136,18 @@ export default function DashboardPage() {
       setStatusHistory(statusHistoryData);
       setSubjects(subjectsData);
       setAssessmentCategories(categoriesData);
+
+      const currentUserProfile = teachersData.find(t => t.email === user.email);
+      if (currentUserProfile) {
+        if (currentUserProfile.role === 'Teacher') {
+          router.replace('/teacher/dashboard');
+          return;
+        }
+        setUserRole(currentUserProfile.role);
+      } else {
+        setUserRole('Admin'); // Default to Admin if not found in teachers list
+      }
+
     } catch (error) {
       console.error("Failed to fetch initial data:", error);
       toast({
@@ -134,7 +158,7 @@ export default function DashboardPage() {
     } finally {
       setLoadingData(false);
     }
-  }, [toast]);
+  }, [toast, user, router]);
   
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -348,7 +372,7 @@ export default function DashboardPage() {
     }
   };
   
-  const handleAddTeacher = async (teacherData: Omit<Teacher, 'teacherId' | 'status'>) => {
+  const handleAddTeacher = async (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => {
     try {
       const newTeacher = await addTeacher(teacherData);
       if (newTeacher) {
@@ -411,7 +435,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
 
-  if (authLoading || loadingData || !user) {
+  if (authLoading || loadingData || !user || !userRole) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading application data...
@@ -419,20 +443,17 @@ export default function DashboardPage() {
     );
   }
 
+  const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
-        <Tabs defaultValue="dashboard" className="flex flex-col gap-4">
+        <Tabs defaultValue={visibleTabs[0].value} className="flex flex-col gap-4">
           <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-8 self-start">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="students">Students</TabsTrigger>
-            <TabsTrigger value="teachers">Teachers</TabsTrigger>
-            <TabsTrigger value="assessments">Assessments</TabsTrigger>
-            <TabsTrigger value="admissions">Admissions</TabsTrigger>
-            <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
-            <TabsTrigger value="statusHistory">Status History</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            {visibleTabs.map(tab => (
+              <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -522,3 +543,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
