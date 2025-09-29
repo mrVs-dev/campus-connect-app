@@ -952,6 +952,20 @@ function BulkEnrollmentRow({ index, onRemove, isOnlyOne, teachers }: { index: nu
           </FormItem>
         )}
       />
+       <FormField
+        control={control}
+        name={`bulkEnrollments.${index}.teacherIds`}
+        render={({ field }) => (
+          <FormItem className="flex-1">
+            <FormLabel>Teacher(s)</FormLabel>
+            <MultiSelectTeacher
+              teachers={teachers}
+              selected={field.value || []}
+              onChange={field.onChange}
+            />
+          </FormItem>
+        )}
+      />
       {!isOnlyOne && (
         <Button
           type="button"
@@ -1070,6 +1084,21 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove, teachers }: { s
           )}
         />
       </div>
+       <FormField
+        control={control}
+        name={`students.${studentIndex}.enrollments.${enrollmentIndex}.teacherIds`}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Teacher(s)</FormLabel>
+            <MultiSelectTeacher
+              teachers={teachers}
+              selected={field.value || []}
+              onChange={field.onChange}
+            />
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 }
@@ -1135,3 +1164,5 @@ function MultiSelectTeacher({ teachers, selected, onChange }: { teachers: Teache
     </Popover>
   );
 }
+
+    

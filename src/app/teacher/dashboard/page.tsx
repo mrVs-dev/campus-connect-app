@@ -105,11 +105,22 @@ export default function TeacherDashboardPage() {
           const teacherId = loggedInTeacher.teacherId;
 
           if (currentYearAdmission) {
+            // Add classes directly assigned to the teacher
             currentYearAdmission.classes?.forEach(classDef => {
               if (classDef.teacherIds?.includes(teacherId)) {
+                  // Add the class definition itself
                   addStudentToClass(classDef.programId, classDef.level, '');
+
+                  // Add all students enrolled in that class
+                  currentYearAdmission.students.forEach(studentAdmission => {
+                      if (studentAdmission.enrollments.some(e => e.programId === classDef.programId && e.level === classDef.level)) {
+                          addStudentToClass(classDef.programId, classDef.level, studentAdmission.studentId);
+                      }
+                  });
               }
             });
+
+            // Add students who have this teacher specifically assigned to their enrollment record
             currentYearAdmission.students.forEach(studentAdmission => {
               studentAdmission.enrollments.forEach(enrollment => {
                 if (enrollment.teacherIds?.includes(teacherId)) {
@@ -298,3 +309,5 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
+    
