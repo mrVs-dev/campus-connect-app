@@ -63,6 +63,11 @@ export type StudentStatusHistory = {
   changeDate: Date;
 };
 
+export type ClassAssignment = {
+  schoolYear: string;
+  programId: string;
+  level: string;
+};
 
 export interface Teacher {
   teacherId: string;
@@ -74,6 +79,7 @@ export interface Teacher {
   avatarUrl?: string;
   joinedDate?: Date;
   assignedSubjects?: string[]; // subjectIds
+  assignedClasses?: ClassAssignment[];
 }
 
 export interface Subject {

@@ -2,10 +2,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import * as React from "react";
-import { Calendar as CalendarIcon, User as UserIcon, X } from "lucide-react";
+import { Calendar as CalendarIcon, User as UserIcon, X, PlusCircle, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -35,12 +35,20 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
-import type { Teacher, Subject } from "@/lib/types";
+import type { Teacher, Subject, Admission } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css';
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
+import { programs, getLevelsForProgram } from "@/lib/program-data";
+
+
+const classAssignmentSchema = z.object({
+  schoolYear: z.string().min(1, "School year is required"),
+  programId: z.string().min(1, "Program is required"),
+  level: z.string().min(1, "Level is required"),
+});
 
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -51,6 +59,7 @@ const formSchema = z.object({
   joinedDate: z.date().optional(),
   avatarUrl: z.string().optional(),
   assignedSubjects: z.array(z.string()).optional(),
+  assignedClasses: z.array(classAssignmentSchema).optional(),
 });
 
 type EditTeacherFormValues = z.infer<typeof formSchema>;
@@ -61,6 +70,7 @@ interface EditTeacherSheetProps {
   onOpenChange: (open: boolean) => void;
   onSave: (teacherId: string, updatedData: Partial<Teacher>) => void;
   subjects: Subject[];
+  admissions: Admission[];
 }
 
 function MultiSelectSubject({ subjects, selected, onChange }: { subjects: Subject[], selected: string[], onChange: (selected: string[]) => void }) {
@@ -125,7 +135,7 @@ function MultiSelectSubject({ subjects, selected, onChange }: { subjects: Subjec
   );
 }
 
-export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects }: EditTeacherSheetProps) {
+export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects, admissions }: EditTeacherSheetProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
@@ -134,12 +144,22 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
     resolver: zodResolver(formSchema),
   });
   
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "assignedClasses"
+  });
+  
+  const admissionYears = React.useMemo(() => {
+    return [...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a));
+  }, [admissions]);
+
   React.useEffect(() => {
     if (teacher) {
       form.reset({
         ...teacher,
         joinedDate: teacher.joinedDate,
         assignedSubjects: teacher.assignedSubjects || [],
+        assignedClasses: teacher.assignedClasses || [],
       });
     }
   }, [teacher, form]);
@@ -297,6 +317,75 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
                                     />
                                 </CardContent>
                             </Card>
+
+                            <Card>
+                                <CardHeader><CardTitle>Class Assignments</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                  {fields.map((field, index) => {
+                                      const programId = form.watch(`assignedClasses.${index}.programId`);
+                                      const levels = getLevelsForProgram(programId || "");
+                                      return (
+                                        <div key={field.id} className="flex items-end gap-2 p-3 border rounded-md bg-muted/50">
+                                            <FormField
+                                              control={form.control}
+                                              name={`assignedClasses.${index}.schoolYear`}
+                                              render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                  <FormLabel>School Year</FormLabel>
+                                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                      {admissionYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                                                    </SelectContent>
+                                                  </Select>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                            <FormField
+                                              control={form.control}
+                                              name={`assignedClasses.${index}.programId`}
+                                              render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                  <FormLabel>Program</FormLabel>
+                                                  <Select onValueChange={(value) => { field.onChange(value); form.setValue(`assignedClasses.${index}.level`, ''); }} value={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Select program" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        {programs.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                  </Select>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                            <FormField
+                                              control={form.control}
+                                              name={`assignedClasses.${index}.level`}
+                                              render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                  <FormLabel>Level</FormLabel>
+                                                  <Select onValueChange={field.onChange} value={field.value} disabled={!programId}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                      {levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}
+                                                    </SelectContent>
+                                                  </Select>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="shrink-0">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                      );
+                                  })}
+                                  <Button type="button" variant="outline" size="sm" onClick={() => append({ schoolYear: '', programId: '', level: '' })}>
+                                      <PlusCircle className="mr-2 h-4 w-4" /> Add Class Assignment
+                                  </Button>
+                                </CardContent>
+                            </Card>
+
                         </div>
                         <div className="space-y-8">
                             <Card>

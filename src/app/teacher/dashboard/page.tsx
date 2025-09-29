@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { getTeachers, getAdmissions, addTeacher, getStudents, getAssessments, saveAssessment, getSubjects, getAssessmentCategories } from "@/lib/firebase/firestore";
-import type { Teacher, Admission, Student, Assessment, Subject, AssessmentCategory } from "@/lib/types";
+import type { Teacher, Admission, Student, Assessment, Subject, AssessmentCategory, ClassAssignment } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { programs } from "@/lib/program-data";
 import { BarChart, UserCheck, TrendingUp, ArrowRight } from "lucide-react";
@@ -88,47 +88,60 @@ export default function TeacherDashboardPage() {
             throw new Error("Your email is not associated with a teacher profile.");
           }
 
-          const schoolYear = getCurrentSchoolYear();
-          const currentYearAdmission = admissions.find(a => a.schoolYear === schoolYear);
-          
-          const classMap = new Map<string, { programId: string; programName: string; level: string; students: Set<string> }>();
+          const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
 
-          const addStudentToClass = (programId: string, level: string, studentId: string) => {
-             const classKey = `${programId}::${level}`;
+          const addStudentToClass = (schoolYear: string, programId: string, level: string, studentId: string) => {
+             const classKey = `${schoolYear}::${programId}::${level}`;
              if (!classMap.has(classKey)) {
                 const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
-                classMap.set(classKey, { programId, programName, level, students: new Set() });
+                classMap.set(classKey, { schoolYear, programId, programName, level, students: new Set() });
              }
              if (studentId) classMap.get(classKey)!.students.add(studentId);
           };
           
           const teacherId = loggedInTeacher.teacherId;
 
-          if (currentYearAdmission) {
-            // Add classes directly assigned to the teacher
-            currentYearAdmission.classes?.forEach(classDef => {
-              if (classDef.teacherIds?.includes(teacherId)) {
-                  // Add the class definition itself
-                  addStudentToClass(classDef.programId, classDef.level, '');
-
-                  // Add all students enrolled in that class
-                  currentYearAdmission.students.forEach(studentAdmission => {
-                      if (studentAdmission.enrollments.some(e => e.programId === classDef.programId && e.level === classDef.level)) {
-                          addStudentToClass(classDef.programId, classDef.level, studentAdmission.studentId);
-                      }
-                  });
+          // 1. Add classes directly assigned to the teacher on their profile
+          if (loggedInTeacher.assignedClasses) {
+            loggedInTeacher.assignedClasses.forEach(classAssignment => {
+              const admission = admissions.find(a => a.schoolYear === classAssignment.schoolYear);
+              if (admission) {
+                admission.students.forEach(studentAdmission => {
+                  if (studentAdmission.enrollments.some(e => e.programId === classAssignment.programId && e.level === classAssignment.level)) {
+                    addStudentToClass(classAssignment.schoolYear, classAssignment.programId, classAssignment.level, studentAdmission.studentId);
+                  }
+                });
+                // Ensure the class appears even if no students are enrolled yet
+                addStudentToClass(classAssignment.schoolYear, classAssignment.programId, classAssignment.level, '');
               }
             });
+          }
 
-            // Add students who have this teacher specifically assigned to their enrollment record
-            currentYearAdmission.students.forEach(studentAdmission => {
-              studentAdmission.enrollments.forEach(enrollment => {
-                if (enrollment.teacherIds?.includes(teacherId)) {
-                   addStudentToClass(enrollment.programId, enrollment.level, studentAdmission.studentId);
+          // 2. Add classes from admissions data (class definitions and student-specific assignments)
+          admissions.forEach(admission => {
+              // Add classes directly assigned to the teacher in the admission year
+              admission.classes?.forEach(classDef => {
+                if (classDef.teacherIds?.includes(teacherId)) {
+                    // Add all students enrolled in that class
+                    admission.students.forEach(studentAdmission => {
+                        if (studentAdmission.enrollments.some(e => e.programId === classDef.programId && e.level === classDef.level)) {
+                            addStudentToClass(admission.schoolYear, classDef.programId, classDef.level, studentAdmission.studentId);
+                        }
+                    });
+                    // Ensure the class appears even if no students are enrolled
+                    addStudentToClass(admission.schoolYear, classDef.programId, classDef.level, '');
                 }
               });
-            });
-          }
+
+              // Add students who have this teacher specifically assigned to their enrollment record
+              admission.students.forEach(studentAdmission => {
+                studentAdmission.enrollments.forEach(enrollment => {
+                  if (enrollment.teacherIds?.includes(teacherId)) {
+                     addStudentToClass(admission.schoolYear, enrollment.programId, enrollment.level, studentAdmission.studentId);
+                  }
+                });
+              });
+          });
           
           const classes: AssignedClass[] = Array.from(classMap.values()).map(classInfo => {
             const studentsInClass = allStudents.filter(s => classInfo.students.has(s.studentId));
@@ -137,8 +150,8 @@ export default function TeacherDashboardPage() {
             const averagePerformance = studentsInClass.length > 0 ? Math.round(totalAverage / studentsInClass.length) : 0;
             
             return {
-              classId: `${schoolYear}_${classInfo.programId}_${classInfo.level}`.replace(/\s+/g, '-'),
-              schoolYear: schoolYear,
+              classId: `${classInfo.schoolYear}_${classInfo.programId}_${classInfo.level}`.replace(/\s+/g, '-'),
+              schoolYear: classInfo.schoolYear,
               programId: classInfo.programId,
               programName: classInfo.programName,
               level: classInfo.level,
@@ -147,7 +160,7 @@ export default function TeacherDashboardPage() {
             };
           });
           
-          setAssignedClasses(classes.sort((a,b) => a.programName.localeCompare(b.programName) || a.level.localeCompare(b.level)));
+          setAssignedClasses(classes.sort((a,b) => b.schoolYear.localeCompare(a.schoolYear) || a.programName.localeCompare(b.programName) || a.level.localeCompare(b.level)));
 
           // Calculate overall metrics
           const allClassStudents = classes.flatMap(c => c.students);
@@ -212,7 +225,7 @@ export default function TeacherDashboardPage() {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-3xl font-bold mb-2">Teacher Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's a summary of your classes for the {getCurrentSchoolYear()} school year.</p>
+        <p className="text-muted-foreground">Welcome back! Here's a summary of your classes.</p>
       </div>
 
       {error && (
@@ -268,7 +281,7 @@ export default function TeacherDashboardPage() {
                 <Card key={cls.classId} className="flex flex-col">
                   <CardHeader>
                     <CardTitle className="text-lg">{cls.programName}</CardTitle>
-                    <CardDescription>{cls.level}</CardDescription>
+                    <CardDescription>{cls.level} ({cls.schoolYear})</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow space-y-2">
                     <p className="text-sm font-medium">{cls.students.length} student(s)</p>
@@ -290,7 +303,7 @@ export default function TeacherDashboardPage() {
             </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground bg-card rounded-lg">
-                  You have no classes assigned for the {getCurrentSchoolYear()} school year.
+                  You have no classes assigned.
               </div>
             )}
           </div>
@@ -309,5 +322,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    
