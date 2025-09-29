@@ -1,5 +1,4 @@
 
-
 import { 
   collection, 
   getDocs, 
@@ -429,14 +428,16 @@ export async function getTeachers(): Promise<Teacher[]> {
     const snapshot = await getDocs(teachersCollection);
     return snapshot.docs.map(doc => {
         const data = doc.data();
-        const teacherDataWithDates = convertTimestampsToDates(data);
+        // Manually convert timestamp to Date object for joinedDate
+        if (data.joinedDate && isTimestamp(data.joinedDate)) {
+            data.joinedDate = data.joinedDate.toDate();
+        }
         return {
-            ...(teacherDataWithDates as Omit<Teacher, 'teacherId'>),
+            ...(data as Omit<Teacher, 'teacherId'>),
             teacherId: doc.id,
         };
     });
 }
-
 
 export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>): Promise<Teacher> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
@@ -449,12 +450,11 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
 
     const docRef = await addDoc(teachersCollection, teacherForFirestore);
     
-    // Construct the object to return to the client with a real JS Date
     const newTeacher: Teacher = {
         ...teacherData,
         teacherId: docRef.id,
         status: 'Active',
-        joinedDate: new Date(),
+        joinedDate: new Date(), // Return a JS Date for immediate use in the client
     };
     return newTeacher;
 }

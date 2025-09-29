@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -86,6 +85,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   const handleAddTeacher = async (values: TeacherFormValues) => {
     const newTeacher = await onAddTeacher(values);
     if (newTeacher) {
+      // The newTeacher object from the backend has the correct Date object
       setTeachers(prev => [...prev, newTeacher]);
       form.reset();
       setIsNewTeacherDialogOpen(false);
