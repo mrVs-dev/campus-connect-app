@@ -5,7 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getTeachers, getAdmissions } from "@/lib/firebase/firestore";
+import { getTeachers, getAdmissions, addTeacher } from "@/lib/firebase/firestore";
 import type { Teacher, Admission, Student } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { programs } from "@/lib/program-data";
@@ -50,12 +50,21 @@ export default function TeacherDashboardPage() {
       const fetchData = async () => {
         try {
           setLoading(true);
-          const [teachers, admissions] = await Promise.all([getTeachers(), getAdmissions()]);
+          let [teachers, admissions] = await Promise.all([getTeachers(), getAdmissions()]);
           
-          const loggedInTeacher = teachers.find(t => t.email === user.email);
+          let loggedInTeacher = teachers.find(t => t.email === user.email);
+          
+          // If user is not a teacher, auto-create a teacher profile for them
           if (!loggedInTeacher) {
-            setError("Your email is not associated with a teacher profile. Please contact an administrator.");
-            return;
+            const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ["", ""];
+            const newTeacherData = {
+              firstName: firstName || "New",
+              lastName: lastNameParts.join(' ') || "Teacher",
+              email: user.email!,
+            };
+            const newTeacher = await addTeacher(newTeacherData);
+            teachers.push(newTeacher); // Add to the local list to avoid re-fetching
+            loggedInTeacher = newTeacher;
           }
 
           const schoolYear = getCurrentSchoolYear();
@@ -79,7 +88,7 @@ export default function TeacherDashboardPage() {
 
           // Find classes defined in the admission.classes array assigned to the teacher
           currentYearAdmission.classes?.forEach(classDef => {
-            if (classDef.teacherId === loggedInTeacher.teacherId) {
+            if (classDef.teacherId === loggedInTeacher!.teacherId) {
                 // Ensure class exists in map even if no students are enrolled yet
                 addStudentToClass(classDef.programId, classDef.level, '');
                 classMap.get(`${classDef.programId}::${classDef.level}`)!.students.delete('');
@@ -89,7 +98,7 @@ export default function TeacherDashboardPage() {
           // Find classes from student enrollments
           currentYearAdmission.students.forEach(studentAdmission => {
             studentAdmission.enrollments.forEach(enrollment => {
-              if (enrollment.teacherId === loggedInTeacher.teacherId) {
+              if (enrollment.teacherId === loggedInTeacher!.teacherId) {
                  addStudentToClass(enrollment.programId, enrollment.level, studentAdmission.studentId);
               }
             });
@@ -171,3 +180,5 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
+    

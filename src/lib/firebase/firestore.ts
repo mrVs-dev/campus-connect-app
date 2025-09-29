@@ -1,4 +1,5 @@
 
+
 import { 
   collection, 
   getDocs, 
@@ -463,3 +464,5 @@ export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Tea
     const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
     await updateDoc(teacherDoc, dataWithTimestamps);
 }
+
+    
