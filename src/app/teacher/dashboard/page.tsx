@@ -12,9 +12,7 @@ import { programs } from "@/lib/program-data";
 import { BarChart, UserCheck, TrendingUp, ArrowRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
-import { subjects } from "@/lib/mock-data";
-import { assessmentCategoryWeights } from "@/lib/types";
-
+import { calculateStudentAverage } from "@/lib/grades";
 
 interface AssignedClass {
   classId: string;
@@ -41,39 +39,6 @@ function getCurrentSchoolYear() {
   }
   return `${currentYear}-${currentYear + 1}`;
 }
-
-const calculateStudentAverage = (studentId: string, assessments: Assessment[]): number => {
-    const studentAssessments = assessments.filter(a => a.scores && a.scores[studentId] !== undefined);
-    if (studentAssessments.length === 0) return 0;
-  
-    const performanceBySubject = subjects.map(subject => {
-      const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
-      if (subjectAssessments.length === 0) {
-        return { subjectName: subject.subjectName, overallScore: 0 };
-      }
-      
-      let totalWeightedScore = 0;
-      let totalWeight = 0;
-  
-      subjectAssessments.forEach(assessment => {
-        const weight = assessmentCategoryWeights[assessment.category];
-        const score = assessment.scores[studentId];
-        const percentage = (score / assessment.totalMarks) * 100;
-        totalWeightedScore += percentage * weight;
-        totalWeight += weight;
-      });
-  
-      const overallScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
-      return { subjectName: subject.subjectName, overallScore: Math.round(overallScore) };
-    });
-  
-    const validSubjects = performanceBySubject.filter(s => s.overallScore > 0);
-    if (validSubjects.length === 0) return 0;
-
-    const overallAverage = validSubjects.reduce((acc, curr) => acc + curr.overallScore, 0) / validSubjects.length;
-    return Math.round(overallAverage);
-};
-
 
 export default function TeacherDashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -320,7 +285,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    
-
-    
