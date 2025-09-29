@@ -1094,12 +1094,20 @@ function MultiSelectTeacher({ teachers, selected, onChange }: { teachers: Teache
             {selectedTeachers.length > 0 ? selectedTeachers.map(teacher => (
               <Badge key={teacher.teacherId} variant="secondary">
                 {teacher.firstName} {teacher.lastName}
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelect(teacher.teacherId);
+                    }
+                  }}
                   onClick={(e) => { e.stopPropagation(); handleSelect(teacher.teacherId); }}
                 >
                   <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                </button>
+                </span>
               </Badge>
             )) : "Select teachers..."}
           </div>
