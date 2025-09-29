@@ -4,8 +4,8 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers, getAttendanceForClass, saveAttendance } from "@/lib/firebase/firestore";
-import type { Student, Assessment, AttendanceRecord } from "@/lib/types";
+import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers } from "@/lib/firebase/firestore";
+import type { Student, Assessment } from "@/lib/types";
 import { programs } from "@/lib/program-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -67,6 +67,7 @@ export default function RosterPage() {
             const admission = admissions.find(a => a.schoolYear === schoolYear);
             
             if (admission) {
+                // Find students enrolled by the specific teacher for this class
                 admission.students.forEach(studentAdmission => {
                     const isEnrolledByTeacher = studentAdmission.enrollments.some(e => 
                         e.programId === programId && 
@@ -78,6 +79,7 @@ export default function RosterPage() {
                     }
                 });
 
+                // Also find students who are in a class definition assigned to this teacher
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
                 if (classDef && classDef.teacherIds?.includes(loggedInTeacher.teacherId)) {
                      admission.students.forEach(studentAdmission => {
@@ -126,11 +128,12 @@ export default function RosterPage() {
   
   const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => {
     try {
+      const isNewAssessment = !('assessmentId' in assessmentData);
       const savedAssessment = await saveAssessment(assessmentData);
+      
       await fetchData(); // Refetch all data to update the view
       
-      // If it was a new assessment, open the grading sheet immediately
-      if (!('assessmentId' in assessmentData) && savedAssessment) {
+      if (isNewAssessment && savedAssessment) {
         setAssessmentToGrade(savedAssessment);
       }
 

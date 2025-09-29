@@ -414,17 +414,20 @@ export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmen
     } else {
         // Create new assessment
         const assessmentsCollection = collection(db, 'assessments');
-        const newDocRef = await addDoc(assessmentsCollection, {
+        const dataToSave = {
             ...assessmentData,
             teacherId: "T001", // Placeholder teacher ID
             creationDate: serverTimestamp(),
-        });
-        const newAssessment: Assessment = {
-            ...assessmentData,
-            assessmentId: newDocRef.id,
-            teacherId: "T001",
-            creationDate: new Date(),
         };
+        const newDocRef = await addDoc(assessmentsCollection, dataToSave);
+        const docSnapshot = await getDoc(newDocRef);
+        const newAssessmentData = docSnapshot.data();
+
+        const newAssessment: Assessment = {
+            ...convertTimestampsToDates(newAssessmentData),
+            assessmentId: newDocRef.id,
+        } as Assessment;
+        
         return newAssessment;
     }
 }
