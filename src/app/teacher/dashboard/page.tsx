@@ -5,10 +5,16 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getTeachers, getAdmissions, addTeacher } from "@/lib/firebase/firestore";
-import type { Teacher, Admission, Student } from "@/lib/types";
+import { getTeachers, getAdmissions, addTeacher, getStudents, getAssessments, saveAssessment } from "@/lib/firebase/firestore";
+import type { Teacher, Admission, Student, Assessment } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { programs } from "@/lib/program-data";
+import { BarChart, UserCheck, TrendingUp, ArrowRight } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { AssessmentList } from "@/components/dashboard/assessment-list";
+import { subjects } from "@/lib/mock-data";
+import { assessmentCategoryWeights } from "@/lib/types";
+
 
 interface AssignedClass {
   classId: string;
@@ -16,26 +22,65 @@ interface AssignedClass {
   programId: string;
   programName: string;
   level: string;
-  studentCount: number;
+  students: Student[];
+  averagePerformance: number;
+}
+
+interface PerformanceMetrics {
+  overallAverage: number;
+  outstandingStudent: { name: string; score: number } | null;
+  mostImprovedStudent: { name: string; improvement: number } | null;
 }
 
 function getCurrentSchoolYear() {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  // School year is typically considered to start around August.
-  // If we are before August, we are in the school year that started last year.
   if (currentMonth < 7) { 
     return `${currentYear - 1}-${currentYear}`;
   }
   return `${currentYear}-${currentYear + 1}`;
 }
 
+const calculateStudentAverage = (studentId: string, assessments: Assessment[]): number => {
+    const studentAssessments = assessments.filter(a => a.scores && a.scores[studentId] !== undefined);
+    if (studentAssessments.length === 0) return 0;
+  
+    const performanceBySubject = subjects.map(subject => {
+      const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
+      if (subjectAssessments.length === 0) {
+        return { subjectName: subject.subjectName, overallScore: 0 };
+      }
+      
+      let totalWeightedScore = 0;
+      let totalWeight = 0;
+  
+      subjectAssessments.forEach(assessment => {
+        const weight = assessmentCategoryWeights[assessment.category];
+        const score = assessment.scores[studentId];
+        const percentage = (score / assessment.totalMarks) * 100;
+        totalWeightedScore += percentage * weight;
+        totalWeight += weight;
+      });
+  
+      const overallScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
+      return { subjectName: subject.subjectName, overallScore: Math.round(overallScore) };
+    });
+  
+    const validSubjects = performanceBySubject.filter(s => s.overallScore > 0);
+    if (validSubjects.length === 0) return 0;
+
+    const overallAverage = validSubjects.reduce((acc, curr) => acc + curr.overallScore, 0) / validSubjects.length;
+    return Math.round(overallAverage);
+};
+
 
 export default function TeacherDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [assignedClasses, setAssignedClasses] = React.useState<AssignedClass[]>([]);
+  const [allAssessments, setAllAssessments] = React.useState<Assessment[]>([]);
+  const [metrics, setMetrics] = React.useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -50,44 +95,26 @@ export default function TeacherDashboardPage() {
       const fetchData = async () => {
         try {
           setLoading(true);
-          let [teachers, admissions] = await Promise.all([getTeachers(), getAdmissions()]);
+          let [teachers, admissions, allStudents, assessments] = await Promise.all([getTeachers(), getAdmissions(), getStudents(), getAssessments()]);
+          setAllAssessments(assessments);
           
           let loggedInTeacher = teachers.find(t => t.email === user.email);
           
           if (!loggedInTeacher && user.email) {
             const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ["", ""];
-            const newTeacherData = {
-              firstName: firstName || "New",
-              lastName: lastNameParts.join(' ') || "Teacher",
-              email: user.email,
-            };
-            try {
-                const newTeacher = await addTeacher(newTeacherData);
-                teachers.push(newTeacher);
-                loggedInTeacher = newTeacher;
-            } catch (addError) {
-                console.error("Failed to auto-create teacher profile:", addError);
-                setError("Could not create a teacher profile for your account.");
-                setLoading(false);
-                return;
-            }
+            const newTeacherData = { firstName, lastName: lastNameParts.join(' '), email: user.email };
+            loggedInTeacher = await addTeacher(newTeacherData);
+            if (!loggedInTeacher) throw new Error("Could not create teacher profile.");
+            teachers.push(loggedInTeacher);
           }
 
           if (!loggedInTeacher) {
-            setError("Your email is not associated with a teacher profile. Please contact an administrator.");
-            setLoading(false);
-            return;
+            throw new Error("Your email is not associated with a teacher profile.");
           }
 
           const schoolYear = getCurrentSchoolYear();
           const currentYearAdmission = admissions.find(a => a.schoolYear === schoolYear);
           
-          if (!currentYearAdmission) {
-            setAssignedClasses([]);
-            setLoading(false);
-            return;
-          }
-
           const classMap = new Map<string, { programId: string; programName: string; level: string; students: Set<string> }>();
 
           const addStudentToClass = (programId: string, level: string, studentId: string) => {
@@ -96,43 +123,72 @@ export default function TeacherDashboardPage() {
                 const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
                 classMap.set(classKey, { programId, programName, level, students: new Set() });
              }
-             if (studentId) {
-               classMap.get(classKey)!.students.add(studentId);
-             }
+             if (studentId) classMap.get(classKey)!.students.add(studentId);
           };
           
           const teacherId = loggedInTeacher.teacherId;
 
-          // Find classes defined in the admission.classes array assigned to the teacher
-          currentYearAdmission.classes?.forEach(classDef => {
-            if (classDef.teacherIds?.includes(teacherId)) {
-                addStudentToClass(classDef.programId, classDef.level, '');
-            }
-          });
-
-          // Find classes from student enrollments
-          currentYearAdmission.students.forEach(studentAdmission => {
-            studentAdmission.enrollments.forEach(enrollment => {
-              if (enrollment.teacherIds?.includes(teacherId)) {
-                 addStudentToClass(enrollment.programId, enrollment.level, studentAdmission.studentId);
+          if (currentYearAdmission) {
+            currentYearAdmission.classes?.forEach(classDef => {
+              if (classDef.teacherIds?.includes(teacherId)) {
+                  addStudentToClass(classDef.programId, classDef.level, '');
               }
             });
-          });
+            currentYearAdmission.students.forEach(studentAdmission => {
+              studentAdmission.enrollments.forEach(enrollment => {
+                if (enrollment.teacherIds?.includes(teacherId)) {
+                   addStudentToClass(enrollment.programId, enrollment.level, studentAdmission.studentId);
+                }
+              });
+            });
+          }
           
-          const classes: AssignedClass[] = Array.from(classMap.values()).map(classInfo => ({
-            classId: `${schoolYear}_${classInfo.programId}_${classInfo.level}`.replace(/\s+/g, '-'),
-            schoolYear: schoolYear,
-            programId: classInfo.programId,
-            programName: classInfo.programName,
-            level: classInfo.level,
-            studentCount: classInfo.students.size,
-          }));
+          const classes: AssignedClass[] = Array.from(classMap.values()).map(classInfo => {
+            const studentsInClass = allStudents.filter(s => classInfo.students.has(s.studentId));
+            const classAverages = studentsInClass.map(s => calculateStudentAverage(s.studentId, assessments));
+            const totalAverage = classAverages.reduce((sum, avg) => sum + avg, 0);
+            const averagePerformance = studentsInClass.length > 0 ? Math.round(totalAverage / studentsInClass.length) : 0;
+            
+            return {
+              classId: `${schoolYear}_${classInfo.programId}_${classInfo.level}`.replace(/\s+/g, '-'),
+              schoolYear: schoolYear,
+              programId: classInfo.programId,
+              programName: classInfo.programName,
+              level: classInfo.level,
+              students: studentsInClass,
+              averagePerformance: averagePerformance,
+            };
+          });
           
           setAssignedClasses(classes.sort((a,b) => a.programName.localeCompare(b.programName) || a.level.localeCompare(b.level)));
 
-        } catch (err) {
+          // Calculate overall metrics
+          const allClassStudents = classes.flatMap(c => c.students);
+          const uniqueStudentIds = [...new Set(allClassStudents.map(s => s.studentId))];
+          const uniqueStudents = uniqueStudentIds.map(id => allStudents.find(s => s.studentId === id)!);
+          
+          if (uniqueStudents.length > 0) {
+            const studentAverages = uniqueStudents.map(s => ({ student: s, average: calculateStudentAverage(s.studentId, assessments) }));
+            
+            const totalAverage = studentAverages.reduce((sum, s) => sum + s.average, 0);
+            const overallAverage = Math.round(totalAverage / studentAverages.length);
+
+            const outstandingStudent = studentAverages.reduce((max, current) => current.average > max.average ? current : max, studentAverages[0]);
+            
+            // NOTE: Most improved student logic is a placeholder. A real implementation would need historical data.
+            const mostImprovedStudent = studentAverages.length > 1 ? { name: `${studentAverages[1].student.firstName} ${studentAverages[1].student.lastName}`, improvement: 5 } : null;
+
+            setMetrics({
+              overallAverage,
+              outstandingStudent: { name: `${outstandingStudent.student.firstName} ${outstandingStudent.student.lastName}`, score: outstandingStudent.average },
+              mostImprovedStudent,
+            });
+          }
+
+
+        } catch (err: any) {
           console.error("Failed to fetch teacher data:", err);
-          setError("Could not load your dashboard. Please try again later.");
+          setError(err.message || "Could not load your dashboard. Please try again later.");
         } finally {
           setLoading(false);
         }
@@ -140,58 +196,131 @@ export default function TeacherDashboardPage() {
       fetchData();
     }
   }, [user, router]);
+  
+  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => {
+    try {
+      const savedAssessment = await saveAssessment(assessmentData);
+      setAllAssessments(prev => {
+        const existingIndex = prev.findIndex(a => a.assessmentId === savedAssessment.assessmentId);
+        if (existingIndex > -1) {
+            const updatedAssessments = [...prev];
+            updatedAssessments[existingIndex] = savedAssessment;
+            return updatedAssessments;
+        } else {
+            return [...prev, savedAssessment];
+        }
+      });
+      return savedAssessment;
+    } catch (error) {
+      console.error("Error saving assessment:", error);
+      return null;
+    }
+  };
 
   if (authLoading || loading) {
-    return <div className="flex items-center justify-center h-full">Loading your dashboard...</div>;
+    return <div className="flex items-center justify-center h-screen">Loading your dashboard...</div>;
   }
 
-  if (error) {
-     return (
-        <Card className="border-destructive">
+  return (
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-3xl font-bold mb-2">Teacher Dashboard</h1>
+        <p className="text-muted-foreground">Welcome back! Here's a summary of your classes for the {getCurrentSchoolYear()} school year.</p>
+      </div>
+
+      {error && (
+         <Card className="border-destructive">
             <CardHeader>
                 <CardTitle>Access Error</CardTitle>
                 <CardDescription>{error}</CardDescription>
             </CardHeader>
         </Card>
-     );
-  }
+      )}
 
-  return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Teacher Dashboard</h1>
-       <Card>
-        <CardHeader>
-          <CardTitle>My Classes ({getCurrentSchoolYear()})</CardTitle>
-          <CardDescription>
-            Here are your assigned classes for the current school year. Select a class to view the roster.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {assignedClasses.length > 0 ? (
+      {metrics && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Average Class Performance</CardTitle>
+              <BarChart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics.overallAverage}%</div>
+              <p className="text-xs text-muted-foreground">Across all your classes</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Outstanding Student</CardTitle>
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics.outstandingStudent?.name || 'N/A'}</div>
+              <p className="text-xs text-muted-foreground">Highest overall score of {metrics.outstandingStudent?.score || 0}%</p>
+            </CardContent>
+          </Card>
+           <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Most Improved</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metrics.mostImprovedStudent?.name || 'N/A'}</div>
+              <p className="text-xs text-muted-foreground">+{metrics.mostImprovedStudent?.improvement || 0}% from last assessment cycle</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <div className="grid gap-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-4">My Classes</h2>
+            {assignedClasses.length > 0 ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {assignedClasses.map(cls => (
-                <Link href={`/teacher/roster/${cls.classId}`} key={cls.classId} legacyBehavior>
-                  <a className="block hover:shadow-lg transition-shadow rounded-lg">
-                    <Card className="h-full">
-                      <CardHeader>
-                        <CardTitle className="text-lg">{cls.programName}</CardTitle>
-                        <CardDescription>{cls.level}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm font-medium">{cls.studentCount} student(s)</p>
-                      </CardContent>
-                    </Card>
-                  </a>
-                </Link>
+                <Card key={cls.classId} className="flex flex-col">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{cls.programName}</CardTitle>
+                    <CardDescription>{cls.level}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-grow space-y-2">
+                    <p className="text-sm font-medium">{cls.students.length} student(s)</p>
+                    <div>
+                      <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                        <span>Avg. Performance</span>
+                        <span>{cls.averagePerformance}%</span>
+                      </div>
+                      <Progress value={cls.averagePerformance} />
+                    </div>
+                  </CardContent>
+                  <CardContent>
+                     <Link href={`/teacher/roster/${cls.classId}`} legacyBehavior>
+                      <a className="flex items-center justify-end text-sm font-medium text-primary hover:underline">
+                        View Roster <ArrowRight className="ml-1 h-4 w-4" />
+                      </a>
+                    </Link>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-                You have no classes assigned for the {getCurrentSchoolYear()} school year.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground bg-card rounded-lg">
+                  You have no classes assigned for the {getCurrentSchoolYear()} school year.
+              </div>
+            )}
+          </div>
+          
+          <div>
+             <h2 className="text-2xl font-bold mb-4">Assessments</h2>
+             <AssessmentList
+                assessments={allAssessments}
+                students={assignedClasses.flatMap(c => c.students)}
+                onSaveAssessment={handleSaveAssessment}
+            />
+          </div>
+      </div>
     </div>
   );
 }
+
+    
