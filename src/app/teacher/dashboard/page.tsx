@@ -54,17 +54,29 @@ export default function TeacherDashboardPage() {
           
           let loggedInTeacher = teachers.find(t => t.email === user.email);
           
-          // If user is not a teacher, auto-create a teacher profile for them
-          if (!loggedInTeacher) {
+          if (!loggedInTeacher && user.email) {
             const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ["", ""];
             const newTeacherData = {
               firstName: firstName || "New",
               lastName: lastNameParts.join(' ') || "Teacher",
-              email: user.email!,
+              email: user.email,
             };
-            const newTeacher = await addTeacher(newTeacherData);
-            teachers.push(newTeacher); // Add to the local list to avoid re-fetching
-            loggedInTeacher = newTeacher;
+            try {
+                const newTeacher = await addTeacher(newTeacherData);
+                teachers.push(newTeacher);
+                loggedInTeacher = newTeacher;
+            } catch (addError) {
+                console.error("Failed to auto-create teacher profile:", addError);
+                setError("Could not create a teacher profile for your account.");
+                setLoading(false);
+                return;
+            }
+          }
+
+          if (!loggedInTeacher) {
+            setError("Your email is not associated with a teacher profile. Please contact an administrator.");
+            setLoading(false);
+            return;
           }
 
           const schoolYear = getCurrentSchoolYear();
@@ -72,6 +84,7 @@ export default function TeacherDashboardPage() {
           
           if (!currentYearAdmission) {
             setAssignedClasses([]);
+            setLoading(false);
             return;
           }
 
@@ -83,22 +96,24 @@ export default function TeacherDashboardPage() {
                 const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
                 classMap.set(classKey, { programId, programName, level, students: new Set() });
              }
-             classMap.get(classKey)!.students.add(studentId);
+             if (studentId) {
+               classMap.get(classKey)!.students.add(studentId);
+             }
           };
+          
+          const teacherId = loggedInTeacher.teacherId;
 
           // Find classes defined in the admission.classes array assigned to the teacher
           currentYearAdmission.classes?.forEach(classDef => {
-            if (classDef.teacherId === loggedInTeacher!.teacherId) {
-                // Ensure class exists in map even if no students are enrolled yet
+            if (classDef.teacherIds?.includes(teacherId)) {
                 addStudentToClass(classDef.programId, classDef.level, '');
-                classMap.get(`${classDef.programId}::${classDef.level}`)!.students.delete('');
             }
           });
 
           // Find classes from student enrollments
           currentYearAdmission.students.forEach(studentAdmission => {
             studentAdmission.enrollments.forEach(enrollment => {
-              if (enrollment.teacherId === loggedInTeacher!.teacherId) {
+              if (enrollment.teacherIds?.includes(teacherId)) {
                  addStudentToClass(enrollment.programId, enrollment.level, studentAdmission.studentId);
               }
             });
@@ -124,7 +139,7 @@ export default function TeacherDashboardPage() {
       };
       fetchData();
     }
-  }, [user]);
+  }, [user, router]);
 
   if (authLoading || loading) {
     return <div className="flex items-center justify-center h-full">Loading your dashboard...</div>;
@@ -180,5 +195,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    

@@ -10,7 +10,7 @@ export type Guardian = {
 export type Enrollment = {
   programId: string;
   level: string;
-  teacherId?: string;
+  teacherIds?: string[];
 };
 
 export interface Student {

@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, Search, Trash2 } from "lucide-react";
+import { PlusCircle, Search, Trash2, X } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
@@ -50,6 +50,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { programs, getLevelsForProgram } from "@/lib/program-data";
 import { Label } from "@/components/ui/label";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "../ui/badge";
 
 // Schemas for forms
 const studentAdmissionSchema = z.object({
@@ -59,7 +62,7 @@ const studentAdmissionSchema = z.object({
       z.object({
         programId: z.string().min(1, "Program is required"),
         level: z.string().min(1, "Level is required"),
-        teacherId: z.string().optional(),
+        teacherIds: z.array(z.string()).optional(),
       })
     )
     .min(1, "At least one program is required for admission."),
@@ -68,7 +71,7 @@ const studentAdmissionSchema = z.object({
 const bulkEnrollmentSchema = z.object({
   programId: z.string().min(1, "Program is required"),
   level: z.string().min(1, "Level is required"),
-  teacherId: z.string().optional(),
+  teacherIds: z.array(z.string()).optional(),
 });
 
 const admissionFormSchema = z.object({
@@ -339,7 +342,7 @@ function CreateClassDialog({ open, onOpenChange, admissions, onSave }: { open: b
 // Class-based View Components
 function ClassList({ admissions, teachers, onEditClass, onCreateClass }: { admissions: Admission[], teachers: Teacher[], onEditClass: (year: string, programId: string, level: string) => void, onCreateClass: () => void }) {
   const classesByYearProgram = React.useMemo(() => {
-    type ClassInfo = { level: string; studentCount: number; teacherName?: string };
+    type ClassInfo = { level: string; studentCount: number; teacherNames: string[] };
     type ProgramData = Record<string, ClassInfo[]>;
     const data: Record<string, ProgramData> = {};
 
@@ -349,32 +352,34 @@ function ClassList({ admissions, teachers, onEditClass, onCreateClass }: { admis
         data[year] = {};
       }
 
-      const classMap = new Map<string, { level: string; studentCount: number; teacherId?: string }>();
+      const classMap = new Map<string, { level: string; studentCount: number; teacherIds: Set<string> }>();
+      
+      const updateClassMap = (enrollment: Enrollment, studentId?: string) => {
+         const key = `${enrollment.programId}::${enrollment.level}`;
+         const current = classMap.get(key) || { level: enrollment.level, studentCount: 0, teacherIds: new Set() };
+         if (studentId) current.studentCount += 1;
+         enrollment.teacherIds?.forEach(tid => current.teacherIds.add(tid));
+         classMap.set(key, current);
+      };
 
       // From student enrollments
       admission.students.forEach(student => {
         student.enrollments.forEach(enrollment => {
-          const key = `${enrollment.programId}::${enrollment.level}`;
-          const current = classMap.get(key) || { level: enrollment.level, studentCount: 0 };
-          current.studentCount += 1;
-          if (enrollment.teacherId) current.teacherId = enrollment.teacherId;
-          classMap.set(key, current);
+          updateClassMap(enrollment, student.studentId);
         });
       });
 
       // From empty class definitions
-      if (admission.classes) {
-        admission.classes.forEach(cls => {
-          const key = `${cls.programId}::${cls.level}`;
-          if (!classMap.has(key)) {
-            classMap.set(key, { level: cls.level, studentCount: 0, teacherId: cls.teacherId });
-          } else {
-            const existing = classMap.get(key)!;
-            if (!existing.teacherId) existing.teacherId = cls.teacherId;
-            classMap.set(key, existing);
-          }
-        });
-      }
+      admission.classes?.forEach(cls => {
+        const key = `${cls.programId}::${cls.level}`;
+        if (!classMap.has(key)) {
+           updateClassMap(cls);
+        } else {
+           const existing = classMap.get(key)!;
+           cls.teacherIds?.forEach(tid => existing.teacherIds.add(tid));
+           classMap.set(key, existing);
+        }
+      });
       
       // Populate the final data structure
       for (const [key, classInfo] of classMap.entries()) {
@@ -382,10 +387,15 @@ function ClassList({ admissions, teachers, onEditClass, onCreateClass }: { admis
         if (!data[year][programId]) {
           data[year][programId] = [];
         }
-        const teacher = teachers.find(t => t.teacherId === classInfo.teacherId);
+        const teacherNames = Array.from(classInfo.teacherIds).map(tid => {
+            const teacher = teachers.find(t => t.teacherId === tid);
+            return teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Unknown Teacher';
+        });
+        
         data[year][programId].push({
-          ...classInfo,
-          teacherName: teacher ? `${teacher.firstName} ${teacher.lastName}` : undefined,
+          level: classInfo.level,
+          studentCount: classInfo.studentCount,
+          teacherNames: teacherNames,
         });
       }
     });
@@ -436,7 +446,7 @@ function ClassList({ admissions, teachers, onEditClass, onCreateClass }: { admis
                               <CardHeader>
                                 <CardTitle className="text-base">{classInfo.level}</CardTitle>
                                 <CardDescription>{classInfo.studentCount} student(s)</CardDescription>
-                                {classInfo.teacherName && <CardDescription>Teacher: {classInfo.teacherName}</CardDescription>}
+                                {classInfo.teacherNames.length > 0 && <CardDescription>Teacher(s): {classInfo.teacherNames.join(', ')}</CardDescription>}
                               </CardHeader>
                               <CardContent>
                                 <Button variant="outline" size="sm" onClick={() => onEditClass(year, programId, classInfo.level)}>Edit Class</Button>
@@ -463,7 +473,7 @@ function ClassList({ admissions, teachers, onEditClass, onCreateClass }: { admis
 
 const classEditorFormSchema = z.object({
     studentIds: z.array(z.string()),
-    teacherId: z.string().optional(),
+    teacherIds: z.array(z.string()).optional(),
 });
 type ClassEditorFormValues = z.infer<typeof classEditorFormSchema>;
 
@@ -473,7 +483,6 @@ function ClassEditor({ admissions, allStudents, teachers, classInfo, onSave, onC
 
     const admissionForYear = admissions.find(a => a.schoolYear === classInfo.year);
     if (!admissionForYear) {
-      // This should ideally not happen if the UI flows correctly
       return <p>Error: Could not find admission data for {classInfo.year}</p>;
     }
     
@@ -483,22 +492,21 @@ function ClassEditor({ admissions, allStudents, teachers, classInfo, onSave, onC
         ).map(s => s.studentId);
     }, [admissionForYear, classInfo]);
 
-    const currentTeacherId = React.useMemo(() => {
+    const currentTeacherIds = React.useMemo(() => {
         const classDef = admissionForYear.classes?.find(c => c.programId === classInfo.programId && c.level === classInfo.level);
-        return classDef?.teacherId || "";
+        return classDef?.teacherIds || [];
     }, [admissionForYear, classInfo]);
 
     const form = useForm<ClassEditorFormValues>({
         resolver: zodResolver(classEditorFormSchema),
         defaultValues: {
             studentIds: studentsInClass,
-            teacherId: currentTeacherId,
+            teacherIds: currentTeacherIds,
         }
     });
     
     const selectedStudentIds = new Set(form.watch('studentIds'));
     
-    // Available students are all active students not already selected for *this* class roster
     const availableStudents = allStudents.filter(s => !selectedStudentIds.has(s.studentId));
 
     const filteredAvailableStudents = React.useMemo(() => {
@@ -523,37 +531,36 @@ function ClassEditor({ admissions, allStudents, teachers, classInfo, onSave, onC
         const updatedAdmission = JSON.parse(JSON.stringify(admissionForYear)) as Admission;
         const newStudentIdSet = new Set(values.studentIds);
         const originalStudentIdSet = new Set(studentsInClass);
-        const teacherId = values.teacherId || undefined;
+        const teacherIds = values.teacherIds || [];
 
-        // Update class definition with teacher
+        // Update class definition with teachers
         if (!updatedAdmission.classes) {
             updatedAdmission.classes = [];
         }
         let classDef = updatedAdmission.classes.find(c => c.programId === classInfo.programId && c.level === classInfo.level);
         if (classDef) {
-            classDef.teacherId = teacherId;
+            classDef.teacherIds = teacherIds;
         } else {
-            updatedAdmission.classes.push({ ...classInfo, teacherId: teacherId });
+            updatedAdmission.classes.push({ ...classInfo, teacherIds });
         }
 
         // Update student enrollments based on changes
         for (const studentId of newStudentIdSet) {
             let studentAdmission = updatedAdmission.students.find(s => s.studentId === studentId);
-            if (!studentAdmission) { // Student was newly added to the admission year
+            if (!studentAdmission) {
                 studentAdmission = { studentId, enrollments: [] };
                 updatedAdmission.students.push(studentAdmission);
             }
-            // Add/update enrollment
             let enrollment = studentAdmission.enrollments.find(e => e.programId === classInfo.programId && e.level === classInfo.level);
             if (enrollment) {
-                enrollment.teacherId = teacherId;
+                enrollment.teacherIds = teacherIds;
             } else {
-                 studentAdmission.enrollments.push({ ...classInfo, teacherId: teacherId });
+                 studentAdmission.enrollments.push({ ...classInfo, teacherIds });
             }
         }
         
         for (const studentId of originalStudentIdSet) {
-             if (!newStudentIdSet.has(studentId)) { // Student was removed from this class
+             if (!newStudentIdSet.has(studentId)) {
                 let studentAdmission = updatedAdmission.students.find(s => s.studentId === studentId);
                 if (studentAdmission) {
                     studentAdmission.enrollments = studentAdmission.enrollments.filter(e => !(e.programId === classInfo.programId && e.level === classInfo.level));
@@ -561,7 +568,6 @@ function ClassEditor({ admissions, allStudents, teachers, classInfo, onSave, onC
             }
         }
         
-        // Clean up students with no enrollments left
         updatedAdmission.students = updatedAdmission.students.filter(s => s.enrollments.length > 0);
 
         await onSave(updatedAdmission);
@@ -583,24 +589,15 @@ function ClassEditor({ admissions, allStudents, teachers, classInfo, onSave, onC
                     <CardContent className="space-y-4">
                        <FormField
                           control={form.control}
-                          name="teacherId"
+                          name="teacherIds"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Assign Teacher</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select a teacher for this class" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {teachers.map(teacher => (
-                                    <SelectItem key={teacher.teacherId} value={teacher.teacherId}>
-                                      {teacher.firstName} {teacher.lastName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <FormLabel>Assign Teacher(s)</FormLabel>
+                              <MultiSelectTeacher
+                                teachers={teachers}
+                                selected={field.value || []}
+                                onChange={field.onChange}
+                              />
                               <FormMessage />
                             </FormItem>
                           )}
@@ -723,7 +720,7 @@ function AdmissionForm({ schoolYear, activeStudents, teachers, existingAdmission
   const defaultStudents = existingAdmission
     ? existingAdmission.students.map(s => ({
         ...s,
-        enrollments: s.enrollments || [{ programId: "", level: "", teacherId: "" }],
+        enrollments: s.enrollments || [{ programId: "", level: "", teacherIds: [] }],
       }))
     : [];
 
@@ -732,7 +729,7 @@ function AdmissionForm({ schoolYear, activeStudents, teachers, existingAdmission
     defaultValues: {
       schoolYear: schoolYear,
       students: defaultStudents,
-      bulkEnrollments: [{ programId: "", level: "", teacherId: "" }],
+      bulkEnrollments: [{ programId: "", level: "", teacherIds: [] }],
     },
   });
 
@@ -1077,4 +1074,56 @@ function EnrollmentCard({ studentIndex, enrollmentIndex, remove, teachers }: { s
   );
 }
 
-    
+function MultiSelectTeacher({ teachers, selected, onChange }: { teachers: Teacher[], selected: string[], onChange: (selected: string[]) => void }) {
+  const [open, setOpen] = React.useState(false);
+
+  const handleSelect = (teacherId: string) => {
+    const newSelected = selected.includes(teacherId)
+      ? selected.filter(id => id !== teacherId)
+      : [...selected, teacherId];
+    onChange(newSelected);
+  };
+  
+  const selectedTeachers = teachers.filter(t => selected.includes(t.teacherId));
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-auto">
+          <div className="flex gap-1 flex-wrap">
+            {selectedTeachers.length > 0 ? selectedTeachers.map(teacher => (
+              <Badge key={teacher.teacherId} variant="secondary">
+                {teacher.firstName} {teacher.lastName}
+                <button
+                  className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  onClick={(e) => { e.stopPropagation(); handleSelect(teacher.teacherId); }}
+                >
+                  <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                </button>
+              </Badge>
+            )) : "Select teachers..."}
+          </div>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search teachers..." />
+          <CommandList>
+            <CommandEmpty>No teachers found.</CommandEmpty>
+            <CommandGroup>
+              {teachers.map(teacher => (
+                <CommandItem
+                  key={teacher.teacherId}
+                  onSelect={() => handleSelect(teacher.teacherId)}
+                >
+                  <Checkbox className="mr-2" checked={selected.includes(teacher.teacherId)} />
+                  {teacher.firstName} {teacher.lastName}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
