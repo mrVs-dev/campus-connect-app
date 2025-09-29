@@ -118,6 +118,24 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
       });
     }
   };
+  
+  const isDate = (date: any): date is Date => {
+    return date instanceof Date && !isNaN(date.valueOf());
+  };
+
+  const isTimestamp = (date: any): date is { seconds: number; nanoseconds: number } => {
+    return date && typeof date.seconds === 'number';
+  };
+
+  const formatDateSafe = (date: any) => {
+    if (isDate(date)) {
+      return format(date, "PPP");
+    }
+    if (isTimestamp(date)) {
+      return format(new Date(date.seconds * 1000), "PPP");
+    }
+    return 'N/A';
+  };
 
   return (
     <>
@@ -215,7 +233,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                   </TableCell>
                   <TableCell>{teacher.email}</TableCell>
                   <TableCell>
-                    {teacher.joinedDate ? format(teacher.joinedDate, "PPP") : 'N/A'}
+                    {formatDateSafe(teacher.joinedDate)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={teacher.status === "Active" ? "default" : "secondary"}>
