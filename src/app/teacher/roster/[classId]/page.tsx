@@ -37,7 +37,8 @@ export default function RosterPage() {
     if (user && typeof classId === 'string') {
         try {
             setLoading(true);
-            const classIdParts = classId.split('_');
+            const classIdString = Array.isArray(classId) ? classId[0] : classId;
+            const classIdParts = classIdString.split('_');
             if (classIdParts.length < 3) throw new Error("Invalid class ID format.");
             
             const [schoolYear, programId, ...levelParts] = classIdParts;
@@ -62,8 +63,9 @@ export default function RosterPage() {
             }
             
             const studentIdsInClass = new Set<string>();
-
+            
             if (admission) {
+                // Check enrollments first
                 admission.students.forEach(studentAdmission => {
                     if (studentAdmission.enrollments.some(e => 
                         e.programId === programId && 
@@ -74,8 +76,10 @@ export default function RosterPage() {
                     }
                 });
 
+                // Check class definitions for teachers, which might define an empty class or add more students
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
                 if (classDef && classDef.teacherIds?.includes(loggedInTeacherId)) {
+                     // Add all students in that program/level if a teacher is assigned to the class definition
                      admission.students.forEach(studentAdmission => {
                         if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
                             studentIdsInClass.add(studentAdmission.studentId);
@@ -99,7 +103,7 @@ export default function RosterPage() {
                 return { ...student, averageScore, letterGrade };
             });
 
-            setRoster(processedRoster);
+            setRoster(processedRoster.sort((a, b) => a.firstName.localeCompare(b.firstName)));
 
         } catch (err: any) {
             console.error("Failed to fetch roster data:", err);
@@ -142,9 +146,12 @@ export default function RosterPage() {
       if (scores.length === 0) return { assessmentId: assessment.assessmentId, average: null };
       
       const sum = scores.reduce((acc, score) => acc + (score ?? 0), 0);
+      const averageRaw = sum / scores.length;
+      const averagePercentage = Math.round((averageRaw / assessment.totalMarks) * 100);
+
       return { 
         assessmentId: assessment.assessmentId, 
-        average: Math.round(sum / scores.length) 
+        average: averagePercentage
       };
     });
 
@@ -244,12 +251,12 @@ export default function RosterPage() {
               {classAverages && (
                 <TableFooter>
                   <TableRow>
-                    <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average</TableCell>
+                    <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average (%)</TableCell>
                     {classAssessments.map(assessment => {
                       const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
                       return (
                         <TableCell key={assessment.assessmentId} className="text-center font-semibold">
-                          {avg?.average ?? "—"}
+                          {avg?.average !== null ? `${avg?.average}%` : "—"}
                         </TableCell>
                       )
                     })}
