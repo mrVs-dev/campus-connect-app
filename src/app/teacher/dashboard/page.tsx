@@ -294,10 +294,8 @@ export default function TeacherDashboardPage() {
                     </div>
                   </CardContent>
                   <CardContent>
-                     <Link href={`/teacher/roster/${cls.classId}`} legacyBehavior>
-                      <a className="flex items-center justify-end text-sm font-medium text-primary hover:underline">
+                     <Link href={`/teacher/roster/${cls.classId}`} className="flex items-center justify-end text-sm font-medium text-primary hover:underline">
                         View Roster <ArrowRight className="ml-1 h-4 w-4" />
-                      </a>
                     </Link>
                   </CardContent>
                 </Card>
@@ -322,5 +320,7 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
+    
 
     
