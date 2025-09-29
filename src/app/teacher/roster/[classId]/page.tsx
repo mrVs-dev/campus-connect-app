@@ -4,8 +4,8 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getStudents, getAdmissions, getAssessments, saveAssessment } from "@/lib/firebase/firestore";
-import type { Student, Admission, Assessment } from "@/lib/types";
+import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers } from "@/lib/firebase/firestore";
+import type { Student, Admission, Assessment, Teacher } from "@/lib/types";
 import { programs } from "@/lib/program-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,20 +47,32 @@ export default function RosterPage() {
             const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
             setClassInfo({ programName, level, programId });
 
-            const [allStudents, admissions, assessments] = await Promise.all([getStudents(), getAdmissions(), getAssessments()]);
+            const [allStudents, admissions, assessments, teachers] = await Promise.all([getStudents(), getAdmissions(), getAssessments(), getTeachers()]);
             setAllAssessments(assessments);
 
             const admission = admissions.find(a => a.schoolYear === schoolYear);
-            if (!admission) {
-                throw new Error("Could not find admission data for this school year.");
-            }
+            const loggedInTeacher = teachers.find(t => t.email === user.email);
 
             const studentIdsInClass = new Set<string>();
-            admission.students.forEach(studentAdmission => {
-                if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
-                    studentIdsInClass.add(studentAdmission.studentId);
+
+            if (admission) {
+                // Find students enrolled in this class via direct student admission records
+                admission.students.forEach(studentAdmission => {
+                    if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
+                        studentIdsInClass.add(studentAdmission.studentId);
+                    }
+                });
+
+                // Find students in this class via the class definition (for classes assigned to the teacher)
+                const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
+                if (classDef && loggedInTeacher && classDef.teacherIds?.includes(loggedInTeacher.teacherId)) {
+                    // This logic assumes we might need to find all students in a class defined for a teacher,
+                    // even if not explicitly in student_admissions. This makes it more robust.
+                    // For now, we rely on student_admissions, but this structure allows expansion.
                 }
-            });
+            } else {
+                console.warn(`No admission data found for school year ${schoolYear}. Roster may be incomplete.`);
+            }
 
             const classRosterData = allStudents.filter(s => studentIdsInClass.has(s.studentId));
             
@@ -85,7 +97,7 @@ export default function RosterPage() {
             setLoading(false);
         }
     }
-  }, [user, classId, router]);
+  }, [user, classId]);
   
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -192,6 +204,11 @@ export default function RosterPage() {
                 ))}
               </TableBody>
             </Table>
+             {roster.length === 0 && (
+              <div className="text-center p-8 text-muted-foreground">
+                No students are currently enrolled in this class.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
