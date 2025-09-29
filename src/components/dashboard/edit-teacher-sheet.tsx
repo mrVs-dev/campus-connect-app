@@ -71,7 +71,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave }: EditTe
     if (teacher) {
       form.reset({
         ...teacher,
-        joinedDate: teacher.joinedDate ? teacher.joinedDate : undefined,
+        joinedDate: teacher.joinedDate,
       });
     }
   }, [teacher, form]);

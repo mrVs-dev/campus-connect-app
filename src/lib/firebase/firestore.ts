@@ -428,14 +428,11 @@ export async function getTeachers(): Promise<Teacher[]> {
     const snapshot = await getDocs(teachersCollection);
     return snapshot.docs.map(doc => {
         const data = doc.data();
-        // Manually convert timestamp to Date object for joinedDate
-        if (data.joinedDate && isTimestamp(data.joinedDate)) {
-            data.joinedDate = data.joinedDate.toDate();
-        }
+        const dataWithDates = convertTimestampsToDates(data);
         return {
-            ...(data as Omit<Teacher, 'teacherId'>),
+            ...dataWithDates,
             teacherId: doc.id,
-        };
+        } as Teacher;
     });
 }
 
@@ -454,7 +451,7 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
         ...teacherData,
         teacherId: docRef.id,
         status: 'Active',
-        joinedDate: new Date(), // Return a JS Date for immediate use in the client
+        joinedDate: new Date(),
     };
     return newTeacher;
 }

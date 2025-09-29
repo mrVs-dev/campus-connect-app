@@ -85,7 +85,6 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   const handleAddTeacher = async (values: TeacherFormValues) => {
     const newTeacher = await onAddTeacher(values);
     if (newTeacher) {
-      // The newTeacher object from the backend has the correct Date object
       setTeachers(prev => [...prev, newTeacher]);
       form.reset();
       setIsNewTeacherDialogOpen(false);
@@ -94,14 +93,16 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
     try {
-      // Create a clean object with only defined values
       const dataToSave = Object.fromEntries(
         Object.entries(updatedData).filter(([, value]) => value !== undefined)
       );
 
       await updateTeacher(teacherId, dataToSave);
+      
+      const updatedTeacherData = { ...teacherToEdit, ...dataToSave } as Teacher
+      
       setTeachers(prev => 
-        prev.map(t => t.teacherId === teacherId ? { ...t, ...dataToSave } : t)
+        prev.map(t => t.teacherId === teacherId ? updatedTeacherData : t)
       );
       toast({
         title: "Teacher Updated",
