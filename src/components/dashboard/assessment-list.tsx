@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { Assessment, Student } from "@/lib/types";
+import type { Assessment, Student, Subject, AssessmentCategory } from "@/lib/types";
 import { PlusCircle, MoreHorizontal, Edit } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,17 +28,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { subjects } from "@/lib/mock-data";
 import { NewAssessmentDialog } from "./new-assessment-dialog";
 import { GradeEntrySheet } from "./grade-entry-sheet";
 
 export function AssessmentList({
   assessments,
   students,
+  subjects,
+  assessmentCategories,
   onSaveAssessment,
 }: {
   assessments: Assessment[];
   students: Student[];
+  subjects: Subject[];
+  assessmentCategories: AssessmentCategory[];
   onSaveAssessment: (assessment: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => Promise<Assessment | null>;
 }) {
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
@@ -135,6 +138,8 @@ export function AssessmentList({
         onOpenChange={handleOpenNewDialog}
         onSave={onSaveAssessment}
         existingAssessment={assessmentToEdit}
+        subjects={subjects}
+        assessmentCategories={assessmentCategories}
       />
       <GradeEntrySheet
         assessment={assessmentToGrade}

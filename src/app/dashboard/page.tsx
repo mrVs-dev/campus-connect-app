@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/components/dashboard/overview";
@@ -13,7 +13,8 @@ import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
 import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus } from "@/lib/firebase/firestore";
+import { SettingsPage } from "@/components/dashboard/settings-page";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,6 +69,8 @@ export default function DashboardPage() {
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [teachers, setTeachers] = React.useState<Teacher[]>([]);
   const [statusHistory, setStatusHistory] = React.useState<StudentStatusHistory[]>([]);
+  const [subjects, setSubjects] = React.useState<Subject[]>([]);
+  const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [loadingData, setLoadingData] = React.useState(true);
 
   // Memoize the derived student data to prevent expensive recalculations on every render
@@ -105,18 +108,22 @@ export default function DashboardPage() {
     }
     try {
       setLoadingData(true);
-      const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData] = await Promise.all([
+      const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData, subjectsData, categoriesData] = await Promise.all([
         getStudents(), 
         getAdmissions(),
         getAssessments(),
         getTeachers(),
-        getStudentStatusHistory()
+        getStudentStatusHistory(),
+        getSubjects(),
+        getAssessmentCategories(),
       ]);
       setStudents(studentsData);
       setAdmissions(admissionsData);
       setAssessments(assessmentsData);
       setTeachers(teachersData);
       setStatusHistory(statusHistoryData);
+      setSubjects(subjectsData);
+      setAssessmentCategories(categoriesData);
     } catch (error) {
       console.error("Failed to fetch initial data:", error);
       toast({
@@ -364,6 +371,42 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSaveSubjects = async (updatedSubjects: Subject[]) => {
+    try {
+      await saveSubjects(updatedSubjects);
+      setSubjects(updatedSubjects);
+      toast({
+        title: "Subjects Saved",
+        description: "The list of subjects has been updated.",
+      });
+    } catch (error) {
+      console.error("Error saving subjects:", error);
+      toast({
+        title: "Save Failed",
+        description: "Could not save subjects.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveAssessmentCategories = async (updatedCategories: AssessmentCategory[]) => {
+    try {
+      await saveAssessmentCategories(updatedCategories);
+      setAssessmentCategories(updatedCategories);
+      toast({
+        title: "Categories Saved",
+        description: "Assessment categories and weights have been updated.",
+      });
+    } catch (error) {
+      console.error("Error saving assessment categories:", error);
+      toast({
+        title: "Save Failed",
+        description: "Could not save assessment categories.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
@@ -381,7 +424,7 @@ export default function DashboardPage() {
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
         <Tabs defaultValue="dashboard" className="flex flex-col gap-4">
-          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-7 self-start">
+          <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-8 self-start">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="teachers">Teachers</TabsTrigger>
@@ -389,6 +432,7 @@ export default function DashboardPage() {
             <TabsTrigger value="admissions">Admissions</TabsTrigger>
             <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
             <TabsTrigger value="statusHistory">Status History</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -439,6 +483,8 @@ export default function DashboardPage() {
             <AssessmentList
               assessments={assessments}
               students={students}
+              subjects={subjects}
+              assessmentCategories={assessmentCategories}
               onSaveAssessment={handleSaveAssessment}
             />
           </TabsContent>
@@ -458,6 +504,15 @@ export default function DashboardPage() {
           
           <TabsContent value="statusHistory">
             <StatusHistoryList history={statusHistory} />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <SettingsPage 
+              subjects={subjects}
+              assessmentCategories={assessmentCategories}
+              onSaveSubjects={handleSaveSubjects}
+              onSaveCategories={handleSaveAssessmentCategories}
+            />
           </TabsContent>
 
         </Tabs>

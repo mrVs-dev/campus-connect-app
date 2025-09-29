@@ -1,4 +1,5 @@
 
+
 export type Guardian = {
   relation: string;
   name: string;
@@ -77,26 +78,20 @@ export interface Teacher {
 export interface Subject {
   subjectId: string;
   subjectName: string;
-  gradeLevel: string;
-  teacherId: string;
 }
 
-export type AssessmentCategory = 'Classwork' | 'Participation' | 'Homework' | 'Unit Assessment' | 'End-Semester';
+export interface AssessmentCategory {
+  name: string;
+  weight: number;
+}
 
-export const assessmentCategoryWeights: Record<AssessmentCategory, number> = {
-  'Classwork': 0.25,
-  'Participation': 0.05,
-  'Homework': 0.05,
-  'Unit Assessment': 0.30,
-  'End-Semester': 0.35,
-};
 
 export interface Assessment {
   assessmentId: string;
   subjectId: string;
   teacherId: string;
   topic: string;
-  category: AssessmentCategory;
+  category: string; // Now a string, not the enum
   totalMarks: number;
   scores: Record<string, number>; // { [studentId]: rawScore }
   creationDate?: Date;

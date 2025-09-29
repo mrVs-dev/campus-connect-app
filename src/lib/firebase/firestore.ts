@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory } from "../types";
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -540,4 +540,53 @@ export async function saveAttendance(records: Omit<AttendanceRecord, 'attendance
     }
 
     await batch.commit();
+}
+
+// --- Settings Collections ---
+
+export async function getSubjects(): Promise<Subject[]> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const subjectsCollection = collection(db, 'subjects');
+  const snapshot = await getDocs(subjectsCollection);
+  if (snapshot.empty) {
+    // If no subjects in DB, return mock data
+    return [
+        { subjectId: 'SUB001', subjectName: 'Mathematics' },
+        { subjectId: 'SUB002', subjectName: 'Physics' },
+        { subjectId: 'SUB003', subjectName: 'English Literature' },
+        { subjectId: 'SUB004', subjectName: 'History' },
+    ];
+  }
+  return snapshot.docs.map(doc => doc.data() as Subject);
+}
+
+export async function saveSubjects(subjects: Subject[]): Promise<void> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'subjects');
+  await setDoc(settingsDocRef, { list: subjects });
+}
+
+export async function getAssessmentCategories(): Promise<AssessmentCategory[]> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'assessmentCategories');
+  const docSnap = await getDoc(settingsDocRef);
+
+  if (docSnap.exists() && docSnap.data().list) {
+    return docSnap.data().list;
+  } else {
+    // Default values if not set
+    return [
+      { name: 'Classwork', weight: 25 },
+      { name: 'Participation', weight: 5 },
+      { name: 'Homework', weight: 5 },
+      { name: 'Unit Assessment', weight: 30 },
+      { name: 'End-Semester', weight: 35 },
+    ];
+  }
+}
+
+export async function saveAssessmentCategories(categories: AssessmentCategory[]): Promise<void> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'assessmentCategories');
+  await setDoc(settingsDocRef, { list: categories });
 }

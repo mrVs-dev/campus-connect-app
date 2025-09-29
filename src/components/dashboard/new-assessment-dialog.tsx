@@ -24,16 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { subjects } from "@/lib/mock-data";
-import { assessmentCategoryWeights, Assessment, AssessmentCategory } from "@/lib/types";
+import { Assessment, Subject, AssessmentCategory } from "@/lib/types";
 
 const formSchema = z.object({
   topic: z.string().min(1, "Topic is required"),
   subjectId: z.string().min(1, "Subject is required"),
-  category: z.nativeEnum(Object.keys(assessmentCategoryWeights).reduce((acc, key) => {
-    acc[key] = key;
-    return acc;
-  }, {} as { [key: string]: string })) as z.ZodType<AssessmentCategory>,
+  category: z.string().min(1, "Category is required"),
   totalMarks: z.coerce.number().min(1, "Total marks must be at least 1"),
 });
 
@@ -45,9 +41,11 @@ interface NewAssessmentDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (assessment: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => Promise<Assessment | null>;
   existingAssessment?: Assessment | null;
+  subjects: Subject[];
+  assessmentCategories: AssessmentCategory[];
 }
 
-export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssessment }: NewAssessmentDialogProps) {
+export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssessment, subjects, assessmentCategories }: NewAssessmentDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
 
   const form = useForm<NewAssessmentFormValues>({
@@ -160,9 +158,9 @@ export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssess
                           </SelectTrigger>
                        </FormControl>
                       <SelectContent>
-                        {Object.keys(assessmentCategoryWeights).map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
+                        {assessmentCategories.map((category) => (
+                          <SelectItem key={category.name} value={category.name}>
+                            {category.name} ({category.weight}%)
                           </SelectItem>
                         ))}
                       </SelectContent>
