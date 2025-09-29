@@ -5,7 +5,7 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers } from "@/lib/firebase/firestore";
-import type { Student, Admission, Assessment, Teacher } from "@/lib/types";
+import type { Student, Admission, Assessment } from "@/lib/types";
 import { programs } from "@/lib/program-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, PlusCircle } from "lucide-react";
 import { calculateStudentAverage, getLetterGrade } from "@/lib/grades";
-import { AssessmentList } from "@/components/dashboard/assessment-list";
+import { NewAssessmentDialog } from "@/components/dashboard/new-assessment-dialog";
 
 interface RosterStudent extends Student {
   averageScore: number;
@@ -28,20 +28,18 @@ export default function RosterPage() {
 
   const [roster, setRoster] = React.useState<RosterStudent[]>([]);
   const [classAssessments, setClassAssessments] = React.useState<Assessment[]>([]);
-  const [allAssessments, setAllAssessments] = React.useState<Assessment[]>([]);
   const [classInfo, setClassInfo] = React.useState<{ programName: string; level: string; programId: string } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
 
   const fetchData = React.useCallback(async () => {
     if (user && typeof classId === 'string') {
         try {
             setLoading(true);
             const classIdString = Array.isArray(classId) ? classId[0] : classId;
-            const classIdParts = classIdString.split('_');
-            if (classIdParts.length < 3) throw new Error("Invalid class ID format.");
             
-            const [schoolYear, programId, ...levelParts] = classIdParts;
+            const [schoolYear, programId, ...levelParts] = classIdString.split('_');
             const level = levelParts.join('_').replace(/-/g, ' ');
 
             if (!schoolYear || !programId || !level) {
@@ -52,7 +50,6 @@ export default function RosterPage() {
             setClassInfo({ programName, level, programId });
 
             const [allStudents, admissions, assessments, teachers] = await Promise.all([getStudents(), getAdmissions(), getAssessments(), getTeachers()]);
-            setAllAssessments(assessments);
 
             const admission = admissions.find(a => a.schoolYear === schoolYear);
             const loggedInTeacher = teachers.find(t => t.email === user.email);
@@ -65,7 +62,6 @@ export default function RosterPage() {
             const studentIdsInClass = new Set<string>();
             
             if (admission) {
-                // Check enrollments first
                 admission.students.forEach(studentAdmission => {
                     if (studentAdmission.enrollments.some(e => 
                         e.programId === programId && 
@@ -76,10 +72,8 @@ export default function RosterPage() {
                     }
                 });
 
-                // Check class definitions for teachers, which might define an empty class or add more students
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
                 if (classDef && classDef.teacherIds?.includes(loggedInTeacherId)) {
-                     // Add all students in that program/level if a teacher is assigned to the class definition
                      admission.students.forEach(studentAdmission => {
                         if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
                             studentIdsInClass.add(studentAdmission.studentId);
@@ -210,8 +204,8 @@ export default function RosterPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky left-0 bg-background z-10 w-[250px] min-w-[250px]">Student</TableHead>
-                  <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">Overall (%)</TableHead>
-                  <TableHead className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary">Grade</TableHead>
+                  <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Overall (%)</TableHead>
+                  <TableHead className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Grade</TableHead>
                   {classAssessments.map(assessment => (
                     <TableHead key={assessment.assessmentId} className="text-center min-w-[150px]">
                       {assessment.topic}
@@ -220,6 +214,12 @@ export default function RosterPage() {
                       </span>
                     </TableHead>
                   ))}
+                  <TableHead className="text-center min-w-[150px]">
+                    <Button variant="outline" size="sm" onClick={() => setIsNewAssessmentOpen(true)}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      New Assessment
+                    </Button>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -245,14 +245,15 @@ export default function RosterPage() {
                         {assessment.scores[student.studentId] ?? "—"}
                       </TableCell>
                     ))}
+                    <TableCell></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
               {classAverages && (
                 <TableFooter>
                   <TableRow>
-                    <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average (%)</TableCell>
-                    <TableCell className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">{classAverages.overall}</TableCell>
+                    <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average</TableCell>
+                    <TableCell className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">{classAverages.overall}%</TableCell>
                     <TableCell className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
                     {classAssessments.map(assessment => {
                       const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
@@ -262,6 +263,7 @@ export default function RosterPage() {
                         </TableCell>
                       )
                     })}
+                    <TableCell></TableCell>
                   </TableRow>
                 </TableFooter>
               )}
@@ -275,13 +277,11 @@ export default function RosterPage() {
         </CardContent>
       </Card>
       
-      <div>
-        <AssessmentList
-            assessments={allAssessments}
-            students={roster}
-            onSaveAssessment={handleSaveAssessment}
-        />
-      </div>
+      <NewAssessmentDialog
+        open={isNewAssessmentOpen}
+        onOpenChange={setIsNewAssessmentOpen}
+        onSave={handleSaveAssessment}
+      />
     </div>
   );
 }
