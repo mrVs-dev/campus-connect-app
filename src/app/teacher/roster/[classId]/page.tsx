@@ -210,6 +210,8 @@ export default function RosterPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky left-0 bg-background z-10 w-1/3 min-w-[250px]">Student</TableHead>
+                  <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary min-w-[120px]">Overall (%)</TableHead>
+                  <TableHead className="sticky left-[370px] bg-background z-10 text-center font-semibold text-primary min-w-[120px]">Letter Grade</TableHead>
                   {classAssessments.map(assessment => (
                     <TableHead key={assessment.assessmentId} className="text-center min-w-[150px]">
                       {assessment.topic}
@@ -218,8 +220,6 @@ export default function RosterPage() {
                       </span>
                     </TableHead>
                   ))}
-                  <TableHead className="text-center font-semibold text-primary min-w-[120px]">Overall (%)</TableHead>
-                  <TableHead className="text-center font-semibold text-primary min-w-[120px]">Letter Grade</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -238,13 +238,13 @@ export default function RosterPage() {
                         </div>
                       </div>
                     </TableCell>
+                    <TableCell className="sticky left-[250px] bg-background z-10 text-center font-medium">{student.averageScore}</TableCell>
+                    <TableCell className="sticky left-[370px] bg-background z-10 text-center font-medium">{student.letterGrade}</TableCell>
                     {classAssessments.map(assessment => (
                       <TableCell key={assessment.assessmentId} className="text-center">
                         {assessment.scores[student.studentId] ?? "—"}
                       </TableCell>
                     ))}
-                    <TableCell className="text-center font-medium">{student.averageScore}</TableCell>
-                    <TableCell className="text-center font-medium">{student.letterGrade}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -252,6 +252,8 @@ export default function RosterPage() {
                 <TableFooter>
                   <TableRow>
                     <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average (%)</TableCell>
+                    <TableCell className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">{classAverages.overall}</TableCell>
+                    <TableCell className="sticky left-[370px] bg-background z-10 text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
                     {classAssessments.map(assessment => {
                       const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
                       return (
@@ -260,8 +262,6 @@ export default function RosterPage() {
                         </TableCell>
                       )
                     })}
-                    <TableCell className="text-center font-semibold text-primary">{classAverages.overall}</TableCell>
-                    <TableCell className="text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
                   </TableRow>
                 </TableFooter>
               )}
