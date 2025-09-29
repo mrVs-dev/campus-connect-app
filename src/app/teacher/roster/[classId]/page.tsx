@@ -4,8 +4,8 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers } from "@/lib/firebase/firestore";
-import type { Student, Admission, Assessment } from "@/lib/types";
+import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers, getAttendanceForClass, saveAttendance } from "@/lib/firebase/firestore";
+import type { Student, Assessment, AttendanceRecord } from "@/lib/types";
 import { programs } from "@/lib/program-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,7 +15,8 @@ import { ArrowLeft, PlusCircle } from "lucide-react";
 import { calculateStudentAverage, getLetterGrade } from "@/lib/grades";
 import { NewAssessmentDialog } from "@/components/dashboard/new-assessment-dialog";
 import { GradeEntrySheet } from "@/components/dashboard/grade-entry-sheet";
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AttendanceRoster } from "@/components/dashboard/attendance-roster";
 
 interface RosterStudent extends Student {
   averageScore: number;
@@ -26,7 +27,8 @@ export default function RosterPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const { classId } = params;
+  const classIdParam = params.classId;
+  const classId = Array.isArray(classIdParam) ? classIdParam[0] : classIdParam;
 
   const [roster, setRoster] = React.useState<RosterStudent[]>([]);
   const [classAssessments, setClassAssessments] = React.useState<Assessment[]>([]);
@@ -35,14 +37,15 @@ export default function RosterPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
   const [assessmentToGrade, setAssessmentToGrade] = React.useState<Assessment | null>(null);
+  const [loggedInTeacherId, setLoggedInTeacherId] = React.useState<string | null>(null);
+
 
   const fetchData = React.useCallback(async () => {
     if (user && typeof classId === 'string') {
         try {
             setLoading(true);
-            const classIdString = Array.isArray(classId) ? classId[0] : classId;
             
-            const [schoolYear, programId, ...levelParts] = classIdString.split('_');
+            const [schoolYear, programId, ...levelParts] = classId.split('_');
             const level = levelParts.join('_').replace(/-/g, ' ');
 
             if (!schoolYear || !programId || !level) {
@@ -53,30 +56,30 @@ export default function RosterPage() {
             setClassInfo({ programName, level, programId });
 
             const [allStudents, admissions, assessments, teachers] = await Promise.all([getStudents(), getAdmissions(), getAssessments(), getTeachers()]);
-
-            const admission = admissions.find(a => a.schoolYear === schoolYear);
-            const loggedInTeacher = teachers.find(t => t.email === user.email);
-            const loggedInTeacherId = loggedInTeacher?.teacherId;
-
-            if (!loggedInTeacherId) {
-                throw new Error("Could not identify the logged-in teacher.");
-            }
             
+            const loggedInTeacher = teachers.find(t => t.email === user.email);
+            if (!loggedInTeacher) {
+              throw new Error("Could not identify the logged-in teacher.");
+            }
+            setLoggedInTeacherId(loggedInTeacher.teacherId);
+
             const studentIdsInClass = new Set<string>();
+            const admission = admissions.find(a => a.schoolYear === schoolYear);
             
             if (admission) {
                 admission.students.forEach(studentAdmission => {
-                    if (studentAdmission.enrollments.some(e => 
+                    const isEnrolledByTeacher = studentAdmission.enrollments.some(e => 
                         e.programId === programId && 
                         e.level === level &&
-                        e.teacherIds?.includes(loggedInTeacherId)
-                    )) {
-                        studentIdsInClass.add(studentAdmission.studentId);
+                        e.teacherIds?.includes(loggedInTeacher.teacherId)
+                    );
+                    if (isEnrolledByTeacher) {
+                      studentIdsInClass.add(studentAdmission.studentId);
                     }
                 });
 
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
-                if (classDef && classDef.teacherIds?.includes(loggedInTeacherId)) {
+                if (classDef && classDef.teacherIds?.includes(loggedInTeacher.teacherId)) {
                      admission.students.forEach(studentAdmission => {
                         if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
                             studentIdsInClass.add(studentAdmission.studentId);
@@ -170,7 +173,7 @@ export default function RosterPage() {
 
 
   if (authLoading || loading) {
-    return <div className="flex items-center justify-center h-full">Loading class gradebook...</div>;
+    return <div className="flex items-center justify-center h-full">Loading class data...</div>;
   }
 
   if (error) {
@@ -198,95 +201,112 @@ export default function RosterPage() {
         </Button>
       </div>
 
-      <Card>
+       <Card>
         <CardHeader>
             <div>
-              <CardTitle>Gradebook</CardTitle>
+              <CardTitle>Class Management</CardTitle>
               <CardDescription>
                 {classInfo?.programName} - {classInfo?.level} ({roster.length} students)
               </CardDescription>
             </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="sticky left-0 bg-background z-10 w-[250px] min-w-[250px]">Student</TableHead>
-                  <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Overall (%)</TableHead>
-                  <TableHead className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Grade</TableHead>
-                  {classAssessments.map(assessment => (
-                    <TableHead 
-                      key={assessment.assessmentId} 
-                      className="text-center min-w-[150px] cursor-pointer hover:bg-muted"
-                      onClick={() => setAssessmentToGrade(assessment)}
-                    >
-                      {assessment.topic}
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        ({assessment.totalMarks} pts)
-                      </span>
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-center min-w-[150px]">
-                    <Button variant="outline" size="sm" onClick={() => setIsNewAssessmentOpen(true)}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      New Assessment
-                    </Button>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {roster.map((student, index) => (
-                  <TableRow key={student.studentId} className={index % 2 === 0 ? 'bg-white' : 'bg-muted/50'}>
-                    <TableCell className="sticky left-0 z-10 font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={student.avatarUrl} alt={student.firstName} className="object-cover" />
-                          <AvatarFallback>
-                            {(student.firstName || ' ')[0]}{(student.lastName || ' ')[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          {student.firstName} {student.lastName}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="sticky left-[250px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.averageScore}</TableCell>
-                    <TableCell className="sticky left-[350px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.letterGrade}</TableCell>
-                    {classAssessments.map(assessment => (
-                      <TableCell key={assessment.assessmentId} className="text-center">
-                        {assessment.scores[student.studentId] ?? "—"}
-                      </TableCell>
-                    ))}
-                    <TableCell></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              {classAverages && (
-                <TableFooter>
-                  <TableRow>
-                    <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average</TableCell>
-                    <TableCell className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">{classAverages.overall}%</TableCell>
-                    <TableCell className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
-                    {classAssessments.map(assessment => {
-                      const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
-                      return (
-                        <TableCell key={assessment.assessmentId} className="text-center font-semibold">
-                          {avg?.average !== null ? `${avg?.average}%` : "—"}
-                        </TableCell>
-                      )
-                    })}
-                    <TableCell></TableCell>
-                  </TableRow>
-                </TableFooter>
-              )}
-            </Table>
-             {roster.length === 0 && (
-              <div className="text-center p-8 text-muted-foreground">
-                No students are currently enrolled in this class.
-              </div>
-            )}
-          </div>
+         <CardContent>
+           <Tabs defaultValue="gradebook">
+             <TabsList className="grid w-full grid-cols-2">
+               <TabsTrigger value="gradebook">Gradebook</TabsTrigger>
+               <TabsTrigger value="attendance">Attendance</TabsTrigger>
+             </TabsList>
+             <TabsContent value="gradebook" className="mt-4">
+                <div className="overflow-x-auto">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead className="sticky left-0 bg-background z-10 w-[250px] min-w-[250px]">Student</TableHead>
+                        <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Overall (%)</TableHead>
+                        <TableHead className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Grade</TableHead>
+                        {classAssessments.map(assessment => (
+                            <TableHead 
+                            key={assessment.assessmentId} 
+                            className="text-center min-w-[150px] cursor-pointer hover:bg-muted"
+                            onClick={() => setAssessmentToGrade(assessment)}
+                            >
+                            {assessment.topic}
+                            <span className="block text-xs font-normal text-muted-foreground">
+                                ({assessment.totalMarks} pts)
+                            </span>
+                            </TableHead>
+                        ))}
+                        <TableHead className="text-center min-w-[150px]">
+                            <Button variant="outline" size="sm" onClick={() => setIsNewAssessmentOpen(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            New Assessment
+                            </Button>
+                        </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {roster.map((student, index) => (
+                        <TableRow key={student.studentId} className={index % 2 === 0 ? 'bg-white' : 'bg-muted/50'}>
+                            <TableCell className="sticky left-0 z-10 font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>
+                            <div className="flex items-center gap-4">
+                                <Avatar className="h-9 w-9">
+                                <AvatarImage src={student.avatarUrl} alt={student.firstName} className="object-cover" />
+                                <AvatarFallback>
+                                    {(student.firstName || ' ')[0]}{(student.lastName || ' ')[0]}
+                                </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                {student.firstName} {student.lastName}
+                                </div>
+                            </div>
+                            </TableCell>
+                            <TableCell className="sticky left-[250px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.averageScore}</TableCell>
+                            <TableCell className="sticky left-[350px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.letterGrade}</TableCell>
+                            {classAssessments.map(assessment => (
+                            <TableCell key={assessment.assessmentId} className="text-center">
+                                {assessment.scores[student.studentId] ?? "—"}
+                            </TableCell>
+                            ))}
+                            <TableCell></TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    {classAverages && (
+                        <TableFooter>
+                        <TableRow>
+                            <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average</TableCell>
+                            <TableCell className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">{classAverages.overall}%</TableCell>
+                            <TableCell className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
+                            {classAssessments.map(assessment => {
+                            const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
+                            return (
+                                <TableCell key={assessment.assessmentId} className="text-center font-semibold">
+                                {avg?.average !== null ? `${avg?.average}%` : "—"}
+                                </TableCell>
+                            )
+                            })}
+                            <TableCell></TableCell>
+                        </TableRow>
+                        </TableFooter>
+                    )}
+                    </Table>
+                    {roster.length === 0 && (
+                    <div className="text-center p-8 text-muted-foreground">
+                        No students are currently enrolled in this class.
+                    </div>
+                    )}
+                </div>
+             </TabsContent>
+             <TabsContent value="attendance">
+                {loggedInTeacherId && (
+                  <AttendanceRoster 
+                    students={roster}
+                    classId={classId}
+                    teacherId={loggedInTeacherId}
+                  />
+                )}
+             </TabsContent>
+           </Tabs>
         </CardContent>
       </Card>
       

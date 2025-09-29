@@ -14,11 +14,12 @@ import {
   deleteDoc,
   writeBatch,
   query,
-  orderBy
+  orderBy,
+  where
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord } from "../types";
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -472,4 +473,68 @@ export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Tea
     await updateDoc(teacherDoc, dataWithTimestamps);
 }
 
+// --- Attendance Collection ---
+
+export async function getAttendanceForClass(classId: string, date: Date): Promise<AttendanceRecord[]> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const attendanceCollection = collection(db, 'attendance');
+    const q = query(
+        attendanceCollection,
+        where("classId", "==", classId),
+        where("date", ">=", Timestamp.fromDate(startOfDay)),
+        where("date", "<=", Timestamp.fromDate(endOfDay))
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        const dataWithDates = convertTimestampsToDates(data);
+        return {
+            ...dataWithDates,
+            attendanceId: doc.id,
+        } as AttendanceRecord;
+    });
+}
+
+export async function saveAttendance(records: Omit<AttendanceRecord, 'attendanceId'>[]): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
+    const batch = writeBatch(db);
+    const attendanceCollection = collection(db, 'attendance');
+
+    for (const record of records) {
+        // Find existing record for this student, class, and day to update it
+        const startOfDay = new Date(record.date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(record.date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const q = query(
+            attendanceCollection,
+            where("classId", "==", record.classId),
+            where("studentId", "==", record.studentId),
+            where("date", ">=", Timestamp.fromDate(startOfDay)),
+            where("date", "<=", Timestamp.fromDate(endOfDay))
+        );
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            // No existing record, create a new one
+            const newDocRef = doc(attendanceCollection);
+            batch.set(newDocRef, convertDatesToTimestamps(record));
+        } else {
+            // Existing record found, update it
+            const docToUpdate = snapshot.docs[0].ref;
+            batch.update(docToUpdate, convertDatesToTimestamps(record));
+        }
+    }
+
+    await batch.commit();
+}

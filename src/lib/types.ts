@@ -114,3 +114,17 @@ export interface Admission {
   students: StudentAdmission[];
   classes?: Enrollment[]; // To store empty class definitions
 }
+
+// --- Attendance ---
+export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Excused';
+
+export interface AttendanceRecord {
+  attendanceId: string;
+  studentId: string;
+  classId: string; 
+  date: Date;
+  status: AttendanceStatus;
+  minutesLate?: number;
+  notes?: string;
+  recordedById: string; // teacherId
+}
