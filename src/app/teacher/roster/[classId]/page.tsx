@@ -4,8 +4,8 @@
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers } from "@/lib/firebase/firestore";
-import type { Student, Assessment } from "@/lib/types";
+import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers, getSubjects, getAssessmentCategories } from "@/lib/firebase/firestore";
+import type { Student, Assessment, Subject, AssessmentCategory } from "@/lib/types";
 import { programs } from "@/lib/program-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -32,6 +32,8 @@ export default function RosterPage() {
 
   const [roster, setRoster] = React.useState<RosterStudent[]>([]);
   const [classAssessments, setClassAssessments] = React.useState<Assessment[]>([]);
+  const [subjects, setSubjects] = React.useState<Subject[]>([]);
+  const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [classInfo, setClassInfo] = React.useState<{ programName: string; level: string; programId: string } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -55,7 +57,17 @@ export default function RosterPage() {
             const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
             setClassInfo({ programName, level, programId });
 
-            const [allStudents, admissions, assessments, teachers] = await Promise.all([getStudents(), getAdmissions(), getAssessments(), getTeachers()]);
+            const [allStudents, admissions, assessments, teachers, subjectsData, categoriesData] = await Promise.all([
+              getStudents(), 
+              getAdmissions(), 
+              getAssessments(), 
+              getTeachers(),
+              getSubjects(),
+              getAssessmentCategories(),
+            ]);
+
+            setSubjects(subjectsData);
+            setAssessmentCategories(categoriesData);
             
             const loggedInTeacher = teachers.find(t => t.email === user.email);
             if (!loggedInTeacher) {
@@ -100,7 +112,7 @@ export default function RosterPage() {
             setClassAssessments(relevantAssessments.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
 
             const processedRoster = classRosterData.map(student => {
-                const averageScore = calculateStudentAverage(student.studentId, assessments);
+                const averageScore = calculateStudentAverage(student.studentId, assessments, subjectsData, categoriesData);
                 const letterGrade = getLetterGrade(averageScore);
                 return { ...student, averageScore, letterGrade };
             });
@@ -317,6 +329,8 @@ export default function RosterPage() {
         open={isNewAssessmentOpen}
         onOpenChange={setIsNewAssessmentOpen}
         onSave={handleSaveAssessment}
+        subjects={subjects}
+        assessmentCategories={assessmentCategories}
       />
       
       <GradeEntrySheet

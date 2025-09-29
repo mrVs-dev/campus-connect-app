@@ -2,9 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { Student, Guardian, Enrollment, Assessment } from "@/lib/types";
-import { subjects } from "@/lib/mock-data";
-import { assessmentCategoryWeights } from "@/lib/types";
+import type { Student, Guardian, Enrollment, Assessment, Subject, AssessmentCategory } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -28,6 +26,8 @@ import 'react-image-crop/dist/ReactCrop.css'
 interface StudentPerformanceSheetProps {
   student: Student | null;
   assessments: Assessment[];
+  subjects: Subject[];
+  assessmentCategories: AssessmentCategory[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
@@ -67,6 +67,8 @@ function EnrollmentDetails({ enrollment }: { enrollment: Enrollment }) {
 export function StudentPerformanceSheet({
   student,
   assessments,
+  subjects,
+  assessmentCategories,
   open,
   onOpenChange,
   onUpdateStudent,
@@ -110,6 +112,8 @@ export function StudentPerformanceSheet({
     (a) => a.scores && a.scores[student.studentId] !== undefined
   );
   
+  const categoryWeightMap = new Map(assessmentCategories.map(c => [c.name, c.weight / 100]));
+
   const performanceBySubject = subjects.map(subject => {
     const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
     if (subjectAssessments.length === 0) {
@@ -120,7 +124,7 @@ export function StudentPerformanceSheet({
     let totalWeight = 0;
 
     subjectAssessments.forEach(assessment => {
-      const weight = assessmentCategoryWeights[assessment.category];
+      const weight = categoryWeightMap.get(assessment.category) || 0;
       const score = assessment.scores[student.studentId];
       const percentage = (score / assessment.totalMarks) * 100;
       totalWeightedScore += percentage * weight;
@@ -131,7 +135,9 @@ export function StudentPerformanceSheet({
     return { subjectName: subject.subjectName, overallScore: Math.round(overallScore) };
   });
 
-  const overallAverage = performanceBySubject.reduce((acc, curr) => acc + curr.overallScore, 0) / (performanceBySubject.filter(s => s.overallScore > 0).length || 1);
+  const validSubjects = performanceBySubject.filter(s => s.overallScore > 0);
+  const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + curr.overallScore, 0) / validSubjects.length : 0;
+
 
   const studentGrades = performanceBySubject.reduce((acc, subject) => {
     acc[subject.subjectName] = subject.overallScore;

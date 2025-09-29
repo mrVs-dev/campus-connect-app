@@ -5,8 +5,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getTeachers, getAdmissions, addTeacher, getStudents, getAssessments, saveAssessment } from "@/lib/firebase/firestore";
-import type { Teacher, Admission, Student, Assessment } from "@/lib/types";
+import { getTeachers, getAdmissions, addTeacher, getStudents, getAssessments, saveAssessment, getSubjects, getAssessmentCategories } from "@/lib/firebase/firestore";
+import type { Teacher, Admission, Student, Assessment, Subject, AssessmentCategory } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { programs } from "@/lib/program-data";
 import { BarChart, UserCheck, TrendingUp, ArrowRight } from "lucide-react";
@@ -45,6 +45,8 @@ export default function TeacherDashboardPage() {
   const router = useRouter();
   const [assignedClasses, setAssignedClasses] = React.useState<AssignedClass[]>([]);
   const [allAssessments, setAllAssessments] = React.useState<Assessment[]>([]);
+  const [subjects, setSubjects] = React.useState<Subject[]>([]);
+  const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [metrics, setMetrics] = React.useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -60,8 +62,17 @@ export default function TeacherDashboardPage() {
       const fetchData = async () => {
         try {
           setLoading(true);
-          let [teachers, admissions, allStudents, assessments] = await Promise.all([getTeachers(), getAdmissions(), getStudents(), getAssessments()]);
+          let [teachers, admissions, allStudents, assessments, subjectsData, categoriesData] = await Promise.all([
+            getTeachers(), 
+            getAdmissions(), 
+            getStudents(), 
+            getAssessments(),
+            getSubjects(),
+            getAssessmentCategories(),
+          ]);
           setAllAssessments(assessments);
+          setSubjects(subjectsData);
+          setAssessmentCategories(categoriesData);
           
           let loggedInTeacher = teachers.find(t => t.email === user.email);
           
@@ -110,7 +121,7 @@ export default function TeacherDashboardPage() {
           
           const classes: AssignedClass[] = Array.from(classMap.values()).map(classInfo => {
             const studentsInClass = allStudents.filter(s => classInfo.students.has(s.studentId));
-            const classAverages = studentsInClass.map(s => calculateStudentAverage(s.studentId, assessments));
+            const classAverages = studentsInClass.map(s => calculateStudentAverage(s.studentId, assessments, subjectsData, categoriesData));
             const totalAverage = classAverages.reduce((sum, avg) => sum + avg, 0);
             const averagePerformance = studentsInClass.length > 0 ? Math.round(totalAverage / studentsInClass.length) : 0;
             
@@ -133,7 +144,7 @@ export default function TeacherDashboardPage() {
           const uniqueStudents = uniqueStudentIds.map(id => allStudents.find(s => s.studentId === id)!);
           
           if (uniqueStudents.length > 0) {
-            const studentAverages = uniqueStudents.map(s => ({ student: s, average: calculateStudentAverage(s.studentId, assessments) }));
+            const studentAverages = uniqueStudents.map(s => ({ student: s, average: calculateStudentAverage(s.studentId, assessments, subjectsData, categoriesData) }));
             
             const totalAverage = studentAverages.reduce((sum, s) => sum + s.average, 0);
             const overallAverage = Math.round(totalAverage / studentAverages.length);
@@ -278,6 +289,8 @@ export default function TeacherDashboardPage() {
              <AssessmentList
                 assessments={allAssessments}
                 students={assignedClasses.flatMap(c => c.students)}
+                subjects={subjects}
+                assessmentCategories={assessmentCategories}
                 onSaveAssessment={handleSaveAssessment}
             />
           </div>

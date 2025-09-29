@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { Student, Assessment, Admission, Enrollment } from "@/lib/types";
+import type { Student, Assessment, Admission, Enrollment, Subject, AssessmentCategory } from "@/lib/types";
 import { Upload, MoreHorizontal, ArrowUpDown, Trash2, Move, Search, Edit } from "lucide-react";
 import {
   Card,
@@ -53,6 +53,8 @@ export function StudentList({
   students,
   assessments,
   admissions,
+  subjects,
+  assessmentCategories,
   onUpdateStudent,
   onUpdateStudentStatus,
   onImportStudents,
@@ -63,6 +65,8 @@ export function StudentList({
   students: Student[];
   assessments: Assessment[];
   admissions: Admission[];
+  subjects: Subject[];
+  assessmentCategories: AssessmentCategory[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
   onUpdateStudentStatus: (student: Student, newStatus: Student['status'], reason: string) => void;
   onImportStudents: (students: Partial<Student>[]) => void;
@@ -376,6 +380,8 @@ export function StudentList({
       <StudentPerformanceSheet
         student={selectedStudent}
         assessments={assessments}
+        subjects={subjects}
+        assessmentCategories={assessmentCategories}
         open={!!selectedStudent}
         onOpenChange={(isOpen) => {
           if (!isOpen) {

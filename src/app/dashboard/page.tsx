@@ -466,6 +466,8 @@ export default function DashboardPage() {
               students={studentsWithLatestEnrollments}
               assessments={assessments}
               admissions={admissions}
+              assessmentCategories={assessmentCategories}
+              subjects={subjects}
               onUpdateStudent={handleUpdateStudent}
               onUpdateStudentStatus={handleUpdateStudentStatus}
               onImportStudents={handleImportStudents}
