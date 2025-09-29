@@ -40,7 +40,7 @@ export function GradeEntrySheet({
   onOpenChange,
   onSaveGrades,
 }: GradeEntrySheetProps) {
-  const [scores, setScores] = React.useState<Record<string, number>>({});
+  const [scores, setScores] = React.useState<Record<string, number | undefined>>({});
   const [isSaving, setIsSaving] = React.useState(false);
   const { toast } = useToast();
 
@@ -71,13 +71,27 @@ export function GradeEntrySheet({
         return;
       }
       setScores(prev => ({ ...prev, [studentId]: score }));
+    } else if (value !== "") {
+        // Handle cases where input is not a valid number but not empty (e.g., "abc")
+        // We can either ignore it, or clear the field, or show a toast.
+        // For now, let's just keep the old value by not updating state.
+        return;
     }
   };
 
   const handleSave = async () => {
     if (!assessment) return;
     setIsSaving(true);
-    const updatedAssessment = { ...assessment, scores };
+    
+    // Filter out undefined scores before saving
+    const validScores = Object.entries(scores).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const updatedAssessment = { ...assessment, scores: validScores };
     await onSaveGrades(updatedAssessment);
     setIsSaving(false);
     onOpenChange(false);

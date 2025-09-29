@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, PlusCircle } from "lucide-react";
 import { calculateStudentAverage, getLetterGrade } from "@/lib/grades";
 import { NewAssessmentDialog } from "@/components/dashboard/new-assessment-dialog";
+import { GradeEntrySheet } from "@/components/dashboard/grade-entry-sheet";
+
 
 interface RosterStudent extends Student {
   averageScore: number;
@@ -32,6 +34,7 @@ export default function RosterPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
+  const [assessmentToGrade, setAssessmentToGrade] = React.useState<Assessment | null>(null);
 
   const fetchData = React.useCallback(async () => {
     if (user && typeof classId === 'string') {
@@ -122,6 +125,12 @@ export default function RosterPage() {
     try {
       const savedAssessment = await saveAssessment(assessmentData);
       await fetchData(); // Refetch all data to update the view
+      
+      // If it was a new assessment, open the grading sheet immediately
+      if (!('assessmentId' in assessmentData) && savedAssessment) {
+        setAssessmentToGrade(savedAssessment);
+      }
+
       return savedAssessment;
     } catch (error) {
       console.error("Error saving assessment:", error);
@@ -207,7 +216,11 @@ export default function RosterPage() {
                   <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Overall (%)</TableHead>
                   <TableHead className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Grade</TableHead>
                   {classAssessments.map(assessment => (
-                    <TableHead key={assessment.assessmentId} className="text-center min-w-[150px]">
+                    <TableHead 
+                      key={assessment.assessmentId} 
+                      className="text-center min-w-[150px] cursor-pointer hover:bg-muted"
+                      onClick={() => setAssessmentToGrade(assessment)}
+                    >
                       {assessment.topic}
                       <span className="block text-xs font-normal text-muted-foreground">
                         ({assessment.totalMarks} pts)
@@ -282,6 +295,15 @@ export default function RosterPage() {
         onOpenChange={setIsNewAssessmentOpen}
         onSave={handleSaveAssessment}
       />
+      
+      <GradeEntrySheet
+        assessment={assessmentToGrade}
+        students={roster}
+        open={!!assessmentToGrade}
+        onOpenChange={(isOpen) => !isOpen && setAssessmentToGrade(null)}
+        onSaveGrades={handleSaveAssessment}
+      />
+
     </div>
   );
 }
