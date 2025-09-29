@@ -8,7 +8,7 @@ import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers
 import type { Student, Admission, Assessment, Teacher } from "@/lib/types";
 import { programs } from "@/lib/program-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, PlusCircle } from "lucide-react";
@@ -40,9 +40,8 @@ export default function RosterPage() {
             const classIdParts = classId.split('_');
             if (classIdParts.length < 3) throw new Error("Invalid class ID format.");
             
-            const schoolYear = classIdParts[0];
-            const programId = classIdParts[1];
-            const level = classIdParts.slice(2).join('_').replace(/-/g, ' '); // Rejoin level parts and replace dashes with spaces
+            const [schoolYear, programId, ...levelParts] = classIdParts;
+            const level = levelParts.join('_').replace(/-/g, ' ');
 
             if (!schoolYear || !programId || !level) {
                 throw new Error("Invalid class information provided.");
@@ -65,7 +64,6 @@ export default function RosterPage() {
             const studentIdsInClass = new Set<string>();
 
             if (admission) {
-                // Find students enrolled in this class via direct student admission records and taught by this teacher
                 admission.students.forEach(studentAdmission => {
                     if (studentAdmission.enrollments.some(e => 
                         e.programId === programId && 
@@ -76,11 +74,8 @@ export default function RosterPage() {
                     }
                 });
 
-                // Find students in this class via the class definition if the teacher is assigned
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
                 if (classDef && classDef.teacherIds?.includes(loggedInTeacherId)) {
-                    // This logic is important for classes that might not have students explicitly assigned to a teacher in their enrollment record
-                    // We find all students in that class and add them.
                      admission.students.forEach(studentAdmission => {
                         if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
                             studentIdsInClass.add(studentAdmission.studentId);
@@ -135,6 +130,33 @@ export default function RosterPage() {
       return null;
     }
   };
+
+  const classAverages = React.useMemo(() => {
+    if (roster.length === 0) return null;
+
+    const assessmentAverages = classAssessments.map(assessment => {
+      const scores = roster
+        .map(student => assessment.scores[student.studentId])
+        .filter(score => typeof score === 'number');
+      
+      if (scores.length === 0) return { assessmentId: assessment.assessmentId, average: null };
+      
+      const sum = scores.reduce((acc, score) => acc + (score ?? 0), 0);
+      return { 
+        assessmentId: assessment.assessmentId, 
+        average: Math.round(sum / scores.length) 
+      };
+    });
+
+    const overallAverageSum = roster.reduce((acc, student) => acc + student.averageScore, 0);
+    const overallClassAverage = Math.round(overallAverageSum / roster.length);
+
+    return {
+      assessments: assessmentAverages,
+      overall: overallClassAverage,
+      letterGrade: getLetterGrade(overallClassAverage),
+    };
+  }, [roster, classAssessments]);
 
 
   if (authLoading || loading) {
@@ -219,6 +241,23 @@ export default function RosterPage() {
                   </TableRow>
                 ))}
               </TableBody>
+              {classAverages && (
+                <TableFooter>
+                  <TableRow>
+                    <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average</TableCell>
+                    {classAssessments.map(assessment => {
+                      const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
+                      return (
+                        <TableCell key={assessment.assessmentId} className="text-center font-semibold">
+                          {avg?.average ?? "—"}
+                        </TableCell>
+                      )
+                    })}
+                    <TableCell className="text-center font-semibold text-primary">{classAverages.overall}</TableCell>
+                    <TableCell className="text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
+                  </TableRow>
+                </TableFooter>
+              )}
             </Table>
              {roster.length === 0 && (
               <div className="text-center p-8 text-muted-foreground">
