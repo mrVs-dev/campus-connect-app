@@ -392,10 +392,14 @@ export async function getAssessments(): Promise<Assessment[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const assessmentsCollection = collection(db, 'assessments');
     const snapshot = await getDocs(assessmentsCollection);
-    return snapshot.docs.map(doc => ({
-        ...doc.data(),
-        assessmentId: doc.id,
-    } as Assessment));
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        const dataWithDates = convertTimestampsToDates(data);
+        return {
+            ...dataWithDates,
+            assessmentId: doc.id,
+        } as Assessment;
+    });
 }
 
 export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment): Promise<Assessment> {
@@ -412,12 +416,15 @@ export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmen
         const newDocRef = await addDoc(assessmentsCollection, {
             ...assessmentData,
             teacherId: "T001", // Placeholder teacher ID
+            creationDate: serverTimestamp(),
         });
-        return {
+        const newAssessment: Assessment = {
             ...assessmentData,
             assessmentId: newDocRef.id,
             teacherId: "T001",
+            creationDate: new Date(),
         };
+        return newAssessment;
     }
 }
 

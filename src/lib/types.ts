@@ -99,6 +99,7 @@ export interface Assessment {
   category: AssessmentCategory;
   totalMarks: number;
   scores: Record<string, number>; // { [studentId]: rawScore }
+  creationDate?: Date;
 }
 
 // For yearly admissions

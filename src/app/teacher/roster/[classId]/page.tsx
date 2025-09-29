@@ -92,7 +92,7 @@ export default function RosterPage() {
             const relevantAssessments = assessments.filter(assessment => 
                 classRosterData.some(student => assessment.scores && assessment.scores[student.studentId] !== undefined)
             );
-            setClassAssessments(relevantAssessments.sort((a,b) => a.topic.localeCompare(b.topic)));
+            setClassAssessments(relevantAssessments.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
 
             const processedRoster = classRosterData.map(student => {
                 const averageScore = calculateStudentAverage(student.studentId, assessments);
@@ -236,9 +236,9 @@ export default function RosterPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {roster.map(student => (
-                  <TableRow key={student.studentId}>
-                    <TableCell className="sticky left-0 bg-background z-10 font-medium">
+                {roster.map((student, index) => (
+                  <TableRow key={student.studentId} className={index % 2 === 0 ? 'bg-white' : 'bg-muted/50'}>
+                    <TableCell className="sticky left-0 z-10 font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>
                       <div className="flex items-center gap-4">
                         <Avatar className="h-9 w-9">
                           <AvatarImage src={student.avatarUrl} alt={student.firstName} className="object-cover" />
@@ -251,8 +251,8 @@ export default function RosterPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="sticky left-[250px] bg-background z-10 text-center font-medium">{student.averageScore}</TableCell>
-                    <TableCell className="sticky left-[350px] bg-background z-10 text-center font-medium">{student.letterGrade}</TableCell>
+                    <TableCell className="sticky left-[250px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.averageScore}</TableCell>
+                    <TableCell className="sticky left-[350px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.letterGrade}</TableCell>
                     {classAssessments.map(assessment => (
                       <TableCell key={assessment.assessmentId} className="text-center">
                         {assessment.scores[student.studentId] ?? "—"}
