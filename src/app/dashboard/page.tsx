@@ -154,12 +154,14 @@ export default function DashboardPage() {
 
         const currentUserProfile = teachersData.find(t => t.email === user.email);
         if (currentUserProfile) {
-          setUserRole(currentUserProfile.role);
-          if (currentUserProfile.role === 'Teacher') {
+          const currentRole = currentUserProfile.role;
+          setUserRole(currentRole);
+          // Only redirect if the role is *explicitly* Teacher and not Admin.
+          if (currentRole === 'Teacher') {
             router.replace('/teacher/dashboard');
           }
         } else {
-          // If no teacher profile is found, assume Admin.
+          // If no teacher profile is found, they are an Admin.
           setUserRole('Admin');
         }
         
@@ -463,7 +465,7 @@ export default function DashboardPage() {
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
          {userRole && visibleTabs.length > 0 ? (
           <Tabs defaultValue={visibleTabs[0]?.value} className="flex flex-col gap-4">
-            <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-8 self-start">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-8 self-start">
               {visibleTabs.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
               ))}
@@ -553,8 +555,8 @@ export default function DashboardPage() {
 
           </Tabs>
          ) : (
-            <div className="text-center text-muted-foreground">
-              No tabs available for your role.
+            <div className="text-center text-muted-foreground py-8">
+              No tabs available for your role. Please contact an administrator if you believe this is an error.
             </div>
          )}
       </main>
