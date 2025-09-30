@@ -156,12 +156,10 @@ export default function DashboardPage() {
         if (currentUserProfile) {
           const currentRole = currentUserProfile.role;
           setUserRole(currentRole);
-          // Only redirect if the role is *explicitly* Teacher and not Admin or other roles
           if (currentRole === 'Teacher') {
             router.replace('/teacher/dashboard');
           }
         } else {
-          // If no teacher profile is found, they are an Admin.
           setUserRole('Admin');
         }
         
