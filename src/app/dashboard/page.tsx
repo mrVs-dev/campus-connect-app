@@ -145,8 +145,11 @@ export default function DashboardPage() {
         setAssessmentCategories(categoriesData);
 
         const currentUserProfile = teachersData.find(t => t.email === user.email);
-        const role = currentUserProfile ? currentUserProfile.role : 'Admin';
-        setUserRole(role);
+        if (currentUserProfile) {
+          setUserRole(currentUserProfile.role);
+        } else {
+          setUserRole('Admin');
+        }
         
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
