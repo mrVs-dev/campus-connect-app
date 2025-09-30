@@ -439,7 +439,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
 
-  if (authLoading || loadingData || !userRole) {
+  if (authLoading || loadingData) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading application data...
@@ -447,7 +447,7 @@ export default function DashboardPage() {
     );
   }
 
-  const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
+  const visibleTabs = userRole ? TABS_CONFIG.filter(tab => tab.roles.includes(userRole)) : [];
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
