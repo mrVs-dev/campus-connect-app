@@ -60,7 +60,7 @@ function MissingFirebaseConfig() {
 }
 
 const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
-  { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Head of Department'] },
+  { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Head of Department', 'Receptionist'] },
   { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
   { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department'] },
@@ -82,7 +82,7 @@ export default function DashboardPage() {
   const [statusHistory, setStatusHistory] = React.useState<StudentStatusHistory[]>([]);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
-  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
+  const [userRole, setUserRole] = React.useState<UserRole>('Admin');
   const [loadingData, setLoadingData] = React.useState(true);
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -152,8 +152,16 @@ export default function DashboardPage() {
         setSubjects(subjectsData);
         setAssessmentCategories(categoriesData);
 
-        // This is the definitive fix. We are forcing the role to Admin.
-        setUserRole('Admin');
+        const loggedInTeacher = teachersData.find(t => t.email === user.email);
+        if (loggedInTeacher) {
+            setUserRole(loggedInTeacher.role);
+            if (loggedInTeacher.role === 'Teacher') {
+                router.replace('/teacher/dashboard');
+            }
+        } else {
+            // This is the definitive fix. We are forcing the role to Admin.
+            setUserRole('Admin');
+        }
         
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
