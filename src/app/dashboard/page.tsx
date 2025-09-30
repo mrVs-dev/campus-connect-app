@@ -112,9 +112,7 @@ export default function DashboardPage() {
   }, [students, admissions]);
 
   React.useEffect(() => {
-    if (authLoading) {
-      return; 
-    }
+    if (authLoading) return;
     if (!user) {
       router.replace('/login');
       return;
@@ -149,7 +147,6 @@ export default function DashboardPage() {
         if (currentUserProfile) {
           if (currentUserProfile.role === 'Teacher') {
             router.replace('/teacher/dashboard');
-            // No need to setLoadingData(false) here because the component will unmount
             return;
           }
           setUserRole(currentUserProfile.role);
