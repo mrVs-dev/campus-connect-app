@@ -85,7 +85,6 @@ export default function DashboardPage() {
   const [loadingData, setLoadingData] = React.useState(true);
   const [userRole, setUserRole] = React.useState<UserRole | null>(null);
 
-  // Memoize the derived student data to prevent expensive recalculations on every render
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
       return students;
@@ -112,65 +111,67 @@ export default function DashboardPage() {
     });
   }, [students, admissions]);
 
-  const fetchData = React.useCallback(async () => {
-    if (!isFirebaseConfigured || !user) {
+  React.useEffect(() => {
+    if (authLoading) {
+      return; 
+    }
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    if (!isFirebaseConfigured) {
       setLoadingData(false);
       return;
     }
-    setLoadingData(true);
-    try {
-      const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData, subjectsData, categoriesData] = await Promise.all([
-        getStudents(), 
-        getAdmissions(),
-        getAssessments(),
-        getTeachers(),
-        getStudentStatusHistory(),
-        getSubjects(),
-        getAssessmentCategories(),
-      ]);
-      
-      setStudents(studentsData);
-      setAdmissions(admissionsData);
-      setAssessments(assessmentsData);
-      setTeachers(teachersData);
-      setStatusHistory(statusHistoryData);
-      setSubjects(subjectsData);
-      setAssessmentCategories(categoriesData);
 
-      const currentUserProfile = teachersData.find(t => t.email === user.email);
-      if (currentUserProfile) {
-        if (currentUserProfile.role === 'Teacher') {
-          router.replace('/teacher/dashboard');
-          return; // Redirect will unmount, no need to proceed
+    const fetchData = async () => {
+      setLoadingData(true);
+      try {
+        const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData, subjectsData, categoriesData] = await Promise.all([
+          getStudents(), 
+          getAdmissions(),
+          getAssessments(),
+          getTeachers(),
+          getStudentStatusHistory(),
+          getSubjects(),
+          getAssessmentCategories(),
+        ]);
+        
+        setStudents(studentsData);
+        setAdmissions(admissionsData);
+        setAssessments(assessmentsData);
+        setTeachers(teachersData);
+        setStatusHistory(statusHistoryData);
+        setSubjects(subjectsData);
+        setAssessmentCategories(categoriesData);
+
+        const currentUserProfile = teachersData.find(t => t.email === user.email);
+        if (currentUserProfile) {
+          if (currentUserProfile.role === 'Teacher') {
+            router.replace('/teacher/dashboard');
+            // No need to setLoadingData(false) here because the component will unmount
+            return;
+          }
+          setUserRole(currentUserProfile.role);
+        } else {
+          // Default to 'Admin' if no specific profile is found
+          setUserRole('Admin'); 
         }
-        setUserRole(currentUserProfile.role);
-      } else {
-        // Default to 'Admin' if no specific profile is found (e.g., the first user)
-        setUserRole('Admin'); 
+      } catch (error) {
+        console.error("Failed to fetch initial data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load data. Please check your Firebase connection.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingData(false);
       }
-    } catch (error) {
-      console.error("Failed to fetch initial data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load data from the server. Please check your Firebase connection and configuration.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingData(false);
-    }
-  }, [toast, user, router]);
-  
-  React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/login');
-    }
-  }, [user, authLoading, router]);
+    };
+    
+    fetchData();
 
-  React.useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user, fetchData]);
+  }, [user, authLoading, router, toast]);
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
     try {
@@ -217,7 +218,9 @@ export default function DashboardPage() {
   const handleUpdateStudentStatus = async (student: Student, newStatus: Student['status'], reason: string) => {
     try {
       await updateStudentStatus(student, newStatus, reason, user);
-      await fetchData(); // Refetch all data to ensure consistency
+      setStudents(prev => prev.map(s => s.studentId === student.studentId ? { ...s, status: newStatus } : s));
+      const newHistoryEntry = await getStudentStatusHistory(); // Refetch just history
+      setStatusHistory(newHistoryEntry);
       toast({
         title: "Status Updated",
         description: `${student.firstName}'s status has been updated to ${newStatus}.`,
@@ -310,7 +313,9 @@ export default function DashboardPage() {
   const handleMoveStudents = async (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => {
     try {
       await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass);
-      await fetchData();
+      const [updatedStudents, updatedAdmissions] = await Promise.all([getStudents(), getAdmissions()]);
+      setStudents(updatedStudents);
+      setAdmissions(updatedAdmissions);
       toast({
         title: "Students Moved",
         description: `${studentIds.length} students have been moved successfully.`,
@@ -435,7 +440,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
 
-  if (authLoading || loadingData || !user || !userRole) {
+  if (authLoading || loadingData || !userRole) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading application data...
