@@ -150,13 +150,11 @@ export default function DashboardPage() {
         setAssessmentCategories(categoriesData);
 
         const loggedInTeacher = teachersData.find(t => t.email === user.email);
-        if (loggedInTeacher) {
-            setUserRole(loggedInTeacher.role);
-            if (loggedInTeacher.role === 'Teacher') {
-                router.replace('/teacher/dashboard');
-            }
+        if (loggedInTeacher && loggedInTeacher.role === 'Teacher') {
+            setUserRole('Teacher');
+            router.replace('/teacher/dashboard');
         } else {
-            // This is the definitive fix. We are forcing the role to Admin.
+            // For any other case (Admin, or no profile found), ensure Admin role.
             setUserRole('Admin');
         }
         
