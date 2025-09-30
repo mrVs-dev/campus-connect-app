@@ -125,6 +125,7 @@ export default function DashboardPage() {
 
     const fetchData = async () => {
       setLoadingData(true);
+      let role: UserRole | null = null;
       try {
         const [
           studentsData, 
@@ -154,13 +155,12 @@ export default function DashboardPage() {
 
         const currentUserProfile = teachersData.find(t => t.email === user.email);
         if (currentUserProfile) {
-          const currentRole = currentUserProfile.role;
-          setUserRole(currentRole);
-          if (currentRole === 'Teacher') {
+          role = currentUserProfile.role;
+          if (role === 'Teacher') {
             router.replace('/teacher/dashboard');
           }
         } else {
-          setUserRole('Admin');
+          role = 'Admin';
         }
         
       } catch (error) {
@@ -171,6 +171,7 @@ export default function DashboardPage() {
           variant: "destructive",
         });
       } finally {
+        setUserRole(role);
         setLoadingData(false);
       }
     };
