@@ -153,15 +153,17 @@ export default function DashboardPage() {
         setAssessmentCategories(categoriesData);
 
         const currentUserProfile = teachersData.find(t => t.email === user.email);
-        let role: UserRole = 'Admin'; // Default to Admin
+        
         if (currentUserProfile) {
-          role = currentUserProfile.role;
-          if (role === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-          }
+            setUserRole(currentUserProfile.role);
+            if (currentUserProfile.role === 'Teacher') {
+                router.replace('/teacher/dashboard');
+                return;
+            }
+        } else {
+            // If no teacher profile exists, assume Admin
+            setUserRole('Admin');
         }
-        setUserRole(role);
         
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -561,3 +563,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

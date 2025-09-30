@@ -88,7 +88,7 @@ export default function TeacherDashboardPage() {
             throw new Error("Your email is not associated with a teacher profile.");
           }
           
-          if (loggedInTeacher.role === 'Admin') {
+          if (loggedInTeacher.role !== 'Teacher') {
             router.replace('/dashboard');
             return;
           }
@@ -327,3 +327,5 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
+    
