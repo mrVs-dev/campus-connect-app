@@ -78,7 +78,7 @@ export default function TeacherDashboardPage() {
           
           if (!loggedInTeacher && user.email) {
             const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ["", ""];
-            const newTeacherData = { firstName, lastName: lastNameParts.join(' '), email: user.email };
+            const newTeacherData = { firstName, lastName: lastNameParts.join(' '), email: user.email, role: 'Teacher' as const };
             loggedInTeacher = await addTeacher(newTeacherData);
             if (!loggedInTeacher) throw new Error("Could not create teacher profile.");
             teachers.push(loggedInTeacher);
@@ -86,6 +86,11 @@ export default function TeacherDashboardPage() {
 
           if (!loggedInTeacher) {
             throw new Error("Your email is not associated with a teacher profile.");
+          }
+          
+          if (loggedInTeacher.role === 'Admin') {
+            router.replace('/dashboard');
+            return;
           }
 
           const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();

@@ -125,7 +125,6 @@ export default function DashboardPage() {
 
     const fetchData = async () => {
       setLoadingData(true);
-      let role: UserRole | null = null;
       try {
         const [
           studentsData, 
@@ -154,14 +153,15 @@ export default function DashboardPage() {
         setAssessmentCategories(categoriesData);
 
         const currentUserProfile = teachersData.find(t => t.email === user.email);
+        let role: UserRole = 'Admin'; // Default to Admin
         if (currentUserProfile) {
           role = currentUserProfile.role;
           if (role === 'Teacher') {
             router.replace('/teacher/dashboard');
+            return;
           }
-        } else {
-          role = 'Admin';
         }
+        setUserRole(role);
         
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -171,7 +171,6 @@ export default function DashboardPage() {
           variant: "destructive",
         });
       } finally {
-        setUserRole(role);
         setLoadingData(false);
       }
     };
