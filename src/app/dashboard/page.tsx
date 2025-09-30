@@ -64,7 +64,7 @@ const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
   { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
   { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department'] },
-  { value: "admissions", label: "Admissions", roles: ['Admin', 'Receptionist', 'Head of Department'] },
+  { value: "admissions", label: "Admissions", roles: ['Admin', 'Receptionist'] },
   { value: "enrollment", label: "Enrollment", roles: ['Admin', 'Receptionist'] },
   { value: "statusHistory", label: "Status History", roles: ['Admin'] },
   { value: "settings", label: "Settings", roles: ['Admin'] },
@@ -149,14 +149,8 @@ export default function DashboardPage() {
         setSubjects(subjectsData);
         setAssessmentCategories(categoriesData);
 
-        const loggedInTeacher = teachersData.find(t => t.email === user.email);
-        if (loggedInTeacher && loggedInTeacher.role === 'Teacher') {
-            setUserRole('Teacher');
-            router.replace('/teacher/dashboard');
-        } else {
-            // For any other case (Admin, or no profile found), ensure Admin role.
-            setUserRole('Admin');
-        }
+        // This ensures the user is always treated as an admin on this dashboard.
+        setUserRole('Admin');
         
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
