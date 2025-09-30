@@ -126,7 +126,15 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setLoadingData(true);
       try {
-        const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData, subjectsData, categoriesData] = await Promise.all([
+        const [
+          studentsData, 
+          admissionsData, 
+          assessmentsData, 
+          teachersData, 
+          statusHistoryData, 
+          subjectsData, 
+          categoriesData
+        ] = await Promise.all([
           getStudents(),
           getAdmissions(),
           getAssessments(),
@@ -147,7 +155,11 @@ export default function DashboardPage() {
         const currentUserProfile = teachersData.find(t => t.email === user.email);
         if (currentUserProfile) {
           setUserRole(currentUserProfile.role);
+          if (currentUserProfile.role === 'Teacher') {
+            router.replace('/teacher/dashboard');
+          }
         } else {
+          // If no teacher profile is found, assume Admin.
           setUserRole('Admin');
         }
         
@@ -166,13 +178,6 @@ export default function DashboardPage() {
     fetchData();
 
   }, [user, authLoading, router, toast]);
-
-  React.useEffect(() => {
-    if (userRole === 'Teacher') {
-      router.replace('/teacher/dashboard');
-    }
-  }, [userRole, router]);
-
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
     try {
@@ -557,4 +562,3 @@ export default function DashboardPage() {
   );
 }
 
-    
