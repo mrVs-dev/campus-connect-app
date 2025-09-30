@@ -141,11 +141,13 @@ export default function DashboardPage() {
       if (currentUserProfile) {
         if (currentUserProfile.role === 'Teacher') {
           router.replace('/teacher/dashboard');
+          // No need to set loading to false here, as the redirect will unmount the component
           return;
         }
         setUserRole(currentUserProfile.role);
       } else {
-        setUserRole('Admin'); // Default to Admin if not found in teachers list
+        // This is not a teacher or staff in the `teachers` collection, so assume Admin.
+        setUserRole('Admin'); 
       }
 
     } catch (error) {
@@ -449,7 +451,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen w-full flex-col bg-background">
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
-        <Tabs defaultValue={visibleTabs[0].value} className="flex flex-col gap-4">
+        <Tabs defaultValue={visibleTabs[0]?.value || TABS_CONFIG[0].value} className="flex flex-col gap-4">
           <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-8 self-start">
             {visibleTabs.map(tab => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
@@ -543,5 +545,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
