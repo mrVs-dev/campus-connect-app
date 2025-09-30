@@ -83,7 +83,7 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [loadingData, setLoadingData] = React.useState(true);
-  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
+  const [userRole, setUserRole] = React.useState<UserRole>('Admin');
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -147,8 +147,6 @@ export default function DashboardPage() {
         const currentUserProfile = teachersData.find(t => t.email === user.email);
         if (currentUserProfile) {
           setUserRole(currentUserProfile.role);
-        } else {
-          setUserRole('Admin');
         }
         
       } catch (error) {
@@ -450,13 +448,13 @@ export default function DashboardPage() {
     );
   }
 
-  const visibleTabs = userRole ? TABS_CONFIG.filter(tab => tab.roles.includes(userRole)) : [];
+  const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
-        <Tabs defaultValue={visibleTabs[0]?.value || TABS_CONFIG[0].value} className="flex flex-col gap-4">
+        <Tabs defaultValue={visibleTabs[0]?.value} className="flex flex-col gap-4">
           <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-8 self-start">
             {visibleTabs.map(tab => (
               <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
