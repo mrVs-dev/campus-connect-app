@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -112,14 +112,13 @@ export default function DashboardPage() {
     });
   }, [students, admissions]);
 
-
   const fetchData = React.useCallback(async () => {
     if (!isFirebaseConfigured || !user) {
       setLoadingData(false);
       return;
     }
+    setLoadingData(true);
     try {
-      setLoadingData(true);
       const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData, subjectsData, categoriesData] = await Promise.all([
         getStudents(), 
         getAdmissions(),
@@ -129,6 +128,7 @@ export default function DashboardPage() {
         getSubjects(),
         getAssessmentCategories(),
       ]);
+      
       setStudents(studentsData);
       setAdmissions(admissionsData);
       setAssessments(assessmentsData);
@@ -141,15 +141,13 @@ export default function DashboardPage() {
       if (currentUserProfile) {
         if (currentUserProfile.role === 'Teacher') {
           router.replace('/teacher/dashboard');
-          // No need to set loading to false here, as the redirect will unmount the component
-          return;
+          return; // Redirect will unmount, no need to proceed
         }
         setUserRole(currentUserProfile.role);
       } else {
-        // This is not a teacher or staff in the `teachers` collection, so assume Admin.
+        // Default to 'Admin' if no specific profile is found (e.g., the first user)
         setUserRole('Admin'); 
       }
-
     } catch (error) {
       console.error("Failed to fetch initial data:", error);
       toast({
@@ -545,3 +543,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
