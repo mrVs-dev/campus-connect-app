@@ -145,14 +145,9 @@ export default function DashboardPage() {
 
         const currentUserProfile = teachersData.find(t => t.email === user.email);
         if (currentUserProfile) {
-          if (currentUserProfile.role === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-          }
           setUserRole(currentUserProfile.role);
         } else {
-          // Default to 'Admin' if no specific profile is found
-          setUserRole('Admin'); 
+          setUserRole('Admin');
         }
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -169,6 +164,13 @@ export default function DashboardPage() {
     fetchData();
 
   }, [user, authLoading, router, toast]);
+
+  React.useEffect(() => {
+    if (userRole === 'Teacher') {
+      router.replace('/teacher/dashboard');
+    }
+  }, [userRole, router]);
+
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
     try {
@@ -545,5 +547,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
