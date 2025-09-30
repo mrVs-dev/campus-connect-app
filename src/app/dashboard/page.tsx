@@ -124,6 +124,7 @@ export default function DashboardPage() {
     }
 
     const fetchData = async () => {
+      setLoadingData(true);
       try {
         const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData, subjectsData, categoriesData] = await Promise.all([
           getStudents(),
@@ -144,12 +145,13 @@ export default function DashboardPage() {
         setAssessmentCategories(categoriesData);
 
         const currentUserProfile = teachersData.find(t => t.email === user.email);
-        if (currentUserProfile) {
-          setUserRole(currentUserProfile.role);
-        } else {
-          // Default to Admin if not found in teachers list
-          setUserRole('Admin');
+        const role = currentUserProfile ? currentUserProfile.role : 'Admin';
+        setUserRole(role);
+        
+        if (role === 'Teacher') {
+          router.replace('/teacher/dashboard');
         }
+
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
         toast({
@@ -165,12 +167,6 @@ export default function DashboardPage() {
     fetchData();
 
   }, [user, authLoading, router, toast]);
-
-  React.useEffect(() => {
-    if (userRole === 'Teacher') {
-      router.replace('/teacher/dashboard');
-    }
-  }, [userRole, router]);
 
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
@@ -441,7 +437,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
 
-  if (authLoading || loadingData) {
+  if (authLoading || loadingData || !userRole) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading application data...
@@ -449,7 +445,7 @@ export default function DashboardPage() {
     );
   }
 
-  const visibleTabs = userRole ? TABS_CONFIG.filter(tab => tab.roles.includes(userRole)) : [];
+  const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
