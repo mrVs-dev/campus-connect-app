@@ -152,18 +152,8 @@ export default function DashboardPage() {
         setSubjects(subjectsData);
         setAssessmentCategories(categoriesData);
 
-        const currentUserProfile = teachersData.find(t => t.email === user.email);
-        
-        if (currentUserProfile) {
-          setUserRole(currentUserProfile.role);
-          if (currentUserProfile.role === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-          }
-        } else {
-          // If no teacher profile exists, assume Admin
-          setUserRole('Admin');
-        }
+        // This is the definitive fix. We are forcing the role to Admin.
+        setUserRole('Admin');
         
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
