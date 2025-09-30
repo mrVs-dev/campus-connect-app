@@ -19,6 +19,7 @@ import {
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
 import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory } from "../types";
+import { startOfDay, endOfDay, isEqual } from 'date-fns';
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -480,22 +481,14 @@ export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Tea
 export async function getAttendanceForClass(classId: string, date: Date): Promise<AttendanceRecord[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
 
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
     const attendanceCollection = collection(db, 'attendance');
     const q = query(
         attendanceCollection,
-        where("classId", "==", classId),
-        where("date", ">=", Timestamp.fromDate(startOfDay)),
-        where("date", "<=", Timestamp.fromDate(endOfDay))
+        where("classId", "==", classId)
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => {
+    const allRecords = snapshot.docs.map(doc => {
         const data = doc.data();
         const dataWithDates = convertTimestampsToDates(data);
         return {
@@ -503,7 +496,12 @@ export async function getAttendanceForClass(classId: string, date: Date): Promis
             attendanceId: doc.id,
         } as AttendanceRecord;
     });
+
+    // Filter by date on the client
+    const targetDateStart = startOfDay(date);
+    return allRecords.filter(record => isEqual(startOfDay(record.date), targetDateStart));
 }
+
 
 export async function saveAttendance(records: Omit<AttendanceRecord, 'attendanceId'>[]): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
