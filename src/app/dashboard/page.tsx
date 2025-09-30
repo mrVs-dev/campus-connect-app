@@ -155,14 +155,14 @@ export default function DashboardPage() {
         const currentUserProfile = teachersData.find(t => t.email === user.email);
         
         if (currentUserProfile) {
-            setUserRole(currentUserProfile.role);
-            if (currentUserProfile.role === 'Teacher') {
-                router.replace('/teacher/dashboard');
-                return;
-            }
+          setUserRole(currentUserProfile.role);
+          if (currentUserProfile.role === 'Teacher') {
+            router.replace('/teacher/dashboard');
+            return;
+          }
         } else {
-            // If no teacher profile exists, assume Admin
-            setUserRole('Admin');
+          // If no teacher profile exists, assume Admin
+          setUserRole('Admin');
         }
         
       } catch (error) {
@@ -563,5 +563,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
