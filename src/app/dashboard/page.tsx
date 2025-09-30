@@ -117,6 +117,7 @@ export default function DashboardPage() {
       router.replace('/login');
       return;
     }
+
     if (!isFirebaseConfigured) {
       setLoadingData(false);
       return;
@@ -126,7 +127,7 @@ export default function DashboardPage() {
       setLoadingData(true);
       try {
         const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData, subjectsData, categoriesData] = await Promise.all([
-          getStudents(), 
+          getStudents(),
           getAdmissions(),
           getAssessments(),
           getTeachers(),
@@ -147,6 +148,7 @@ export default function DashboardPage() {
         if (currentUserProfile) {
           setUserRole(currentUserProfile.role);
         } else {
+          // Default to Admin if not found in teachers list
           setUserRole('Admin');
         }
       } catch (error) {
@@ -215,6 +217,7 @@ export default function DashboardPage() {
   };
 
   const handleUpdateStudentStatus = async (student: Student, newStatus: Student['status'], reason: string) => {
+    if (!user) return;
     try {
       await updateStudentStatus(student, newStatus, reason, user);
       setStudents(prev => prev.map(s => s.studentId === student.studentId ? { ...s, status: newStatus } : s));
