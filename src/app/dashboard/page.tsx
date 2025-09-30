@@ -110,7 +110,7 @@ export default function DashboardPage() {
       return student;
     });
   }, [students, admissions]);
-
+  
   React.useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -124,7 +124,6 @@ export default function DashboardPage() {
     }
 
     const fetchData = async () => {
-      setLoadingData(true);
       try {
         const [studentsData, admissionsData, assessmentsData, teachersData, statusHistoryData, subjectsData, categoriesData] = await Promise.all([
           getStudents(),
@@ -550,3 +549,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
