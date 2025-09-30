@@ -83,7 +83,6 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [userRole, setUserRole] = React.useState<UserRole>('Admin');
-  const [loadingData, setLoadingData] = React.useState(true);
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -119,12 +118,10 @@ export default function DashboardPage() {
     }
 
     if (!isFirebaseConfigured) {
-      setLoadingData(false);
       return;
     }
 
     const fetchData = async () => {
-      setLoadingData(true);
       try {
         const [
           studentsData, 
@@ -170,8 +167,6 @@ export default function DashboardPage() {
           description: "Failed to load data. Please check your Firebase connection.",
           variant: "destructive",
         });
-      } finally {
-        setLoadingData(false);
       }
     };
     
@@ -447,7 +442,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
 
-  if (authLoading || loadingData) {
+  if (authLoading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading application data...
