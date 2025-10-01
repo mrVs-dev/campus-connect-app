@@ -17,7 +17,7 @@ import {
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
-import { addDays, format, isWithinInterval } from "date-fns";
+import { addDays, format, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -107,7 +107,13 @@ interface OverviewProps {
 }
 
 export function Overview({ students, admissions }: OverviewProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({ from: new Date("2025-07-21"), to: new Date() });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
+    const now = new Date();
+    return {
+      from: startOfMonth(now),
+      to: now
+    };
+  });
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
   
@@ -368,3 +374,6 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
+
+
+    
