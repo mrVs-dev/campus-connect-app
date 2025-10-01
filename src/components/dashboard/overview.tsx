@@ -112,7 +112,7 @@ export function Overview({ students, admissions }: OverviewProps) {
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
 
   React.useEffect(() => {
-    // This effect runs only on the client, after hydration
+    // This effect runs only on the client, after hydration, to avoid server-client mismatch
     const now = new Date();
     setDateRange({
       from: startOfMonth(now),
