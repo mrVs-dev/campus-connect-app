@@ -112,7 +112,6 @@ export function Overview({ students, admissions }: OverviewProps) {
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
 
   React.useEffect(() => {
-    // This effect runs only on the client, after hydration, to avoid server-client mismatch
     const now = new Date();
     setDateRange({
       from: startOfMonth(now),
@@ -122,7 +121,6 @@ export function Overview({ students, admissions }: OverviewProps) {
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
-      // Return empty array while waiting for dateRange to be set client-side
       return [];
     }
     const toDate = dateRange.to ? addDays(dateRange.to, 1) : undefined;
