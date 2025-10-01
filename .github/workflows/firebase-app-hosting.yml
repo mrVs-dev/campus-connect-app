@@ -1,0 +1,33 @@
+
+name: Deploy to Firebase App Hosting
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: firebase/firebase-tools@v13
+        with:
+          serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
+          channelId: live
+      - run: npm ci && npm run build
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - uses: firebase/firebase-tools@v13
+        with:
+          serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
+          channelId: preview
+          expires: 30d
