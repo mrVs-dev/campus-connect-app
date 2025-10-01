@@ -121,7 +121,8 @@ export function Overview({ students, admissions }: OverviewProps) {
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
-      return students;
+      // Return empty array while waiting for dateRange to be set client-side
+      return [];
     }
     const toDate = dateRange.to ? addDays(dateRange.to, 1) : undefined;
     
