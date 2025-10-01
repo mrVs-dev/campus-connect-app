@@ -17,7 +17,7 @@ import {
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
-import { addDays, format, isWithinInterval } from "date-fns";
+import { addDays, format, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -107,13 +107,23 @@ interface OverviewProps {
 }
 
 export function Overview({ students, admissions }: OverviewProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({ from: new Date("2025-07-21"), to: new Date() });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
+
+  React.useEffect(() => {
+    // This effect runs only on the client, after hydration, to avoid server-client mismatch
+    const now = new Date();
+    setDateRange({
+      from: startOfMonth(now),
+      to: now
+    });
+  }, []);
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
-      return students;
+      // Return empty array while waiting for dateRange to be set client-side
+      return [];
     }
     const toDate = dateRange.to ? addDays(dateRange.to, 1) : undefined;
     
