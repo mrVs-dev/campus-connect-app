@@ -374,7 +374,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-
-    
-    
