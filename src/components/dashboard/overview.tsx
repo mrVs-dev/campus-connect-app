@@ -107,15 +107,17 @@ interface OverviewProps {
 }
 
 export function Overview({ students, admissions }: OverviewProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
-    const now = new Date();
-    return {
-      from: startOfMonth(now),
-      to: now
-    };
-  });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
+
+  React.useEffect(() => {
+    const now = new Date();
+    setDateRange({
+      from: startOfMonth(now),
+      to: now
+    });
+  }, []);
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
@@ -374,5 +376,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-    
