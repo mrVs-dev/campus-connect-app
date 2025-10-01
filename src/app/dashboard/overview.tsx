@@ -107,9 +107,16 @@ interface OverviewProps {
 }
 
 export function Overview({ students, admissions }: OverviewProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({ from: new Date("2025-07-21"), to: new Date() });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
+
+  React.useEffect(() => {
+    setDateRange({
+      from: new Date("2025-07-21"),
+      to: new Date()
+    });
+  }, []);
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
