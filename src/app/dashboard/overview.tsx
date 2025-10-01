@@ -113,7 +113,7 @@ export function Overview({ students, admissions }: OverviewProps) {
 
   React.useEffect(() => {
     setDateRange({
-      from: new Date("2025-07-21"),
+      from: new Date(2025, 6, 21),
       to: new Date()
     });
   }, []);
@@ -375,5 +375,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-    
