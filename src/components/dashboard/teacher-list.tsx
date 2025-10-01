@@ -143,6 +143,15 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
     }
   };
   
+  const handleEditClick = (teacher: Teacher) => {
+    // Ensure date is a JS Date object before passing to the form
+    const editableTeacher = {
+      ...teacher,
+      joinedDate: teacher.joinedDate ? new Date(teacher.joinedDate) : undefined,
+    };
+    setTeacherToEdit(editableTeacher);
+  };
+  
   const isDate = (date: any): date is Date => {
     return date instanceof Date && !isNaN(date.valueOf());
   };
@@ -152,11 +161,17 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   };
 
   const formatDateSafe = (date: any) => {
+    if (!date) return 'N/A';
     if (isDate(date)) {
       return format(date, "PPP");
     }
     if (isTimestamp(date)) {
       return format(new Date(date.seconds * 1000), "PPP");
+    }
+    // Attempt to parse if it's a string
+    const parsedDate = new Date(date);
+    if (isDate(parsedDate)) {
+      return format(parsedDate, "PPP");
     }
     return 'N/A';
   };
@@ -299,7 +314,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setTeacherToEdit(teacher)}>
+                        <DropdownMenuItem onSelect={() => handleEditClick(teacher)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
