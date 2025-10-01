@@ -71,6 +71,27 @@ interface TeacherListProps {
   onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status'>) => Promise<Teacher | null>;
 }
 
+// --- Helper functions for robust date handling ---
+const isDate = (date: any): date is Date => {
+  return date instanceof Date && !isNaN(date.valueOf());
+};
+
+const isTimestamp = (date: any): date is { seconds: number; nanoseconds: number } => {
+  return date && typeof date.seconds === 'number' && typeof date.nanoseconds === 'number';
+};
+
+const formatDateSafe = (date: any): string => {
+  if (!date) return 'N/A';
+  if (isDate(date)) return format(date, "PPP");
+  if (isTimestamp(date)) return format(new Date(date.seconds * 1000), "PPP");
+  
+  const parsedDate = new Date(date);
+  if (isDate(parsedDate)) return format(parsedDate, "PPP");
+  
+  return 'N/A';
+};
+// ---
+
 export function TeacherList({ teachers: initialTeachers, onAddTeacher }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
@@ -144,36 +165,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   };
   
   const handleEditClick = (teacher: Teacher) => {
-    // Ensure date is a JS Date object before passing to the form
-    const editableTeacher = {
-      ...teacher,
-      joinedDate: teacher.joinedDate ? new Date(teacher.joinedDate) : undefined,
-    };
-    setTeacherToEdit(editableTeacher);
-  };
-  
-  const isDate = (date: any): date is Date => {
-    return date instanceof Date && !isNaN(date.valueOf());
-  };
-
-  const isTimestamp = (date: any): date is { seconds: number; nanoseconds: number } => {
-    return date && typeof date.seconds === 'number';
-  };
-
-  const formatDateSafe = (date: any) => {
-    if (!date) return 'N/A';
-    if (isDate(date)) {
-      return format(date, "PPP");
-    }
-    if (isTimestamp(date)) {
-      return format(new Date(date.seconds * 1000), "PPP");
-    }
-    // Attempt to parse if it's a string
-    const parsedDate = new Date(date);
-    if (isDate(parsedDate)) {
-      return format(parsedDate, "PPP");
-    }
-    return 'N/A';
+    setTeacherToEdit(teacher);
   };
 
   return (

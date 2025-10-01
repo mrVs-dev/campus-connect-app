@@ -75,6 +75,28 @@ interface EditTeacherSheetProps {
   admissions: Admission[];
 }
 
+// --- Helper functions for robust date handling ---
+const isDate = (date: any): date is Date => {
+  return date instanceof Date && !isNaN(date.valueOf());
+};
+
+const isTimestamp = (date: any): date is { seconds: number; nanoseconds: number } => {
+  return date && typeof date.seconds === 'number' && typeof date.nanoseconds === 'number';
+};
+
+const toDate = (value: any): Date | undefined => {
+  if (!value) return undefined;
+  if (isDate(value)) return value;
+  if (isTimestamp(value)) return new Date(value.seconds * 1000);
+  
+  // Try parsing if it's a string or number
+  const parsedDate = new Date(value);
+  if (isDate(parsedDate)) return parsedDate;
+
+  return undefined;
+};
+// ---
+
 function MultiSelectSubject({ subjects, selected, onChange }: { subjects: Subject[], selected: string[], onChange: (selected: string[]) => void }) {
   const [open, setOpen] = React.useState(false);
 
@@ -159,7 +181,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
     if (teacher) {
       form.reset({
         ...teacher,
-        joinedDate: teacher.joinedDate,
+        joinedDate: toDate(teacher.joinedDate),
         assignedSubjects: teacher.assignedSubjects || [],
         assignedClasses: teacher.assignedClasses || [],
       });
@@ -264,7 +286,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
                                             <PopoverTrigger asChild>
                                                 <FormControl>
                                                 <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                    {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                 </Button>
                                                 </FormControl>
