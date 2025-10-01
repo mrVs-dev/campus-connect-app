@@ -278,12 +278,12 @@ export function Overview({ students, admissions }: OverviewProps) {
 
         <Card>
           <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="flex-1 min-w-[200px]">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex-1">
                       <CardTitle>New Student Enrollments</CardTitle>
                       <CardDescription>Headcount of new students in a date range.</CardDescription>
                   </div>
-                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} className="flex-shrink-0" />
               </div>
           </CardHeader>
           <CardContent>
@@ -376,4 +376,5 @@ export function Overview({ students, admissions }: OverviewProps) {
   );
 }
 
+    
     
