@@ -56,7 +56,7 @@ function DatePickerWithRange({
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[240px] justify-start text-left font-normal",
+              "w-full sm:w-[240px] justify-start text-left font-normal",
               !value && "text-muted-foreground"
             )}
           >
@@ -91,7 +91,7 @@ function DatePickerWithRange({
             variant="ghost"
             size="icon"
             onClick={() => onDateChange(undefined)}
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
           >
             <XIcon className="h-4 w-4" />
             <span className="sr-only">Clear</span>
@@ -271,12 +271,12 @@ export function Overview({ students, admissions }: OverviewProps) {
 
         <Card>
           <CardHeader>
-              <div className="flex items-start justify-between">
-                  <div>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex-1">
                       <CardTitle>New Student Enrollments</CardTitle>
                       <CardDescription>Headcount of new students in a date range.</CardDescription>
                   </div>
-                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} className="flex-shrink-0" />
               </div>
           </CardHeader>
           <CardContent>
