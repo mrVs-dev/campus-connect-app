@@ -44,45 +44,70 @@ function DatePickerWithRange({
   onDateChange,
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
-  const handleDateSelect = (newDate: DateRange | undefined) => {
-    onDateChange(newDate);
+  const handleFromChange = (from: Date | undefined) => {
+    onDateChange({ from: from, to: value?.to });
+  };
+  
+  const handleToChange = (to: Date | undefined) => {
+    onDateChange({ from: value?.from, to: to });
   };
 
+
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            id="date"
+            id="date-from"
             variant={"outline"}
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
-              !value && "text-muted-foreground"
+              "w-[150px] justify-start text-left font-normal",
+              !value?.from && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {value?.from ? (
-              value.to ? (
-                <>
-                  {format(value.from, "LLL dd, y")} -{" "}
-                  {format(value.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(value.from, "LLL dd, y")
-              )
+              format(value.from, "LLL dd, y")
             ) : (
-              <span>Pick a date range</span>
+              <span>Start date</span>
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 bg-card" align="start">
           <Calendar
             initialFocus
-            mode="range"
-            defaultMonth={value?.from}
-            selected={value}
-            onSelect={handleDateSelect}
-            numberOfMonths={2}
+            mode="single"
+            selected={value?.from}
+            onSelect={handleFromChange}
+          />
+        </PopoverContent>
+      </Popover>
+       <span className="text-muted-foreground">to</span>
+       <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            id="date-to"
+            variant={"outline"}
+            className={cn(
+              "w-[150px] justify-start text-left font-normal",
+              !value?.to && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {value?.to ? (
+              format(value.to, "LLL dd, y")
+            ) : (
+              <span>End date</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 bg-card" align="start">
+          <Calendar
+            initialFocus
+            mode="single"
+            selected={value?.to}
+            onSelect={handleToChange}
+            disabled={{ before: value?.from }}
           />
         </PopoverContent>
       </Popover>
@@ -356,6 +381,5 @@ export function Overview({ students, admissions }: OverviewProps) {
       </Card>
     </div>
   );
-}
 
     
