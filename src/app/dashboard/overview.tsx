@@ -274,14 +274,12 @@ export function Overview({ students, admissions }: OverviewProps) {
         
         <Card className="lg:col-span-2">
           <CardHeader>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="space-y-1.5">
                       <CardTitle>New Student Enrollments</CardTitle>
                       <CardDescription>Headcount of new students in a date range.</CardDescription>
                   </div>
-                  <div className="md:justify-self-end">
-                    <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
-                  </div>
+                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
               </div>
           </CardHeader>
           <CardContent>
@@ -381,3 +379,5 @@ export function Overview({ students, admissions }: OverviewProps) {
       </Card>
     </div>
   );
+
+    
