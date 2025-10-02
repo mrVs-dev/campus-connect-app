@@ -113,7 +113,7 @@ export function Overview({ students, admissions }: OverviewProps) {
 
   React.useEffect(() => {
     setDateRange({
-      from: new Date(2025, 6, 21),
+      from: new Date(2025, 6, 21), // Month is 0-indexed, so 6 is July.
       to: new Date()
     });
   }, []);
