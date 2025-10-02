@@ -45,7 +45,7 @@ function DatePickerWithRange({
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
   return (
-    <div className={cn("flex flex-wrap items-center justify-end gap-2", className)}>
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
         <Popover>
             <PopoverTrigger asChild>
             <Button
