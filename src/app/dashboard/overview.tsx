@@ -310,8 +310,34 @@ export function Overview({ students, admissions }: OverviewProps) {
                             cy="50%" 
                             outerRadius={50}
                             labelLine={false}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            className="text-xs font-semibold"
+                            label={({
+                              cx,
+                              cy,
+                              midAngle,
+                              innerRadius,
+                              outerRadius,
+                              percent,
+                              index,
+                              name,
+                            }) => {
+                              const RADIAN = Math.PI / 180;
+                              const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                              const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                              const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                              return (
+                                <text
+                                  x={x}
+                                  y={y}
+                                  fill="hsl(var(--card-foreground))"
+                                  textAnchor={x > cx ? 'start' : 'end'}
+                                  dominantBaseline="central"
+                                  className="text-xs font-semibold"
+                                >
+                                  {`${name} ${(percent * 100).toFixed(0)}%`}
+                                </text>
+                              );
+                            }}
                           >
                              {pieData.map((entry) => (
                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
