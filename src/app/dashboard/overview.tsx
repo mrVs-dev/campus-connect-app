@@ -175,9 +175,9 @@ export function Overview({ students, admissions }: OverviewProps) {
   }, [enrollmentFilteredStudents]);
 
   const pieData = [
-    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0, fill: "var(--color-male)" },
-    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0, fill: "var(--color-female)" },
-    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0, fill: "var(--color-other)" },
+    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0, fill: "hsl(var(--primary))" },
+    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0, fill: "hsl(var(--accent))" },
+    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0, fill: "hsl(var(--muted-foreground))" },
   ].filter(d => d.value > 0);
 
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
@@ -388,7 +388,7 @@ export function Overview({ students, admissions }: OverviewProps) {
                         cursor={false}
                         content={<ChartTooltipContent indicator="dot" />}
                       />
-                      <Bar dataKey="students" fill="var(--color-students)" radius={4} barSize={15} />
+                      <Bar dataKey="students" fill="hsl(var(--primary))" radius={4} barSize={15} />
                     </RechartsBarChart>
                   </ChartContainer>
                 </div>
