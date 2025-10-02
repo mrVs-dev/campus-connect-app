@@ -110,10 +110,16 @@ export function Overview({ students, admissions }: OverviewProps) {
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   
   const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
-  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>(() => {
-      const defaultYear = '2025-2026';
-      return admissionYears.includes(defaultYear) ? defaultYear : 'All';
-  });
+  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
+  
+  React.useEffect(() => {
+    const defaultYear = '2025-2026';
+    if (admissionYears.includes(defaultYear)) {
+      setAdmissionYearFilter(defaultYear);
+    } else {
+      setAdmissionYearFilter('All');
+    }
+  }, [admissions]);
 
   React.useEffect(() => {
     setDateRange({
