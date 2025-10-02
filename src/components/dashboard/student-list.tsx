@@ -277,6 +277,9 @@ export function StudentList({
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
+                <TableHead className="hidden md:table-cell">
+                  Media Consent
+                </TableHead>
                 <TableHead>
                   <span className="sr-only">Actions</span>
                 </TableHead>
@@ -344,6 +347,11 @@ export function StudentList({
                         }
                       >
                         {student.status || 'N/A'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge variant={student.mediaConsent ? "default" : "secondary"}>
+                        {student.mediaConsent ? "Yes" : "No"}
                       </Badge>
                     </TableCell>
                     <TableCell>
