@@ -245,7 +245,7 @@ export function Overview({ students, admissions }: OverviewProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>Student Population</CardTitle>
@@ -279,7 +279,7 @@ export function Overview({ students, admissions }: OverviewProps) {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div>
