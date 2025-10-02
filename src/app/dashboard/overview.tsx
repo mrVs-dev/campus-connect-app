@@ -46,51 +46,67 @@ function DatePickerWithRange({
   onDateChange,
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
-  const handleDateSelect = (newDate: DateRange | undefined) => {
-    onDateChange(newDate);
-  };
-
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            id="date"
-            variant={"outline"}
-            className={cn(
-              "w-full justify-start text-left font-normal sm:w-auto",
-              !value && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {value?.from ? (
-              value.to ? (
-                <>
-                  {format(value.from, "LLL dd, y")} -{" "}
-                  {format(value.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(value.from, "LLL dd, y")
-              )
-            ) : (
-              <span>Pick a date</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={value?.from}
-            selected={value}
-            onSelect={handleDateSelect}
-            numberOfMonths={2}
-            captionLayout="dropdown-buttons"
-            fromYear={2015}
-            toYear={new Date().getFullYear() + 5}
-          />
-        </PopoverContent>
-      </Popover>
+    <div className={cn("flex flex-wrap items-center justify-end gap-2", className)}>
+        <Popover>
+            <PopoverTrigger asChild>
+            <Button
+                id="date-from"
+                variant={"outline"}
+                className={cn(
+                "w-[140px] justify-start text-left font-normal",
+                !value?.from && "text-muted-foreground"
+                )}
+            >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {value?.from ? format(value.from, "LLL dd, y") : <span>From date</span>}
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+                initialFocus
+                mode="single"
+                selected={value?.from}
+                onSelect={(day) => onDateChange({ from: day, to: value?.to })}
+                numberOfMonths={1}
+                captionLayout="dropdown-buttons"
+                fromYear={2015}
+                toYear={new Date().getFullYear() + 5}
+            />
+            </PopoverContent>
+        </Popover>
+        
+        <span className="text-muted-foreground">to</span>
+
+        <Popover>
+            <PopoverTrigger asChild>
+            <Button
+                id="date-to"
+                variant={"outline"}
+                className={cn(
+                "w-[140px] justify-start text-left font-normal",
+                !value?.to && "text-muted-foreground"
+                )}
+            >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {value?.to ? format(value.to, "LLL dd, y") : <span>To date</span>}
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+                initialFocus
+                mode="single"
+                selected={value?.to}
+                onSelect={(day) => onDateChange({ from: value?.from, to: day })}
+                disabled={{ before: value?.from }}
+                numberOfMonths={1}
+                captionLayout="dropdown-buttons"
+                fromYear={2015}
+                toYear={new Date().getFullYear() + 5}
+            />
+            </PopoverContent>
+        </Popover>
+      
       {value && (
          <Button
             variant="ghost"
@@ -281,7 +297,7 @@ export function Overview({ students, admissions }: OverviewProps) {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex-shrink-0">
                       <CardTitle>New Student Enrollments</CardTitle>
                       <CardDescription>Headcount of new students in a date range.</CardDescription>
@@ -290,25 +306,28 @@ export function Overview({ students, admissions }: OverviewProps) {
               </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 items-center gap-4">
+            <div className="grid md:grid-cols-2 items-center gap-4">
               <div className="flex flex-col space-y-2">
                   <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
                   <p className="text-xs text-muted-foreground">New students in period</p>
               </div>
-              <ChartContainer config={chartConfig} className="h-[100px] w-full">
-                  <PieChart accessibilityLayer>
-                    <ChartTooltip
-                      cursor={false}
-                      content={<ChartTooltipContent hideLabel />}
-                    />
-                     <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40}>
-                         {pieData.map((entry) => (
-                           <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                         ))}
-                    </Pie>
-                    <ChartLegend content={<ChartLegendContent nameKey="name" />} />
-                  </PieChart>
-              </ChartContainer>
+               <div>
+                  <h4 className="text-sm font-medium mb-2 text-center md:text-left">Gender Distribution</h4 >
+                  <ChartContainer config={chartConfig} className="h-[100px] w-full">
+                      <PieChart accessibilityLayer>
+                        <ChartTooltip
+                          cursor={false}
+                          content={<ChartTooltipContent hideLabel />}
+                        />
+                         <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40}>
+                             {pieData.map((entry) => (
+                               <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                             ))}
+                        </Pie>
+                        <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                      </PieChart>
+                  </ChartContainer>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -379,3 +398,5 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
+
+    
