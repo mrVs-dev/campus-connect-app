@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
+import { Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,10 +14,10 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from "recharts";
+import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
-import { addDays, format, isWithinInterval } from "date-fns";
+import { addDays, format, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -44,78 +44,48 @@ function DatePickerWithRange({
   onDateChange,
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
-  return (
-    <div className={cn("grid grid-cols-[1fr_auto_1fr] sm:flex items-center gap-2", className)}>
-        <Popover>
-            <PopoverTrigger asChild>
-            <Button
-                id="date-from"
-                variant={"outline"}
-                className={cn(
-                "w-full justify-start text-left font-normal",
-                !value?.from && "text-muted-foreground"
-                )}
-            >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {value?.from ? format(value.from, "LLL dd, y") : <span>From date</span>}
-            </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-card" align="end">
-            <Calendar
-                initialFocus
-                mode="single"
-                selected={value?.from}
-                onSelect={(day) => onDateChange({ from: day, to: value?.to })}
-                numberOfMonths={1}
-                captionLayout="dropdown-buttons"
-                fromYear={2015}
-                toYear={new Date().getFullYear() + 5}
-            />
-            </PopoverContent>
-        </Popover>
-        
-        <span className="text-muted-foreground text-center sm:text-left">to</span>
+  const handleDateSelect = (newDate: DateRange | undefined) => {
+    onDateChange(newDate);
+  };
 
-        <Popover>
-            <PopoverTrigger asChild>
-            <Button
-                id="date-to"
-                variant={"outline"}
-                className={cn(
-                "w-full justify-start text-left font-normal",
-                !value?.to && "text-muted-foreground"
-                )}
-            >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {value?.to ? format(value.to, "LLL dd, y") : <span>To date</span>}
-            </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-card" align="end">
-            <Calendar
-                initialFocus
-                mode="single"
-                selected={value?.to}
-                onSelect={(day) => onDateChange({ from: value?.from, to: day })}
-                disabled={{ before: value?.from }}
-                numberOfMonths={1}
-                captionLayout="dropdown-buttons"
-                fromYear={2015}
-                toYear={new Date().getFullYear() + 5}
-            />
-            </PopoverContent>
-        </Popover>
-      
-      {value && (
-         <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDateChange(undefined)}
-            className="h-8 w-8 hidden sm:inline-flex"
+  return (
+    <div className={cn("grid gap-2", className)}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            id="date"
+            variant={"outline"}
+            className={cn(
+              "w-[300px] justify-start text-left font-normal",
+              !value && "text-muted-foreground"
+            )}
           >
-            <XIcon className="h-4 w-4" />
-            <span className="sr-only">Clear</span>
-        </Button>
-      )}
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {value?.from ? (
+              value.to ? (
+                <>
+                  {format(value.from, "LLL dd, y")} -{" "}
+                  {format(value.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(value.from, "LLL dd, y")
+              )
+            ) : (
+              <span>Pick a date range</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 bg-card" align="start">
+          <Calendar
+            initialFocus
+            mode="range"
+            defaultMonth={value?.from}
+            selected={value}
+            onSelect={handleDateSelect}
+            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
@@ -126,12 +96,17 @@ interface OverviewProps {
 }
 
 export function Overview({ students, admissions }: OverviewProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-      from: new Date(2025, 6, 21),
-      to: new Date(),
-  });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
+
+  React.useEffect(() => {
+    const now = new Date();
+    setDateRange({
+      from: startOfMonth(now),
+      to: now
+    });
+  }, []);
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
@@ -274,13 +249,15 @@ export function Overview({ students, admissions }: OverviewProps) {
         </Card>
         
         <Card className="lg:col-span-2">
-          <CardHeader className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                  <CardTitle>New Student Enrollments</CardTitle>
-                  <CardDescription>Headcount of new students in a date range.</CardDescription>
-              </div>
-              <div className="md:justify-self-end">
-                <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+          <CardHeader>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                      <CardTitle>New Student Enrollments</CardTitle>
+                      <CardDescription>Headcount of new students in a date range.</CardDescription>
+                  </div>
+                  <div className="md:justify-self-end">
+                    <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+                  </div>
               </div>
           </CardHeader>
           <CardContent>
