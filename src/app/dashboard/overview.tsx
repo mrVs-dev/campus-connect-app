@@ -56,7 +56,7 @@ function DatePickerWithRange({
             id="date"
             variant={"outline"}
             className={cn(
-              "w-full justify-start text-left font-normal sm:w-[240px]",
+              "w-full justify-start text-left font-normal sm:w-auto",
               !value && "text-muted-foreground"
             )}
           >
@@ -227,7 +227,7 @@ export function Overview({ students, admissions }: OverviewProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>Student Population</CardTitle>
@@ -277,12 +277,12 @@ export function Overview({ students, admissions }: OverviewProps) {
 
         <Card>
           <CardHeader>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                  <div>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex-shrink-0">
                       <CardTitle>New Student Enrollments</CardTitle>
                       <CardDescription>Headcount of new students in a date range.</CardDescription>
                   </div>
-                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} className="md:ml-auto" />
+                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} className="flex-shrink-0" />
               </div>
           </CardHeader>
           <CardContent>
