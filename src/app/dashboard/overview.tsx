@@ -82,6 +82,9 @@ function DatePickerWithRange({
             selected={value}
             onSelect={handleDateSelect}
             numberOfMonths={2}
+            captionLayout="dropdown-buttons"
+            fromYear={2015}
+            toYear={new Date().getFullYear() + 5}
           />
         </PopoverContent>
       </Popover>
