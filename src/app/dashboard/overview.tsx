@@ -285,7 +285,9 @@ export function Overview({ students, admissions }: OverviewProps) {
                   <CardTitle>New Student Enrollments</CardTitle>
                   <CardDescription>Headcount of new students in a date range.</CardDescription>
               </div>
-              <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+              <div className="md:justify-self-end">
+                <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+              </div>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 items-center gap-4">
@@ -326,7 +328,7 @@ export function Overview({ students, admissions }: OverviewProps) {
                                   x={x}
                                   y={y}
                                   fill="hsl(var(--card-foreground))"
-                                  textAnchor="middle"
+                                  textAnchor={x > cx ? 'start' : 'end'}
                                   dominantBaseline="central"
                                   className="text-xs font-semibold"
                                 >
