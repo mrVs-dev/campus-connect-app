@@ -45,14 +45,14 @@ function DatePickerWithRange({
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+    <div className={cn("grid grid-cols-[1fr_auto_1fr] sm:flex items-center gap-2", className)}>
         <Popover>
             <PopoverTrigger asChild>
             <Button
                 id="date-from"
                 variant={"outline"}
                 className={cn(
-                "w-full sm:w-auto justify-start text-left font-normal",
+                "w-full justify-start text-left font-normal",
                 !value?.from && "text-muted-foreground"
                 )}
             >
@@ -74,7 +74,7 @@ function DatePickerWithRange({
             </PopoverContent>
         </Popover>
         
-        <span className="text-muted-foreground">to</span>
+        <span className="text-muted-foreground text-center sm:text-left">to</span>
 
         <Popover>
             <PopoverTrigger asChild>
@@ -82,7 +82,7 @@ function DatePickerWithRange({
                 id="date-to"
                 variant={"outline"}
                 className={cn(
-                "w-full sm:w-auto justify-start text-left font-normal",
+                "w-full justify-start text-left font-normal",
                 !value?.to && "text-muted-foreground"
                 )}
             >
@@ -110,7 +110,7 @@ function DatePickerWithRange({
             variant="ghost"
             size="icon"
             onClick={() => onDateChange(undefined)}
-            className="h-8 w-8"
+            className="h-8 w-8 hidden sm:inline-flex"
           >
             <XIcon className="h-4 w-4" />
             <span className="sr-only">Clear</span>
@@ -280,14 +280,12 @@ export function Overview({ students, admissions }: OverviewProps) {
         </Card>
         
         <Card className="lg:col-span-2">
-          <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div>
-                      <CardTitle>New Student Enrollments</CardTitle>
-                      <CardDescription>Headcount of new students in a date range.</CardDescription>
-                  </div>
-                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+          <CardHeader className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                  <CardTitle>New Student Enrollments</CardTitle>
+                  <CardDescription>Headcount of new students in a date range.</CardDescription>
               </div>
+              <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 items-center gap-4">
