@@ -1,3 +1,4 @@
+
 "use client";
 
 import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
@@ -36,14 +37,101 @@ import {
 } from "@/components/ui/select";
 import type { Student, Admission } from "@/lib/types";
 
+
+function DatePickerWithRange({
+  className,
+  value,
+  onDateChange,
+}: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
+  
+  const handleDateSelect = (newDate: DateRange | undefined) => {
+    onDateChange(newDate);
+  };
+
+  return (
+    <div className={cn("flex items-center gap-2", className)}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            id="date"
+            variant={"outline"}
+            className={cn(
+              "w-full justify-start text-left font-normal sm:w-[240px]",
+              !value && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {value?.from ? (
+              value.to ? (
+                <>
+                  {format(value.from, "LLL dd, y")} -{" "}
+                  {format(value.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(value.from, "LLL dd, y")
+              )
+            ) : (
+              <span>Pick a date</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <Calendar
+            initialFocus
+            mode="range"
+            defaultMonth={value?.from}
+            selected={value}
+            onSelect={handleDateSelect}
+            numberOfMonths={2}
+            captionLayout="dropdown-buttons"
+            fromYear={2015}
+            toYear={new Date().getFullYear() + 5}
+          />
+        </PopoverContent>
+      </Popover>
+      {value && (
+         <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDateChange(undefined)}
+            className="h-8 w-8"
+          >
+            <XIcon className="h-4 w-4" />
+            <span className="sr-only">Clear</span>
+        </Button>
+      )}
+    </div>
+  )
+}
+
 interface OverviewProps {
   students: Student[];
   admissions: Admission[];
 }
 
 export function Overview({ students, admissions }: OverviewProps) {
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+      from: new Date(2025, 6, 21),
+      to: new Date(),
+  });
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
+  
+  const enrollmentFilteredStudents = React.useMemo(() => {
+    if (!dateRange?.from) {
+      return [];
+    }
+    const toDate = dateRange.to ? addDays(dateRange.to, 1) : undefined;
+    
+    return students.filter(student => {
+      if (!student.enrollmentDate) return false;
+      const enrollmentDate = new Date(student.enrollmentDate);
+      if (!toDate) {
+        return enrollmentDate >= dateRange.from!;
+      }
+      return isWithinInterval(enrollmentDate, { start: dateRange.from!, end: toDate });
+    });
+  }, [dateRange, students]);
 
   const populationStudents = React.useMemo(() => {
     if (statusFilter === 'All') {
@@ -61,6 +149,22 @@ export function Overview({ students, admissions }: OverviewProps) {
       return acc;
     }, {} as Record<string, number>);
   }, [populationStudents]);
+
+  const enrollmentGenderDistribution = React.useMemo(() => {
+     return enrollmentFilteredStudents.reduce((acc, student) => {
+      const sex = student.sex || 'Other';
+      acc[sex] = (acc[sex] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [enrollmentFilteredStudents]);
+
+  const pieData = [
+    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0 },
+    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0 },
+    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0 },
+  ].filter(d => d.value > 0);
+
+  const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--muted-foreground))"];
 
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
     const programData: Record<string, { total: number; levels: Record<string, number> }> = {};
@@ -123,7 +227,7 @@ export function Overview({ students, admissions }: OverviewProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>Student Population</CardTitle>
@@ -171,6 +275,38 @@ export function Overview({ students, admissions }: OverviewProps) {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div>
+                      <CardTitle>New Student Enrollments</CardTitle>
+                      <CardDescription>Headcount of new students in a date range.</CardDescription>
+                  </div>
+                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+              </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 items-center gap-4">
+              <div className="flex flex-col space-y-2">
+                  <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
+                  <p className="text-xs text-muted-foreground">New students in period</p>
+              </div>
+              <ChartContainer config={chartConfig} className="h-[100px] w-full">
+                  <PieChart accessibilityLayer>
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel />}
+                    />
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} fill="#8884d8">
+                      {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+              </ChartContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
@@ -237,3 +373,6 @@ export function Overview({ students, admissions }: OverviewProps) {
       </Card>
     </div>
   );
+}
+
+    

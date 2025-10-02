@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
-import { Overview } from "@/components/dashboard/overview";
+import { Overview } from "@/app/dashboard/overview";
 import { StudentList } from "@/components/dashboard/student-list";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { EnrollmentForm } from "@/components/dashboard/enrollment-form";
@@ -60,6 +60,7 @@ function MissingFirebaseConfig() {
 }
 
 const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
+  { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
   { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department'] },
@@ -454,6 +455,10 @@ export default function DashboardPage() {
                 <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
               ))}
             </TabsList>
+            
+            <TabsContent value="dashboard">
+              <Overview students={students} admissions={admissions} />
+            </TabsContent>
 
             <TabsContent value="students">
               <StudentList 
@@ -521,3 +526,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
