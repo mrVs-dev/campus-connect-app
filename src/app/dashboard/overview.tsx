@@ -273,14 +273,12 @@ export function Overview({ students, admissions }: OverviewProps) {
         </Card>
         
         <Card className="lg:col-span-2">
-          <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-1.5">
-                      <CardTitle>New Student Enrollments</CardTitle>
-                      <CardDescription>Headcount of new students in a date range.</CardDescription>
-                  </div>
-                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+          <CardHeader className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                  <CardTitle>New Student Enrollments</CardTitle>
+                  <CardDescription>Headcount of new students in a date range.</CardDescription>
               </div>
+              <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
           </CardHeader>
           <CardContent>
             <div className="flex flex-col space-y-2">
@@ -299,7 +297,9 @@ export function Overview({ students, admissions }: OverviewProps) {
             </div>
           </CardContent>
         </Card>
-        
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Total Admissions</CardTitle>
@@ -313,71 +313,69 @@ export function Overview({ students, admissions }: OverviewProps) {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Program Admissions</CardTitle>
-            <CardDescription>Total program enrollments across programs and levels.</CardDescription>
-          </div>
-           <Select value={admissionYearFilter} onValueChange={setAdmissionYearFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select admission year" />
-              </SelectTrigger>
-              <SelectContent>
-                {admissionYears.map(year => (
-                  <SelectItem key={year} value={year}>{year === 'All' ? 'All Years' : year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-        </CardHeader>
-        <CardContent className="grid gap-6">
-          {enrollmentsByProgramAndLevel.length > 0 ? (
-            enrollmentsByProgramAndLevel.map((program) => (
-              <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
-                <div className="flex flex-col space-y-2">
-                  <p className="font-semibold text-lg">{program.name}</p>
-                  <p className="text-4xl font-bold">{program.total}</p>
-                  <p className="text-sm text-muted-foreground">Total Admissions</p>
-                </div>
-                <div className="md:col-span-2">
-                  <ChartContainer config={chartConfig} className="h-[200px] w-full">
-                    <RechartsBarChart 
-                      data={program.levels} 
-                      layout="vertical"
-                      margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
-                    >
-                      <CartesianGrid horizontal={false} />
-                      <YAxis
-                        dataKey="level"
-                        type="category"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        interval={0}
-                        width={80}
-                        tick={{ fontSize: 12 }}
-                      />
-                      <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} allowDecimals={false} />
-                      <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="dot" />}
-                      />
-                      <Bar dataKey="students" fill="hsl(var(--primary))" radius={4} barSize={15} />
-                    </RechartsBarChart>
-                  </ChartContainer>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center text-muted-foreground py-8">
-              No admission data available for the selected year.
+        <Card className="lg:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>Program Admissions</CardTitle>
+                <CardDescription>Total program enrollments across programs and levels.</CardDescription>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <Select value={admissionYearFilter} onValueChange={setAdmissionYearFilter}>
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select admission year" />
+                </SelectTrigger>
+                <SelectContent>
+                    {admissionYears.map(year => (
+                    <SelectItem key={year} value={year}>{year === 'All' ? 'All Years' : year}</SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+            {enrollmentsByProgramAndLevel.length > 0 ? (
+                enrollmentsByProgramAndLevel.map((program) => (
+                <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
+                    <div className="flex flex-col space-y-2">
+                    <p className="font-semibold text-lg">{program.name}</p>
+                    <p className="text-4xl font-bold">{program.total}</p>
+                    <p className="text-sm text-muted-foreground">Total Admissions</p>
+                    </div>
+                    <div className="md:col-span-2">
+                    <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                        <RechartsBarChart 
+                        data={program.levels} 
+                        layout="vertical"
+                        margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
+                        >
+                        <CartesianGrid horizontal={false} />
+                        <YAxis
+                            dataKey="level"
+                            type="category"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={8}
+                            interval={0}
+                            width={80}
+                            tick={{ fontSize: 12 }}
+                        />
+                        <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} allowDecimals={false} />
+                        <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent indicator="dot" />}
+                        />
+                        <Bar dataKey="students" fill="hsl(var(--primary))" radius={4} barSize={15} />
+                        </RechartsBarChart>
+                    </ChartContainer>
+                    </div>
+                </div>
+                ))
+            ) : (
+                <div className="text-center text-muted-foreground py-8">
+                No admission data available for the selected year.
+                </div>
+            )}
+            </CardContent>
+        </Card>
+      </div>
     </div>
   );
-
-    
+}
