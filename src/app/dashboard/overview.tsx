@@ -334,7 +334,7 @@ export function Overview({ students, admissions }: OverviewProps) {
                                   dominantBaseline="central"
                                   className="text-xs font-semibold"
                                 >
-                                  {`${name} ${(percent * 100).toFixed(0)}%`}
+                                  {name}
                                 </text>
                               );
                             }}
