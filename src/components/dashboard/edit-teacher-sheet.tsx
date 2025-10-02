@@ -296,11 +296,10 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
                                                   mode="single" 
                                                   selected={field.value}
                                                   onSelect={field.onChange}
-                                                  defaultMonth={field.value || new Date()}
                                                   captionLayout="dropdown-buttons"
-                                                  fromYear={1990}
+                                                  fromYear={2010}
                                                   toYear={new Date().getFullYear()}
-                                                  disabled={(date) => date > new Date() || date < new Date("1900-01-01")} 
+                                                  disabled={(date) => date > new Date() || date < new Date("2000-01-01")} 
                                                   initialFocus 
                                                 />
                                             </PopoverContent>

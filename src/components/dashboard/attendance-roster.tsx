@@ -158,6 +158,9 @@ export function AttendanceRoster({ students, classId, teacherId }: AttendanceRos
               mode="single"
               selected={date}
               onSelect={handleDateChange}
+              captionLayout="dropdown-buttons"
+              fromYear={new Date().getFullYear() - 1}
+              toYear={new Date().getFullYear()}
               disabled={(d) => d > new Date()}
               initialFocus
             />
