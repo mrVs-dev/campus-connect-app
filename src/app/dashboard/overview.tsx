@@ -17,7 +17,7 @@ import {
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
-import { addDays, format, isWithinInterval } from "date-fns";
+import { addDays, format, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -44,72 +44,48 @@ function DatePickerWithRange({
   onDateChange,
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
-  const handleDateChange = (date: Date | undefined, field: 'from' | 'to') => {
-    const newRange = { from: value?.from, to: value?.to };
-    newRange[field] = date;
-    onDateChange(newRange);
+  const handleDateSelect = (newDate: DateRange | undefined) => {
+    onDateChange(newDate);
   };
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("grid gap-2", className)}>
       <Popover>
         <PopoverTrigger asChild>
           <Button
+            id="date"
             variant={"outline"}
             className={cn(
-              "w-[150px] justify-start text-left font-normal",
-              !value?.from && "text-muted-foreground"
+              "w-[300px] justify-start text-left font-normal",
+              !value && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value?.from ? format(value.from, "LLL dd, y") : <span>Start date</span>}
+            {value?.from ? (
+              value.to ? (
+                <>
+                  {format(value.from, "LLL dd, y")} -{" "}
+                  {format(value.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(value.from, "LLL dd, y")
+              )
+            ) : (
+              <span>Pick a date range</span>
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 bg-card" align="start">
           <Calendar
             initialFocus
-            mode="single"
-            selected={value?.from}
-            onSelect={(date) => handleDateChange(date, 'from')}
-            className="bg-card"
+            mode="range"
+            defaultMonth={value?.from}
+            selected={value}
+            onSelect={handleDateSelect}
+            numberOfMonths={2}
           />
         </PopoverContent>
       </Popover>
-      <span>to</span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant={"outline"}
-            className={cn(
-              "w-[150px] justify-start text-left font-normal",
-              !value?.to && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {value?.to ? format(value.to, "LLL dd, y") : <span>End date</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 bg-card" align="end">
-          <Calendar
-            initialFocus
-            mode="single"
-            selected={value?.to}
-            onSelect={(date) => handleDateChange(date, 'to')}
-            className="bg-card"
-          />
-        </PopoverContent>
-      </Popover>
-      {(value?.from || value?.to) && (
-         <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDateChange(undefined)}
-            className="h-8 w-8"
-          >
-            <XIcon className="h-4 w-4" />
-            <span className="sr-only">Clear</span>
-        </Button>
-      )}
     </div>
   )
 }
