@@ -65,12 +65,13 @@ function DatePickerWithRange({
             {value?.from ? format(value.from, "LLL dd, y") : <span>Start date</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0 bg-card" align="start">
           <Calendar
             initialFocus
             mode="single"
             selected={value?.from}
             onSelect={(date) => handleDateChange(date, 'from')}
+            className="bg-card"
           />
         </PopoverContent>
       </Popover>
@@ -88,12 +89,13 @@ function DatePickerWithRange({
             {value?.to ? format(value.to, "LLL dd, y") : <span>End date</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
+        <PopoverContent className="w-auto p-0 bg-card" align="end">
           <Calendar
             initialFocus
             mode="single"
             selected={value?.to}
             onSelect={(date) => handleDateChange(date, 'to')}
+            className="bg-card"
           />
         </PopoverContent>
       </Popover>
