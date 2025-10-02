@@ -108,7 +108,10 @@ interface OverviewProps {
 export function Overview({ students, admissions }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
-  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
+  
+  const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
+  const defaultAdmissionYear = admissionYears.includes('2025-2026') ? '2025-2026' : 'All';
+  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>(defaultAdmissionYear);
 
   React.useEffect(() => {
     setDateRange({
@@ -222,8 +225,6 @@ export function Overview({ students, admissions }: OverviewProps) {
       color: "hsl(var(--accent))",
     },
   };
-
-  const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
 
   return (
     <div className="flex flex-col gap-4">
