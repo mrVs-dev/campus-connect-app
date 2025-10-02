@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
@@ -381,3 +380,4 @@ export function Overview({ students, admissions }: OverviewProps) {
       </Card>
     </div>
   );
+}
