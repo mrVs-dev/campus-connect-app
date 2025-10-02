@@ -316,8 +316,6 @@ export function Overview({ students, admissions }: OverviewProps) {
                               midAngle,
                               innerRadius,
                               outerRadius,
-                              percent,
-                              index,
                               name,
                             }) => {
                               const RADIAN = Math.PI / 180;
@@ -330,7 +328,7 @@ export function Overview({ students, admissions }: OverviewProps) {
                                   x={x}
                                   y={y}
                                   fill="hsl(var(--card-foreground))"
-                                  textAnchor={x > cx ? 'start' : 'end'}
+                                  textAnchor="middle"
                                   dominantBaseline="central"
                                   className="text-xs font-semibold"
                                 >
