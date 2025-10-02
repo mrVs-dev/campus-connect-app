@@ -60,7 +60,7 @@ function DatePickerWithRange({
                 {value?.from ? format(value.from, "LLL dd, y") : <span>From date</span>}
             </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0 bg-card" align="end">
             <Calendar
                 initialFocus
                 mode="single"
@@ -90,7 +90,7 @@ function DatePickerWithRange({
                 {value?.to ? format(value.to, "LLL dd, y") : <span>To date</span>}
             </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0 bg-card" align="end">
             <Calendar
                 initialFocus
                 mode="single"
@@ -426,3 +426,5 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
+
+    
