@@ -381,5 +381,3 @@ export function Overview({ students, admissions }: OverviewProps) {
       </Card>
     </div>
   );
-
-    
