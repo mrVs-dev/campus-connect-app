@@ -13,13 +13,11 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
-import { addDays, format, isWithinInterval, startOfMonth } from "date-fns";
+import { addDays, format, isWithinInterval } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -298,19 +296,27 @@ export function Overview({ students, admissions }: OverviewProps) {
                   <p className="text-xs text-muted-foreground">New students in period</p>
               </div>
                <div>
-                  <h4 className="text-sm font-medium mb-2 text-center md:text-left">Gender Distribution</h4 >
                   <ChartContainer config={chartConfig} className="h-[100px] w-full">
                       <PieChart accessibilityLayer>
                         <ChartTooltip
                           cursor={false}
                           content={<ChartTooltipContent hideLabel />}
                         />
-                         <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40}>
+                         <Pie 
+                            data={pieData} 
+                            dataKey="value" 
+                            nameKey="name" 
+                            cx="50%" 
+                            cy="50%" 
+                            outerRadius={50}
+                            labelLine={false}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            className="text-xs font-semibold fill-white"
+                          >
                              {pieData.map((entry) => (
                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
                              ))}
                         </Pie>
-                        <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                       </PieChart>
                   </ChartContainer>
               </div>
