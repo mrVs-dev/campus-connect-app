@@ -277,12 +277,12 @@ export function Overview({ students, admissions }: OverviewProps) {
 
         <Card>
           <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
                       <CardTitle>New Student Enrollments</CardTitle>
                       <CardDescription>Headcount of new students in a date range.</CardDescription>
                   </div>
-                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} className="md:ml-auto" />
               </div>
           </CardHeader>
           <CardContent>
@@ -374,5 +374,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-    
