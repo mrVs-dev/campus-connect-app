@@ -311,7 +311,7 @@ export function Overview({ students, admissions }: OverviewProps) {
                             outerRadius={50}
                             labelLine={false}
                             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            className="text-xs font-semibold fill-white"
+                            className="text-xs font-semibold"
                           >
                              {pieData.map((entry) => (
                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
