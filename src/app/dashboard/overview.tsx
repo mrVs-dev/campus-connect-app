@@ -13,6 +13,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { programs } from "@/lib/program-data";
@@ -159,12 +161,10 @@ export function Overview({ students, admissions }: OverviewProps) {
   }, [enrollmentFilteredStudents]);
 
   const pieData = [
-    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0 },
-    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0 },
-    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0 },
+    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0, fill: "var(--color-male)" },
+    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0, fill: "var(--color-female)" },
+    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0, fill: "var(--color-other)" },
   ].filter(d => d.value > 0);
-
-  const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--muted-foreground))"];
 
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
     const programData: Record<string, { total: number; levels: Record<string, number> }> = {};
@@ -221,13 +221,17 @@ export function Overview({ students, admissions }: OverviewProps) {
       label: "Female",
       color: "hsl(var(--accent))",
     },
+    other: {
+        label: "Other",
+        color: "hsl(var(--muted-foreground))"
+    }
   };
 
   const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>Student Population</CardTitle>
@@ -275,7 +279,7 @@ export function Overview({ students, admissions }: OverviewProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
               <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex-shrink-0">
@@ -297,11 +301,12 @@ export function Overview({ students, admissions }: OverviewProps) {
                       cursor={false}
                       content={<ChartTooltipContent hideLabel />}
                     />
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} fill="#8884d8">
-                      {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
+                     <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40}>
+                         {pieData.map((entry) => (
+                           <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                         ))}
                     </Pie>
+                    <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                   </PieChart>
               </ChartContainer>
             </div>
