@@ -115,7 +115,7 @@ export function Overview({ students, admissions }: OverviewProps) {
   React.useEffect(() => {
     // Set the initial date range for new enrollments
     setDateRange({
-      from: new Date(2025, 6, 21), // Month is 0-indexed, so 6 is July.
+      from: new Date(2025, 6, 20), // Month is 0-indexed, so 6 is July.
       to: new Date()
     });
 
