@@ -125,7 +125,7 @@ export function Overview({ students, admissions }: OverviewProps) {
     if (admissionYears.includes(defaultYear)) {
       setAdmissionYearFilter(defaultYear);
     }
-  }, [admissions]); // Rerun when admissions data changes
+  }, []); // Empty dependency array ensures this runs only once on mount
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
@@ -381,4 +381,3 @@ export function Overview({ students, admissions }: OverviewProps) {
       </Card>
     </div>
   );
-
