@@ -60,7 +60,6 @@ function MissingFirebaseConfig() {
 }
 
 const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
-  { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Head of Department', 'Receptionist'] },
   { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
   { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department'] },
@@ -455,10 +454,6 @@ export default function DashboardPage() {
                 <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
               ))}
             </TabsList>
-
-            <TabsContent value="dashboard">
-              <Overview students={studentsWithLatestEnrollments} admissions={admissions} />
-            </TabsContent>
 
             <TabsContent value="students">
               <StudentList 
