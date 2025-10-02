@@ -54,7 +54,7 @@ function DatePickerWithRange({
                 id="date-from"
                 variant={"outline"}
                 className={cn(
-                "w-full sm:w-[150px] justify-start text-left font-normal",
+                "w-full sm:w-auto justify-start text-left font-normal",
                 !value?.from && "text-muted-foreground"
                 )}
             >
@@ -84,7 +84,7 @@ function DatePickerWithRange({
                 id="date-to"
                 variant={"outline"}
                 className={cn(
-                "w-full sm:w-[150px] justify-start text-left font-normal",
+                "w-full sm:w-auto justify-start text-left font-normal",
                 !value?.to && "text-muted-foreground"
                 )}
             >
@@ -282,20 +282,6 @@ export function Overview({ students, admissions }: OverviewProps) {
         </Card>
         
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle>Total Admissions</CardTitle>
-              <BookOpenCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-             <div className="flex flex-col space-y-2">
-                <p className="text-3xl font-bold">{totalAdmissions}</p>
-                <p className="text-xs text-muted-foreground">Total program enrollments</p>
-                 <p className="text-xs text-muted-foreground pt-4">Filtered by <span className="font-semibold">{admissionYearFilter === 'All' ? 'All Years' : admissionYearFilter}</span></p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
           <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div>
@@ -328,6 +314,20 @@ export function Overview({ students, admissions }: OverviewProps) {
                       </PieChart>
                   </ChartContainer>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle>Total Admissions</CardTitle>
+              <BookOpenCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+             <div className="flex flex-col space-y-2">
+                <p className="text-3xl font-bold">{totalAdmissions}</p>
+                <p className="text-xs text-muted-foreground">Total program enrollments</p>
+                 <p className="text-xs text-muted-foreground pt-4">Filtered by <span className="font-semibold">{admissionYearFilter === 'All' ? 'All Years' : admissionYearFilter}</span></p>
             </div>
           </CardContent>
         </Card>
