@@ -79,7 +79,6 @@ function DatePickerWithRange({
           <Calendar
             initialFocus
             mode="range"
-            defaultMonth={value?.from}
             selected={value}
             onSelect={handleDateSelect}
             numberOfMonths={2}
