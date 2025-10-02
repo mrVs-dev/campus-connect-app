@@ -174,12 +174,6 @@ export function Overview({ students, admissions }: OverviewProps) {
     }, {} as Record<string, number>);
   }, [enrollmentFilteredStudents]);
 
-  const pieData = [
-    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0, fill: "hsl(var(--primary))" },
-    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0, fill: "hsl(var(--accent))" },
-    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0, fill: "hsl(var(--muted-foreground))" },
-  ].filter(d => d.value > 0);
-
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
     const programData: Record<string, { total: number; levels: Record<string, number> }> = {};
 
@@ -290,60 +284,19 @@ export function Overview({ students, admissions }: OverviewProps) {
               </div>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 items-center gap-4">
-              <div className="flex flex-col space-y-2">
-                  <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
-                  <p className="text-xs text-muted-foreground">New students in period</p>
-              </div>
-               <div>
-                  <ChartContainer config={chartConfig} className="h-[100px] w-full">
-                      <PieChart accessibilityLayer>
-                        <ChartTooltip
-                          cursor={false}
-                          content={<ChartTooltipContent hideLabel />}
-                        />
-                         <Pie 
-                            data={pieData} 
-                            dataKey="value" 
-                            nameKey="name" 
-                            cx="50%" 
-                            cy="50%" 
-                            outerRadius={50}
-                            labelLine={false}
-                            label={({
-                              cx,
-                              cy,
-                              midAngle,
-                              innerRadius,
-                              outerRadius,
-                              name,
-                            }) => {
-                              const RADIAN = Math.PI / 180;
-                              const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                              const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                              const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-                              return (
-                                <text
-                                  x={x}
-                                  y={y}
-                                  fill="hsl(var(--card-foreground))"
-                                  textAnchor={x > cx ? 'start' : 'end'}
-                                  dominantBaseline="central"
-                                  className="text-xs font-semibold"
-                                >
-                                  {name}
-                                </text>
-                              );
-                            }}
-                          >
-                             {pieData.map((entry) => (
-                               <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                             ))}
-                        </Pie>
-                      </PieChart>
-                  </ChartContainer>
-              </div>
+            <div className="flex flex-col space-y-2">
+                <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
+                <p className="text-xs text-muted-foreground">New students in period</p>
+                <div className="flex items-center gap-4 text-sm pt-2">
+                    <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-primary" />
+                        <span>{enrollmentGenderDistribution['Male'] || 0} Male</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-accent" />
+                        <span>{enrollmentGenderDistribution['Female'] || 0} Female</span>
+                    </div>
+                </div>
             </div>
           </CardContent>
         </Card>
@@ -428,5 +381,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-    
