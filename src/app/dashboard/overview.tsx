@@ -17,7 +17,7 @@ import {
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { programs } from "@/lib/program-data";
 import * as React from "react";
-import { addDays, format, isWithinInterval } from "date-fns";
+import { addDays, format, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ function DatePickerWithRange({
             id="date"
             variant={"outline"}
             className={cn(
-              "w-full sm:w-[240px] justify-start text-left font-normal",
+              "w-[240px] justify-start text-left font-normal",
               !value && "text-muted-foreground"
             )}
           >
@@ -111,23 +111,15 @@ interface OverviewProps {
 export function Overview({ students, admissions }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
-  
-  const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
 
   React.useEffect(() => {
-    // Set the initial date range for new enrollments
+    const now = new Date();
     setDateRange({
-      from: new Date(2025, 6, 20), // Month is 0-indexed, so 6 is July.
-      to: new Date()
+      from: new Date(2025, 6, 20),
+      to: now
     });
-
-    // Set the initial admission year filter
-    const defaultYear = '2025-2026';
-    if (admissionYears.includes(defaultYear)) {
-      setAdmissionYearFilter(defaultYear);
-    }
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
@@ -234,6 +226,8 @@ export function Overview({ students, admissions }: OverviewProps) {
       color: "hsl(var(--accent))",
     },
   };
+
+  const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
 
   return (
     <div className="flex flex-col gap-4">
