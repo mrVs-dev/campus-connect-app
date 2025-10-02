@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
@@ -110,17 +111,21 @@ export function Overview({ students, admissions }: OverviewProps) {
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
   
   const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
-  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>(() => {
-      const defaultYear = '2025-2026';
-      return admissionYears.includes(defaultYear) ? defaultYear : 'All';
-  });
+  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
 
   React.useEffect(() => {
+    // Set the initial date range for new enrollments
     setDateRange({
       from: new Date(2025, 6, 21), // Month is 0-indexed, so 6 is July.
       to: new Date()
     });
-  }, []);
+
+    // Set the initial admission year filter
+    const defaultYear = '2025-2026';
+    if (admissionYears.includes(defaultYear)) {
+      setAdmissionYearFilter(defaultYear);
+    }
+  }, [admissions]); // Rerun when admissions data changes
   
   const enrollmentFilteredStudents = React.useMemo(() => {
     if (!dateRange?.from) {
@@ -376,4 +381,4 @@ export function Overview({ students, admissions }: OverviewProps) {
       </Card>
     </div>
   );
-}
+
