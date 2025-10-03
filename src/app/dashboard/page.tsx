@@ -163,7 +163,6 @@ export default function DashboardPage() {
       try {
         let currentTeachers = await getTeachers();
         let finalRole: UserRole | null = null;
-        
         const loggedInUserEmail = user.email;
 
         // --- Admin Exception Logic ---
@@ -171,15 +170,13 @@ export default function DashboardPage() {
           finalRole = 'Admin';
           const adminExists = currentTeachers.some(t => t.email === ADMIN_EMAIL);
           if (!adminExists) {
-             console.log("Admin email recognized. Creating admin profile.");
-             await addTeacher({
+             const newAdmin = await addTeacher({
                 firstName: user.displayName?.split(' ')[0] || 'Admin',
                 lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
                 email: loggedInUserEmail,
                 role: 'Admin',
             });
-            // Re-fetch teachers to ensure the new admin is included
-            currentTeachers = await getTeachers();
+            currentTeachers.push(newAdmin);
           }
         } else {
            // --- Standard Role Verification Logic ---
