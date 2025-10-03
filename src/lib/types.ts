@@ -17,6 +17,7 @@ export type Enrollment = {
 
 export interface Student {
   studentId: string;
+  familyId?: string; // For sibling discounts
   enrollmentDate?: Date;
   firstName: string;
   middleName?: string;
@@ -131,4 +132,69 @@ export interface AttendanceRecord {
   minutesLate?: number;
   notes?: string;
   recordedById: string; // teacherId
+}
+
+// --- Fees & Invoicing ---
+export type FeeType = 'Tuition' | 'Registration' | 'Books' | 'Uniform' | 'Transportation' | 'Other';
+export type FeeFrequency = 'One-Time' | 'Monthly' | 'Termly' | 'Semesterly' | 'Yearly';
+
+export interface Fee {
+  feeId: string;
+  name: string;
+  type: FeeType;
+  amount: number;
+  frequency: FeeFrequency;
+  programId?: string; // Link fee to a specific program if needed
+  level?: string;     // Link fee to a specific level if needed
+}
+
+export type DiscountType = 'Scholarship' | 'Sibling' | 'Bundle';
+
+export interface Discount {
+  discountId: string;
+  name: string;
+  type: DiscountType;
+  value: number; // Can be a percentage (e.g., 10 for 10%) or a fixed amount
+  isPercentage: boolean;
+  appliesTo: 'Tuition' | 'All'; // Specifies if discount applies only to tuition or all fees
+}
+
+export interface InvoiceLineItem {
+  feeId: string;
+  description: string;
+  amount: number;
+}
+
+export interface AppliedDiscount {
+  discountId: string;
+  description: string;
+  discountedAmount: number;
+}
+
+export type PaymentPlan = 'Monthly' | 'Termly' | 'Semesterly' | 'Yearly';
+
+export interface Invoice {
+  invoiceId: string;
+  studentId: string;
+  schoolYear: string;
+  issueDate: Date;
+  dueDate: Date;
+  paymentPlan: PaymentPlan;
+  lineItems: InvoiceLineItem[];
+  discounts: AppliedDiscount[];
+  subtotal: number;
+  totalDiscount: number;
+  totalAmount: number;
+  amountPaid: number;
+  status: 'Draft' | 'Sent' | 'Paid' | 'Partially Paid' | 'Overdue';
+}
+
+export interface Payment {
+  paymentId: string;
+  invoiceId: string;
+  studentId: string;
+  amount: number;
+  paymentDate: Date;
+  method: 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Other';
+  notes?: string;
 }

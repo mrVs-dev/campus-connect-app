@@ -64,6 +64,7 @@ const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
   { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
   { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department'] },
+  { value: "fees", label: "Fees", roles: ['Admin', 'Receptionist'] },
   { value: "admissions", label: "Admissions", roles: ['Admin', 'Receptionist'] },
   { value: "enrollment", label: "Enrollment", roles: ['Admin', 'Receptionist'] },
   { value: "statusHistory", label: "Status History", roles: ['Admin'] },
@@ -450,7 +451,7 @@ export default function DashboardPage() {
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
          {userRole && visibleTabs.length > 0 ? (
           <Tabs defaultValue={visibleTabs[0]?.value} className="flex flex-col gap-4">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-8 self-start">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-9 self-start">
               {visibleTabs.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
               ))}
@@ -490,6 +491,20 @@ export default function DashboardPage() {
               />
             </TabsContent>
 
+            <TabsContent value="fees">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Fees & Invoicing</CardTitle>
+                  <CardDescription>
+                    This module is under construction.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p>Fee management, invoicing, and payment tracking features will be available here soon.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="admissions">
               <AdmissionsList 
                 admissions={admissions}
@@ -526,5 +541,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
