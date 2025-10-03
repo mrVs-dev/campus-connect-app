@@ -120,6 +120,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
         issueDate: new Date(existingInvoice.issueDate),
         dueDate: new Date(existingInvoice.dueDate),
         discounts: existingInvoice.discounts || [],
+        amountPaid: existingInvoice.amountPaid || 0,
       } : {
         studentId: "",
         schoolYear: currentSchoolYear,
@@ -325,7 +326,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                   <div className="flex justify-end gap-4 font-medium text-destructive">
                     <span>Discount</span>
                     <span>
-                      ${totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      - ${totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-end gap-4 text-lg font-bold">
@@ -338,7 +339,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                 <FormField control={form.control} name="amountPaid" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Amount Paid</FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
+                      <FormControl><Input type="number" {...field} value={field.value || ''} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
