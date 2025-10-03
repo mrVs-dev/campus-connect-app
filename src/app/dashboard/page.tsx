@@ -37,7 +37,7 @@ import { InventoryList } from "@/components/dashboard/inventory-list";
 
 // --- IMPORTANT: Admin Exception ---
 // This email will always be treated as an Admin and will bypass the approval process.
-const ADMIN_EMAIL = "user@example.com"; 
+const ADMIN_EMAIL = "vannak@api-school.com"; 
 
 function MissingFirebaseConfig() {
   return (
