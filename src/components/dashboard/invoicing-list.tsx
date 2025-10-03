@@ -4,7 +4,7 @@
 import * as React from "react";
 import { PlusCircle, MoreHorizontal, Edit, Trash2, FileText } from "lucide-react";
 import { format } from "date-fns";
-import type { Invoice, Student } from "@/lib/types";
+import type { Invoice, Student, Fee } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,15 +38,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { InvoiceDialog } from "./invoice-dialog";
 
 interface InvoicingListProps {
   invoices: Invoice[];
   students: Student[];
+  fees: Fee[];
   onSaveInvoice: (invoice: Omit<Invoice, 'invoiceId'> | Invoice) => Promise<boolean>;
   onDeleteInvoice: (invoiceId: string) => void;
 }
 
-export function InvoicingList({ invoices, students, onSaveInvoice, onDeleteInvoice }: InvoicingListProps) {
+export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDeleteInvoice }: InvoicingListProps) {
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [invoiceToEdit, setInvoiceToEdit] = React.useState<Invoice | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<Invoice | null>(null);
 
   const getStudentName = (studentId: string) => {
@@ -69,6 +73,18 @@ export function InvoicingList({ invoices, students, onSaveInvoice, onDeleteInvoi
     }
   };
 
+  const handleOpenDialog = (isOpen: boolean) => {
+    if (!isOpen) {
+      setInvoiceToEdit(null);
+    }
+    setIsDialogOpen(isOpen);
+  };
+
+  const handleEdit = (invoice: Invoice) => {
+    setInvoiceToEdit(invoice);
+    setIsDialogOpen(true);
+  };
+
   const handleDelete = (invoice: Invoice) => {
     setInvoiceToDelete(invoice);
   };
@@ -89,7 +105,7 @@ export function InvoicingList({ invoices, students, onSaveInvoice, onDeleteInvoi
               <CardTitle>Invoicing</CardTitle>
               <CardDescription>Manage all student invoices.</CardDescription>
             </div>
-            <Button size="sm" className="gap-1">
+            <Button size="sm" className="gap-1" onClick={() => setIsDialogOpen(true)}>
               <PlusCircle className="h-3.5 w-3.5" />
               New Invoice
             </Button>
@@ -113,8 +129,8 @@ export function InvoicingList({ invoices, students, onSaveInvoice, onDeleteInvoi
                 <TableRow key={invoice.invoiceId}>
                   <TableCell className="font-mono">{invoice.invoiceId.substring(0, 7)}...</TableCell>
                   <TableCell className="font-medium">{getStudentName(invoice.studentId)}</TableCell>
-                  <TableCell>{format(invoice.issueDate, "MMM d, yyyy")}</TableCell>
-                  <TableCell>{format(invoice.dueDate, "MMM d, yyyy")}</TableCell>
+                  <TableCell>{format(new Date(invoice.issueDate), "MMM d, yyyy")}</TableCell>
+                  <TableCell>{format(new Date(invoice.dueDate), "MMM d, yyyy")}</TableCell>
                   <TableCell className="text-right">${invoice.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell><Badge variant={getStatusVariant(invoice.status)}>{invoice.status}</Badge></TableCell>
                   <TableCell className="text-right">
@@ -127,7 +143,7 @@ export function InvoicingList({ invoices, students, onSaveInvoice, onDeleteInvoi
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem><FileText className="mr-2 h-4 w-4" /> View/Print</DropdownMenuItem>
-                        <DropdownMenuItem><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleEdit(invoice)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -143,12 +159,20 @@ export function InvoicingList({ invoices, students, onSaveInvoice, onDeleteInvoi
           )}
         </CardContent>
       </Card>
+      <InvoiceDialog
+        open={isDialogOpen}
+        onOpenChange={handleOpenDialog}
+        students={students}
+        fees={fees}
+        onSave={onSaveInvoice}
+        existingInvoice={invoiceToEdit}
+      />
       <AlertDialog open={!!invoiceToDelete} onOpenChange={(isOpen) => !isOpen && setInvoiceToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete invoice {invoiceToDelete?.invoiceId}. This action cannot be undone.
+              This will permanently delete invoice {invoiceToDelete?.invoiceId.substring(0,7)}. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

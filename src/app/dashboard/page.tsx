@@ -610,6 +610,7 @@ export default function DashboardPage() {
               <InvoicingList
                 invoices={invoices}
                 students={students}
+                fees={fees}
                 onSaveInvoice={handleSaveInvoice}
                 onDeleteInvoice={handleDeleteInvoice}
               />
