@@ -167,7 +167,7 @@ export interface InvoiceLineItem {
 }
 
 export interface AppliedDiscount {
-  discountId: string;
+  discountId?: string;
   description: string;
   discountedAmount: number;
 }
@@ -197,5 +197,28 @@ export interface Payment {
   amount: number;
   paymentDate: Date;
   method: 'Cash' | 'Bank Transfer' | 'Credit Card' | 'Other';
+  notes?: string;
+}
+
+// --- Inventory & Supplies ---
+export type InventoryCategory = 'Uniform' | 'Book' | 'Stationery' | 'Other';
+
+export interface InventoryItem {
+  itemId: string;
+  name: string;
+  category: InventoryCategory;
+  quantity: number;
+  reorderLevel: number;
+  supplier?: string;
+  cost?: number;
+}
+
+export interface StudentSupply {
+  supplyId: string;
+  studentId: string;
+  itemId: string;
+  quantityIssued: number;
+  issueDate: Date;
+  issuedBy: string; // userId
   notes?: string;
 }

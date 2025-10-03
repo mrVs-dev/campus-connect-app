@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 
 // Type guards to check for Firestore Timestamps
@@ -618,6 +618,42 @@ export async function deleteInvoice(invoiceId: string): Promise<void> {
     await deleteDoc(invoiceDoc);
 }
 
+// --- Inventory Collection ---
+
+export async function getInventoryItems(): Promise<InventoryItem[]> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const inventoryCollection = collection(db, 'inventory');
+    const snapshot = await getDocs(inventoryCollection);
+    return snapshot.docs.map(doc => ({
+        ...(doc.data() as Omit<InventoryItem, 'itemId'>),
+        itemId: doc.id,
+    }));
+}
+
+export async function saveInventoryItem(itemData: Omit<InventoryItem, 'itemId'> | InventoryItem): Promise<InventoryItem> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    
+    if ('itemId' in itemData) {
+        // Update existing item
+        const itemDoc = doc(db, 'inventory', itemData.itemId);
+        await setDoc(itemDoc, itemData, { merge: true });
+        return itemData;
+    } else {
+        // Create new item
+        const inventoryCollection = collection(db, 'inventory');
+        const newDocRef = await addDoc(inventoryCollection, itemData);
+        return {
+            ...itemData,
+            itemId: newDocRef.id,
+        };
+    }
+}
+
+export async function deleteInventoryItem(itemId: string): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const itemDoc = doc(db, 'inventory', itemId);
+    await deleteDoc(itemDoc);
+}
 
 // --- Settings Collections ---
 
