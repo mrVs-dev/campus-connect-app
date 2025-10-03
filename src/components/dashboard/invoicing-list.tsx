@@ -119,6 +119,7 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
                 <TableHead>Student</TableHead>
                 <TableHead>Issue Date</TableHead>
                 <TableHead>Due Date</TableHead>
+                <TableHead>Payment Plan</TableHead>
                 <TableHead className="text-right">Total Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead><span className="sr-only">Actions</span></TableHead>
@@ -131,6 +132,7 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
                   <TableCell className="font-medium">{getStudentName(invoice.studentId)}</TableCell>
                   <TableCell>{format(new Date(invoice.issueDate), "MMM d, yyyy")}</TableCell>
                   <TableCell>{format(new Date(invoice.dueDate), "MMM d, yyyy")}</TableCell>
+                  <TableCell>{invoice.paymentPlan}</TableCell>
                   <TableCell className="text-right">${invoice.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell><Badge variant={getStatusVariant(invoice.status)}>{invoice.status}</Badge></TableCell>
                   <TableCell className="text-right">

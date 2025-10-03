@@ -35,6 +35,12 @@ import { Separator } from "../ui/separator";
 const paymentPlans: PaymentPlan[] = ['Monthly', 'Termly', 'Semesterly', 'Yearly'];
 const invoiceStatuses: Invoice['status'][] = ['Draft', 'Sent', 'Paid', 'Partially Paid', 'Overdue'];
 
+const appliedDiscountSchema = z.object({
+  discountId: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
+  discountedAmount: z.coerce.number().min(0, "Amount must be positive"),
+});
+
 const lineItemSchema = z.object({
   feeId: z.string().min(1),
   description: z.string().min(1),
@@ -48,6 +54,7 @@ const invoiceFormSchema = z.object({
   dueDate: z.date(),
   paymentPlan: z.enum(paymentPlans),
   lineItems: z.array(lineItemSchema).min(1, "An invoice must have at least one line item."),
+  discounts: z.array(appliedDiscountSchema).optional(),
   status: z.enum(invoiceStatuses),
   amountPaid: z.coerce.number().min(0).optional(),
 });
@@ -77,20 +84,34 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
       dueDate: addMonths(new Date(), 1),
       paymentPlan: "Monthly",
       lineItems: [],
+      discounts: [],
       status: "Draft",
       amountPaid: 0,
     }
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: lineItemFields, append: appendLineItem, remove: removeLineItem } = useFieldArray({
     control: form.control,
     name: "lineItems",
   });
+  
+  const { fields: discountFields, append: appendDiscount, remove: removeDiscount } = useFieldArray({
+    control: form.control,
+    name: "discounts",
+  });
 
   const watchedLineItems = form.watch("lineItems");
+  const watchedDiscounts = form.watch("discounts");
+
   const subtotal = React.useMemo(() => {
     return (watchedLineItems || []).reduce((acc, item) => acc + (item.amount || 0), 0);
   }, [watchedLineItems]);
+
+  const totalDiscount = React.useMemo(() => {
+    return (watchedDiscounts || []).reduce((acc, d) => acc + (d.discountedAmount || 0), 0);
+  }, [watchedDiscounts]);
+
+  const totalAmount = subtotal - totalDiscount;
 
   React.useEffect(() => {
     if (open) {
@@ -98,6 +119,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
         ...existingInvoice,
         issueDate: new Date(existingInvoice.issueDate),
         dueDate: new Date(existingInvoice.dueDate),
+        discounts: existingInvoice.discounts || [],
       } : {
         studentId: "",
         schoolYear: currentSchoolYear,
@@ -105,6 +127,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
         dueDate: addMonths(new Date(), 1),
         paymentPlan: "Monthly",
         lineItems: [],
+        discounts: [],
         status: "Draft",
         amountPaid: 0,
       });
@@ -114,7 +137,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
   const handleFeeSelection = (feeId: string) => {
     const fee = fees.find(f => f.feeId === feeId);
     if (fee) {
-      append({
+      appendLineItem({
         feeId: fee.feeId,
         description: fee.name,
         amount: fee.amount,
@@ -125,19 +148,12 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
   const handleSave = async (values: InvoiceFormValues) => {
     setIsSaving(true);
     
-    // TODO: Discount logic needs to be implemented here
-    const discounts: AppliedDiscount[] = [];
-    const totalDiscount = discounts.reduce((acc, d) => acc + d.discountedAmount, 0);
-    const totalAmount = subtotal - totalDiscount;
-    const amountPaid = values.amountPaid || 0;
-
     const invoiceData = {
       ...values,
       subtotal,
-      discounts,
       totalDiscount,
       totalAmount,
-      amountPaid,
+      amountPaid: values.amountPaid || 0,
     };
     
     const dataToSave = isEditing ? { ...invoiceData, invoiceId: existingInvoice.invoiceId } : invoiceData;
@@ -238,7 +254,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
             <div className="space-y-2">
               <FormLabel>Line Items</FormLabel>
               <div className="p-4 border rounded-md space-y-4">
-                {fields.map((field, index) => (
+                {lineItemFields.map((field, index) => (
                   <div key={field.id} className="flex items-end gap-2">
                     <FormField control={form.control} name={`lineItems.${index}.description`} render={({ field }) => (
                       <FormItem className="flex-1">
@@ -252,7 +268,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <Button type="button" variant="outline" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button type="button" variant="outline" size="icon" onClick={() => removeLineItem(index)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
                  <FormField
@@ -268,6 +284,33 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                 </Select>
               </div>
             </div>
+            
+            <div className="space-y-2">
+              <FormLabel>Discounts</FormLabel>
+              <div className="p-4 border rounded-md space-y-4">
+                 {discountFields.map((field, index) => (
+                  <div key={field.id} className="flex items-end gap-2">
+                    <FormField control={form.control} name={`discounts.${index}.description`} render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl><Input placeholder="e.g., Scholarship" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name={`discounts.${index}.discountedAmount`} render={({ field }) => (
+                      <FormItem className="w-32">
+                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <Button type="button" variant="outline" size="icon" onClick={() => removeDiscount(index)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => appendDiscount({ description: "", discountedAmount: 0 })}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Manual Discount
+                </Button>
+              </div>
+            </div>
+
 
             <div className="space-y-4">
                <Separator />
@@ -277,11 +320,11 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                </div>
                 <div className="flex justify-end gap-4 font-medium text-destructive">
                   <span>Discount</span>
-                  <span>-$0.00</span>
+                  <span>-${totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                </div>
                <div className="flex justify-end gap-4 text-lg font-bold">
                   <span>Total</span>
-                  <span>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                </div>
                <Separator />
             </div>
