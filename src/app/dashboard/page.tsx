@@ -159,8 +159,9 @@ export default function DashboardPage() {
         setIsDataLoading(true);
 
         const initialTeachers = await getTeachers();
-        
-        // Bootstrap the first user as an Admin if no teachers exist
+        let currentUserRole: UserRole | null = null;
+        let shouldFetchData = false;
+
         if (initialTeachers.length === 0 && user) {
           console.log("No teachers found, creating first admin user.");
           const newAdmin = await addTeacher({
@@ -169,12 +170,9 @@ export default function DashboardPage() {
             email: user.email!,
             role: 'Admin',
           });
-          if(newAdmin) {
-            setTeachers([newAdmin]);
-            setUserRole('Admin');
-             // Stop further processing for this run, as we've established the admin.
-             // Fetch other data in the next effect run or based on role.
-          }
+          setTeachers([newAdmin]);
+          currentUserRole = 'Admin';
+          shouldFetchData = true;
         } else {
           setTeachers(initialTeachers);
           const loggedInUser = initialTeachers.find(t => t.email === user.email);
@@ -184,14 +182,16 @@ export default function DashboardPage() {
               router.replace('/teacher/dashboard');
               return; 
             }
-            setUserRole(loggedInUser.role);
+            currentUserRole = loggedInUser.role;
+            shouldFetchData = true;
           } else {
-            setUserRole(null); // Pending approval
+            currentUserRole = null; // Pending approval
           }
         }
         
-        // Fetch all other data. This will run for the new admin on the next render.
-        if (userRole || (initialTeachers.length === 0 && user)) {
+        setUserRole(currentUserRole);
+
+        if (shouldFetchData) {
            const [
             studentsData, 
             admissionsData, 
@@ -239,7 +239,7 @@ export default function DashboardPage() {
     
     fetchData();
 
-  }, [user, authLoading, router, toast, userRole]);
+  }, [user, authLoading, router, toast]);
 
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
