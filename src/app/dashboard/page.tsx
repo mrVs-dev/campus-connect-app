@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -34,9 +34,9 @@ import {
 import { FeesList } from "@/components/dashboard/fees-list";
 import { InvoicingList } from "@/components/dashboard/invoicing-list";
 import { InventoryList } from "@/components/dashboard/inventory-list";
+import type { User as AuthUser } from "firebase/auth";
 
 // --- IMPORTANT: Admin Exception ---
-// This email will always be treated as an Admin and will bypass the approval process.
 const ADMIN_EMAIL = "vannak@api-school.com"; 
 
 function MissingFirebaseConfig() {
@@ -90,7 +90,7 @@ function PendingApproval() {
 const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
   { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department', 'Teacher'] },
-  { value: "users", label: "Users", roles: ['Admin', 'Head of Department'] },
+  { value: "users", label: "Users", roles: ['Admin'] },
   { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department', 'Teacher'] },
   { value: "fees", label: "Fees", roles: ['Admin', 'Receptionist'] },
   { value: "invoicing", label: "Invoicing", roles: ['Admin', 'Receptionist'] },
@@ -110,6 +110,7 @@ export default function DashboardPage() {
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [teachers, setTeachers] = React.useState<Teacher[]>([]);
+  const [allUsers, setAllUsers] = React.useState<AuthUser[]>([]);
   const [statusHistory, setStatusHistory] = React.useState<StudentStatusHistory[]>([]);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
@@ -162,6 +163,7 @@ export default function DashboardPage() {
       setIsDataLoading(true);
       try {
         let currentTeachers = await getTeachers();
+        let currentUsers = await getUsers();
         let finalRole: UserRole | null = null;
         const loggedInUserEmail = user.email;
 
@@ -192,6 +194,7 @@ export default function DashboardPage() {
         
         // --- Set State and Fetch Data based on role ---
         setTeachers(currentTeachers);
+        setAllUsers(currentUsers as AuthUser[]);
         setUserRole(finalRole);
         
         if (finalRole) {
@@ -453,10 +456,14 @@ export default function DashboardPage() {
     try {
       const newTeacher = await addTeacher(teacherData);
       if (newTeacher) {
-        setTeachers(prev => [...prev, newTeacher]);
+        // Refetch all users and teachers to update the state, including the new 'approved' status
+        const [updatedTeachers, updatedUsers] = await Promise.all([getTeachers(), getUsers()]);
+        setTeachers(updatedTeachers);
+        setAllUsers(updatedUsers as AuthUser[]);
+
         toast({
-          title: "Teacher Added",
-          description: `${newTeacher.firstName} ${newTeacher.lastName} has been added.`,
+          title: "Staff Added",
+          description: `${newTeacher.firstName} ${newTeacher.lastName} has been added and approved.`,
         });
         return newTeacher;
       }
@@ -464,8 +471,8 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Error adding teacher:", error);
       toast({
-        title: "Failed to Add Teacher",
-        description: "There was an error adding the new teacher. Please try again.",
+        title: "Failed to Add Staff",
+        description: "There was an error adding the new staff member. Please try again.",
         variant: "destructive",
       });
       return null;
@@ -666,8 +673,8 @@ export default function DashboardPage() {
     return <PendingApproval />;
   }
 
-
   const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
+  const pendingUsers = allUsers.filter(u => !teachers.some(t => t.email === u.email));
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
@@ -703,10 +710,11 @@ export default function DashboardPage() {
             </TabsContent>
             
             <TabsContent value="users">
-              <TeacherList 
+              <TeacherList
                 userRole={userRole}
-                teachers={teachers} 
-                onAddTeacher={handleAddTeacher} 
+                teachers={teachers}
+                pendingUsers={pendingUsers}
+                onAddTeacher={handleAddTeacher}
               />
             </TabsContent>
 

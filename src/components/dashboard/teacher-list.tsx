@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Edit, Trash2, UserPlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -53,6 +53,7 @@ import { format } from "date-fns";
 import { EditTeacherSheet } from "./edit-teacher-sheet";
 import { updateTeacher, getSubjects, getAdmissions } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import type { User as AuthUser } from "firebase/auth";
 
 const userRoles: UserRole[] = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
 
@@ -69,7 +70,8 @@ type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 interface TeacherListProps {
   userRole: UserRole;
   teachers: Teacher[];
-  onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status'>) => Promise<Teacher | null>;
+  pendingUsers: AuthUser[];
+  onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => Promise<Teacher | null>;
 }
 
 // --- Helper functions for robust date handling ---
@@ -93,9 +95,10 @@ const formatDateSafe = (date: any): string => {
 };
 // ---
 
-export function TeacherList({ userRole, teachers: initialTeachers, onAddTeacher }: TeacherListProps) {
+export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers, onAddTeacher }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
+  const [userToApprove, setUserToApprove] = React.useState<AuthUser | null>(null);
   const [teachers, setTeachers] = React.useState(initialTeachers);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
@@ -130,11 +133,39 @@ export function TeacherList({ userRole, teachers: initialTeachers, onAddTeacher 
     },
   });
 
+  React.useEffect(() => {
+      if(userToApprove) {
+          const displayName = userToApprove.displayName || "";
+          const nameParts = displayName.split(" ");
+          const firstName = nameParts[0] || "";
+          const lastName = nameParts.slice(1).join(" ") || "";
+          form.reset({
+              firstName: firstName,
+              lastName: lastName,
+              email: userToApprove.email || "",
+              role: "Teacher",
+          });
+          setIsNewTeacherDialogOpen(true);
+      }
+  }, [userToApprove, form]);
+  
+  React.useEffect(() => {
+      if(!isNewTeacherDialogOpen) {
+          setUserToApprove(null);
+          form.reset({
+            firstName: "",
+            lastName: "",
+            email: "",
+            phone: "",
+            role: "Teacher",
+          });
+      }
+  }, [isNewTeacherDialogOpen, form]);
+
   const handleAddTeacher = async (values: TeacherFormValues) => {
     if (!canEdit) return;
     const newTeacher = await onAddTeacher(values);
     if (newTeacher) {
-      setTeachers(prev => [...prev, newTeacher]);
       form.reset();
       setIsNewTeacherDialogOpen(false);
     }
@@ -176,6 +207,48 @@ export function TeacherList({ userRole, teachers: initialTeachers, onAddTeacher 
 
   return (
     <>
+      {canEdit && pendingUsers.length > 0 && (
+          <Card>
+              <CardHeader>
+                  <CardTitle>Pending Approvals</CardTitle>
+                  <CardDescription>The following users have signed in but are awaiting approval to access the application.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <Table>
+                      <TableHeader>
+                          <TableRow>
+                              <TableHead>User</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {pendingUsers.map(user => (
+                              <TableRow key={user.uid}>
+                                  <TableCell>
+                                      <div className="flex items-center gap-3">
+                                          <Avatar className="h-9 w-9">
+                                              <AvatarImage src={user.photoURL || undefined} alt="Avatar" className="object-cover" />
+                                              <AvatarFallback>{(user.displayName || user.email || 'U').charAt(0)}</AvatarFallback>
+                                          </Avatar>
+                                          <div className="font-medium">{user.displayName || 'Unnamed User'}</div>
+                                      </div>
+                                  </TableCell>
+                                  <TableCell>{user.email}</TableCell>
+                                  <TableCell className="text-right">
+                                      <Button size="sm" onClick={() => setUserToApprove(user)}>
+                                          <UserPlus className="mr-2 h-4 w-4" />
+                                          Approve
+                                      </Button>
+                                  </TableCell>
+                              </TableRow>
+                          ))}
+                      </TableBody>
+                  </Table>
+              </CardContent>
+          </Card>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -188,7 +261,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, onAddTeacher 
             {canEdit && (
                 <Dialog open={isNewTeacherDialogOpen} onOpenChange={setIsNewTeacherDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1">
+                    <Button size="sm" className="gap-1" onClick={() => form.reset()}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     New Staff
                     </Button>
@@ -197,9 +270,9 @@ export function TeacherList({ userRole, teachers: initialTeachers, onAddTeacher 
                     <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleAddTeacher)}>
                         <DialogHeader>
-                        <DialogTitle>Add New Staff Member</DialogTitle>
+                        <DialogTitle>{userToApprove ? "Approve User" : "Add New Staff Member"}</DialogTitle>
                         <DialogDescription>
-                            Enter the details for the new staff member.
+                            {userToApprove ? "Assign a role and confirm the details for this user." : "Enter the details for the new staff member."}
                         </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
@@ -222,7 +295,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, onAddTeacher 
                         <FormField control={form.control} name="email" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Email</FormLabel>
-                                <FormControl><Input type="email" {...field} /></FormControl>
+                                <FormControl><Input type="email" {...field} disabled={!!userToApprove} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                             )}
@@ -260,7 +333,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, onAddTeacher 
                         </div>
                         <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setIsNewTeacherDialogOpen(false)}>Cancel</Button>
-                        <Button type="submit">Save Staff</Button>
+                        <Button type="submit">{userToApprove ? "Approve and Add Staff" : "Save Staff"}</Button>
                         </DialogFooter>
                     </form>
                     </Form>
