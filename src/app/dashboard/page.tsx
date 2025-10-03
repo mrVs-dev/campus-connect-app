@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/app/dashboard/overview";
@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { FeesList } from "@/components/dashboard/fees-list";
 
 function MissingFirebaseConfig() {
   return (
@@ -83,6 +84,7 @@ export default function DashboardPage() {
   const [statusHistory, setStatusHistory] = React.useState<StudentStatusHistory[]>([]);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
+  const [fees, setFees] = React.useState<Fee[]>([]);
   const [userRole, setUserRole] = React.useState<UserRole>('Admin');
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -131,7 +133,8 @@ export default function DashboardPage() {
           teachersData, 
           statusHistoryData, 
           subjectsData, 
-          categoriesData
+          categoriesData,
+          feesData
         ] = await Promise.all([
           getStudents(),
           getAdmissions(),
@@ -140,6 +143,7 @@ export default function DashboardPage() {
           getStudentStatusHistory(),
           getSubjects(),
           getAssessmentCategories(),
+          getFees(),
         ]);
         
         setStudents(studentsData);
@@ -149,6 +153,7 @@ export default function DashboardPage() {
         setStatusHistory(statusHistoryData);
         setSubjects(subjectsData);
         setAssessmentCategories(categoriesData);
+        setFees(feesData);
 
         // This ensures the user is always treated as an admin on this dashboard.
         setUserRole('Admin');
@@ -431,6 +436,53 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSaveFee = async (feeData: Omit<Fee, 'feeId'> | Fee) => {
+    try {
+      const savedFee = await saveFee(feeData);
+      setFees(prev => {
+        const existingIndex = prev.findIndex(f => f.feeId === savedFee.feeId);
+        if (existingIndex > -1) {
+            const updatedFees = [...prev];
+            updatedFees[existingIndex] = savedFee;
+            return updatedFees;
+        } else {
+            return [...prev, savedFee];
+        }
+      });
+      toast({
+        title: "Fee Saved",
+        description: `The fee "${savedFee.name}" has been saved.`,
+      });
+      return true;
+    } catch (error) {
+      console.error("Error saving fee:", error);
+      toast({
+        title: "Save Failed",
+        description: "There was an error saving the fee. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const handleDeleteFee = async (feeId: string) => {
+    try {
+      await deleteFee(feeId);
+      setFees(prev => prev.filter(f => f.feeId !== feeId));
+      toast({
+        title: "Fee Deleted",
+        description: "The fee has been successfully removed.",
+      });
+    } catch (error) {
+      console.error("Error deleting fee:", error);
+      toast({
+        title: "Deletion Failed",
+        description: "There was an error deleting the fee. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
@@ -492,17 +544,11 @@ export default function DashboardPage() {
             </TabsContent>
 
             <TabsContent value="fees">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Fees & Invoicing</CardTitle>
-                  <CardDescription>
-                    This module is under construction.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p>Fee management, invoicing, and payment tracking features will be available here soon.</p>
-                </CardContent>
-              </Card>
+              <FeesList
+                fees={fees}
+                onSaveFee={handleSaveFee}
+                onDeleteFee={handleDeleteFee}
+              />
             </TabsContent>
 
             <TabsContent value="admissions">

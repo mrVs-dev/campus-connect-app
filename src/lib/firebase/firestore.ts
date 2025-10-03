@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 
 // Type guards to check for Firestore Timestamps
@@ -538,6 +538,44 @@ export async function saveAttendance(records: Omit<AttendanceRecord, 'attendance
 
     await batch.commit();
 }
+
+// --- Fees Collection ---
+
+export async function getFees(): Promise<Fee[]> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const feesCollection = collection(db, 'fees');
+    const snapshot = await getDocs(feesCollection);
+    return snapshot.docs.map(doc => ({
+        ...(doc.data() as Omit<Fee, 'feeId'>),
+        feeId: doc.id,
+    }));
+}
+
+export async function saveFee(feeData: Omit<Fee, 'feeId'> | Fee): Promise<Fee> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    
+    if ('feeId' in feeData) {
+        // Update existing fee
+        const feeDoc = doc(db, 'fees', feeData.feeId);
+        await setDoc(feeDoc, feeData, { merge: true });
+        return feeData;
+    } else {
+        // Create new fee
+        const feesCollection = collection(db, 'fees');
+        const newDocRef = await addDoc(feesCollection, feeData);
+        return {
+            ...feeData,
+            feeId: newDocRef.id,
+        };
+    }
+}
+
+export async function deleteFee(feeId: string): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const feeDoc = doc(db, 'fees', feeId);
+    await deleteDoc(feeDoc);
+}
+
 
 // --- Settings Collections ---
 
