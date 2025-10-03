@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -15,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -63,6 +62,27 @@ function MissingFirebaseConfig() {
   );
 }
 
+function PendingApproval() {
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+      <Card className="max-w-xl text-center">
+        <CardHeader>
+          <CardTitle>Account Pending Approval</CardTitle>
+          <CardDescription>
+            Your account has been created, but you cannot access the dashboard yet.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p>
+            An administrator must approve your account and assign a role before you can proceed. Please contact your school's administration.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
 const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
   { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department'] },
@@ -92,7 +112,9 @@ export default function DashboardPage() {
   const [fees, setFees] = React.useState<Fee[]>([]);
   const [invoices, setInvoices] = React.useState<Invoice[]>([]);
   const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
-  const [userRole, setUserRole] = React.useState<UserRole>('Admin');
+  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
+  const [isDataLoading, setIsDataLoading] = React.useState(true);
+
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -128,11 +150,13 @@ export default function DashboardPage() {
     }
 
     if (!isFirebaseConfigured) {
+      setIsDataLoading(false);
       return;
     }
 
     const fetchData = async () => {
       try {
+        setIsDataLoading(true);
         const [
           studentsData, 
           admissionsData, 
@@ -157,6 +181,18 @@ export default function DashboardPage() {
           getInventoryItems(),
         ]);
         
+        const loggedInUser = teachersData.find(t => t.email === user.email);
+        
+        if (loggedInUser && loggedInUser.role) {
+          if (loggedInUser.role === 'Teacher') {
+            router.replace('/teacher/dashboard');
+            return; 
+          }
+          setUserRole(loggedInUser.role);
+        } else {
+          setUserRole(null); // Pending approval
+        }
+
         setStudents(studentsData);
         setAdmissions(admissionsData);
         setAssessments(assessmentsData);
@@ -168,9 +204,6 @@ export default function DashboardPage() {
         setInvoices(invoicesData);
         setInventory(inventoryData);
 
-        // This ensures the user is always treated as an admin on this dashboard.
-        setUserRole('Admin');
-        
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
         toast({
@@ -178,6 +211,8 @@ export default function DashboardPage() {
           description: "Failed to load data. Please check your Firebase connection.",
           variant: "destructive",
         });
+      } finally {
+        setIsDataLoading(false);
       }
     };
     
@@ -572,12 +607,30 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteInventoryItem = async (itemId: string) => {
+    try {
+      await deleteInventoryItem(itemId);
+      setInventory(prev => prev.filter(item => item.itemId !== itemId));
+      toast({
+        title: "Item Deleted",
+        description: "The inventory item has been removed.",
+      });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      toast({
+        title: "Deletion Failed",
+        description: "Could not delete the inventory item.",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
 
-  if (authLoading) {
+  if (authLoading || isDataLoading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         Loading application data...
@@ -585,13 +638,18 @@ export default function DashboardPage() {
     );
   }
 
-  const visibleTabs = userRole ? TABS_CONFIG.filter(tab => tab.roles.includes(userRole)) : [];
+  if (!userRole) {
+    return <PendingApproval />;
+  }
+
+
+  const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
       <Header />
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
-         {userRole && visibleTabs.length > 0 ? (
+         {visibleTabs.length > 0 ? (
           <Tabs defaultValue={visibleTabs[0]?.value} className="flex flex-col gap-4">
             <TabsList className="grid w-full grid-cols-1 sm:grid-cols-11 self-start">
               {visibleTabs.map(tab => (
@@ -655,6 +713,7 @@ export default function DashboardPage() {
               <InventoryList
                 inventoryItems={inventory}
                 onSaveItem={handleSaveInventoryItem}
+                onDeleteItem={handleDeleteInventoryItem}
               />
             </TabsContent>
 
@@ -680,7 +739,7 @@ export default function DashboardPage() {
                 subjects={subjects}
                 assessmentCategories={assessmentCategories}
                 onSaveSubjects={handleSaveSubjects}
-                onSaveCategories={handleSaveAssessmentCategories}
+                onSaveCategories={handleSaveCategories}
               />
             </TabsContent>
 

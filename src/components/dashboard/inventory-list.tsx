@@ -38,6 +38,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
@@ -232,11 +242,14 @@ function ItemDialog({ open, onOpenChange, onSave, existingItem }: { open: boolea
 interface InventoryListProps {
   inventoryItems: InventoryItem[];
   onSaveItem: (item: Omit<InventoryItem, 'itemId'> | InventoryItem) => Promise<boolean>;
+  onDeleteItem: (itemId: string) => void;
 }
 
-export function InventoryList({ inventoryItems, onSaveItem }: InventoryListProps) {
+export function InventoryList({ inventoryItems, onSaveItem, onDeleteItem }: InventoryListProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [itemToEdit, setItemToEdit] = React.useState<InventoryItem | null>(null);
+  const [itemToDelete, setItemToDelete] = React.useState<InventoryItem | null>(null);
+
 
   const handleEdit = (item: InventoryItem) => {
     setItemToEdit(item);
@@ -248,6 +261,17 @@ export function InventoryList({ inventoryItems, onSaveItem }: InventoryListProps
       setItemToEdit(null);
     }
     setIsDialogOpen(isOpen);
+  };
+  
+  const handleDelete = (item: InventoryItem) => {
+    setItemToDelete(item);
+  };
+  
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      onDeleteItem(itemToDelete.itemId);
+      setItemToDelete(null);
+    }
   };
 
   return (
@@ -304,7 +328,7 @@ export function InventoryList({ inventoryItems, onSaveItem }: InventoryListProps
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => handleEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDelete(item)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -325,6 +349,20 @@ export function InventoryList({ inventoryItems, onSaveItem }: InventoryListProps
         onSave={onSaveItem}
         existingItem={itemToEdit}
       />
+       <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will permanently delete the item "{itemToDelete?.name}". This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

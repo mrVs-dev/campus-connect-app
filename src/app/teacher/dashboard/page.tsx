@@ -5,7 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getTeachers, getAdmissions, addTeacher, getStudents, getAssessments, saveAssessment, getSubjects, getAssessmentCategories } from "@/lib/firebase/firestore";
+import { getTeachers, getAdmissions, addTeacher, getStudents, getAssessments, saveAssessment, getSubjects, getAssessmentCategories, updateTeacher } from "@/lib/firebase/firestore";
 import type { Teacher, Admission, Student, Assessment, Subject, AssessmentCategory, ClassAssignment } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { programs } from "@/lib/program-data";
@@ -76,20 +76,18 @@ export default function TeacherDashboardPage() {
           
           let loggedInTeacher = teachers.find(t => t.email === user.email);
           
-          if (!loggedInTeacher && user.email) {
-            const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ["", ""];
-            const newTeacherData = { firstName, lastName: lastNameParts.join(' '), email: user.email, role: 'Teacher' as const };
-            loggedInTeacher = await addTeacher(newTeacherData);
-            if (!loggedInTeacher) throw new Error("Could not create teacher profile.");
-            teachers.push(loggedInTeacher);
-          }
-
           if (!loggedInTeacher) {
-            // This case should ideally not happen for non-admins, but as a safeguard:
+             // If user is not in the teacher list at all, they shouldn't be here.
             router.replace('/dashboard');
             return;
           }
           
+          // Auto-assign 'Teacher' role if not present, but only if they are not another role type
+          if (!loggedInTeacher.role) {
+            loggedInTeacher.role = 'Teacher';
+            await updateTeacher(loggedInTeacher.teacherId, { role: 'Teacher'});
+          }
+
           if (loggedInTeacher.role !== 'Teacher') {
             router.replace('/dashboard');
             return;
