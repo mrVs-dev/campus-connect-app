@@ -155,37 +155,39 @@ export default function DashboardPage() {
     }
 
     const fetchData = async () => {
+      setIsDataLoading(true);
       try {
-        setIsDataLoading(true);
-        let currentRole: UserRole | null = null;
+        let currentTeachers = await getTeachers();
+        let finalRole: UserRole | null = null;
         
-        let initialTeachers = await getTeachers();
-
-        if (initialTeachers.length === 0 && user) {
-          console.log("No teachers found. Creating first user as Admin.");
-          const newAdmin = await addTeacher({
-            firstName: user.displayName?.split(' ')[0] || 'Admin',
-            lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
-            email: user.email!,
-            role: 'Admin',
-          });
-          initialTeachers = [newAdmin];
-          currentRole = 'Admin';
-        } else {
-           const loggedInUser = initialTeachers.find(t => t.email === user.email);
-           if (loggedInUser) {
-              if (loggedInUser.role === 'Teacher') {
-                router.replace('/teacher/dashboard');
-                return;
-              }
-              currentRole = loggedInUser.role;
-           }
+        // --- Admin Bootstrapping Logic ---
+        if (currentTeachers.length === 0 && user?.email) {
+            console.log("No teachers found. Creating first user as Admin.");
+            await addTeacher({
+                firstName: user.displayName?.split(' ')[0] || 'Admin',
+                lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
+                email: user.email!,
+                role: 'Admin',
+            });
+            // Re-fetch teachers to include the newly created admin
+            currentTeachers = await getTeachers();
         }
         
-        setTeachers(initialTeachers);
-        setUserRole(currentRole);
+        // --- Role Verification Logic ---
+        const loggedInUser = currentTeachers.find(t => t.email === user.email);
+        if (loggedInUser) {
+            if (loggedInUser.role === 'Teacher') {
+                router.replace('/teacher/dashboard');
+                return; // Exit early for teachers
+            }
+            finalRole = loggedInUser.role;
+        }
 
-        if (currentRole) {
+        // --- Set State and Fetch Data ---
+        setTeachers(currentTeachers);
+        setUserRole(finalRole);
+        
+        if (finalRole) {
            const [
             studentsData, 
             admissionsData, 
@@ -768,5 +770,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
