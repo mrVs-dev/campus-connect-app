@@ -167,13 +167,13 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? `Edit Invoice ${existingInvoice?.invoiceId.substring(0,7)}` : "Create New Invoice"}</DialogTitle>
-          <DialogDescription>Fill in the details for the invoice. Click save when you're done.</DialogDescription>
-        </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSave)} className="flex-1 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-1 pr-6">
+            <DialogHeader>
+              <DialogTitle>{isEditing ? `Edit Invoice ${existingInvoice?.invoiceId.substring(0,7)}` : "Create New Invoice"}</DialogTitle>
+              <DialogDescription>Fill in the details for the invoice. Click save when you're done.</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1 pr-6 py-4">
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="studentId" render={({ field }) => (
