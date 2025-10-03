@@ -206,7 +206,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
   };
 
   return (
-    <>
+    <div className="space-y-8">
       {canEdit && pendingUsers.length > 0 && (
           <Card>
               <CardHeader>
@@ -414,6 +414,6 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
         subjects={subjects}
         admissions={admissions}
       />
-    </>
+    </div>
   );
 }
