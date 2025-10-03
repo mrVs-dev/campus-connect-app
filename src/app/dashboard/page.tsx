@@ -162,8 +162,12 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsDataLoading(true);
       try {
-        let currentTeachers = await getTeachers();
-        const currentUsers = await getUsers();
+        // Fetch both teachers (approved staff) and all created user accounts
+        let [currentTeachers, currentUsers] = await Promise.all([
+            getTeachers(),
+            getUsers()
+        ]);
+        
         let finalRole: UserRole | null = null;
         const loggedInUserEmail = user.email;
 
@@ -171,6 +175,7 @@ export default function DashboardPage() {
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
           const adminExists = currentTeachers.some(t => t.email === ADMIN_EMAIL);
+          // If the admin user is not in the teachers list, add them.
           if (!adminExists) {
              const newAdmin = await addTeacher({
                 firstName: user.displayName?.split(' ')[0] || 'Admin',
@@ -178,25 +183,28 @@ export default function DashboardPage() {
                 email: loggedInUserEmail!,
                 role: 'Admin',
             });
+            // Add the new admin to the list for the current session
             currentTeachers = [...currentTeachers, newAdmin];
           }
         } else {
-           // --- Standard Role Verification Logic ---
+           // --- Standard Role Verification Logic for non-admin users ---
             const loggedInUser = currentTeachers.find(t => t.email === loggedInUserEmail);
             if (loggedInUser) {
+                // If a user is only a Teacher, redirect them to their specific dashboard
                 if (loggedInUser.role === 'Teacher') {
                     router.replace('/teacher/dashboard');
-                    return; // Exit early for teachers
+                    return;
                 }
                 finalRole = loggedInUser.role;
             }
         }
         
         // --- Set State and Fetch Data based on role ---
+        setUserRole(finalRole);
         setTeachers(currentTeachers);
         setAllUsers(currentUsers as AuthUser[]);
-        setUserRole(finalRole);
         
+        // If the user has a valid role (i.e., not pending approval)
         if (finalRole) {
            const [
             studentsData, 
@@ -456,7 +464,7 @@ export default function DashboardPage() {
     try {
       const newTeacher = await addTeacher(teacherData);
       if (newTeacher) {
-        // Refetch all users and teachers to update the state, including the new 'approved' status
+        // Refetch all users and teachers to update the state
         const [updatedTeachers, updatedUsers] = await Promise.all([getTeachers(), getUsers()]);
         setTeachers(updatedTeachers);
         setAllUsers(updatedUsers as AuthUser[]);
@@ -674,6 +682,7 @@ export default function DashboardPage() {
   }
 
   const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
+  // Calculate pending users by filtering `allUsers` against `teachers`
   const pendingUsers = allUsers.filter(u => !teachers.some(t => t.email === u.email));
 
   return (
@@ -791,3 +800,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
