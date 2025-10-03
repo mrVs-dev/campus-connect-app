@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { Student, Assessment, Admission, Enrollment, Subject, AssessmentCategory } from "@/lib/types";
+import type { Student, Assessment, Admission, Enrollment, Subject, AssessmentCategory, UserRole } from "@/lib/types";
 import { Upload, MoreHorizontal, ArrowUpDown, Trash2, Move, Search, Edit } from "lucide-react";
 import {
   Card,
@@ -50,6 +50,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 type SortableKey = 'studentId' | 'firstName' | 'status';
 
 export function StudentList({
+  userRole,
   students,
   assessments,
   admissions,
@@ -62,6 +63,7 @@ export function StudentList({
   onDeleteSelectedStudents,
   onMoveStudents,
 }: {
+  userRole: UserRole;
   students: Student[];
   assessments: Assessment[];
   admissions: Admission[];
@@ -83,6 +85,10 @@ export function StudentList({
   const [selectedStudentIds, setSelectedStudentIds] = React.useState<string[]>([]);
   const [studentsToDelete, setStudentsToDelete] = React.useState<string[]>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
+
+  const canEdit = userRole === 'Admin' || userRole === 'Receptionist';
+  const canDelete = userRole === 'Admin';
+  const canMove = userRole === 'Admin' || userRole === 'Receptionist';
 
   const filteredStudents = React.useMemo(() => {
     if (!searchQuery) {
@@ -128,16 +134,18 @@ export function StudentList({
 
   const handleDeleteClick = (e: React.MouseEvent, student: Student) => {
     e.stopPropagation();
+    if (!canDelete) return;
     setStudentToDelete(student);
   };
   
   const handleEditClick = (e: React.MouseEvent, student: Student) => {
     e.stopPropagation();
+    if (!canEdit) return;
     setStudentToEdit(student);
   };
   
   const confirmDelete = () => {
-    if (studentToDelete) {
+    if (studentToDelete && canDelete) {
       onDeleteStudent(studentToDelete.studentId);
       setStudentToDelete(null);
     }
@@ -160,21 +168,25 @@ export function StudentList({
   };
 
   const handleDeleteSelected = () => {
-    if (selectedStudentIds.length > 0) {
+    if (selectedStudentIds.length > 0 && canDelete) {
       setStudentsToDelete(selectedStudentIds);
     }
   };
 
   const confirmDeleteSelected = () => {
-    onDeleteSelectedStudents(studentsToDelete);
-    setStudentsToDelete([]);
-    setSelectedStudentIds([]);
+    if (canDelete) {
+        onDeleteSelectedStudents(studentsToDelete);
+        setStudentsToDelete([]);
+        setSelectedStudentIds([]);
+    }
   };
 
   const handleMove = (schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => {
-    onMoveStudents(selectedStudentIds, schoolYear, fromClass, toClass);
-    setIsMoveOpen(false);
-    setSelectedStudentIds([]);
+    if (canMove) {
+        onMoveStudents(selectedStudentIds, schoolYear, fromClass, toClass);
+        setIsMoveOpen(false);
+        setSelectedStudentIds([]);
+    }
   };
   
   const handleUpdateStudent = (studentId: string, updatedData: Partial<Student>) => {
@@ -212,37 +224,43 @@ export function StudentList({
            <div className="mt-4 flex items-center justify-end gap-2">
               {numSelected > 0 && (
                 <>
-                  <Button
+                  {canMove && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        onClick={() => setIsMoveOpen(true)}
+                    >
+                        <Move className="h-3.5 w-3.5" />
+                        Move ({numSelected})
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                        size="sm"
+                        variant="destructive"
+                        className="gap-1"
+                        onClick={handleDeleteSelected}
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete ({numSelected})
+                    </Button>
+                  )}
+                </>
+              )}
+              {canEdit && (
+                <Button
                     size="sm"
                     variant="outline"
                     className="gap-1"
-                    onClick={() => setIsMoveOpen(true)}
-                  >
-                    <Move className="h-3.5 w-3.5" />
-                    Move ({numSelected})
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="gap-1"
-                    onClick={handleDeleteSelected}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete ({numSelected})
-                  </Button>
-                </>
+                    onClick={() => setIsImportOpen(true)}
+                >
+                    <Upload className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Import Students
+                    </span>
+                </Button>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1"
-                onClick={() => setIsImportOpen(true)}
-              >
-                <Upload className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Import Students
-                </span>
-              </Button>
             </div>
         </CardHeader>
         <CardContent>
@@ -367,14 +385,18 @@ export function StudentList({
                             <DropdownMenuItem onSelect={() => setSelectedStudent(student)}>
                               View Details
                             </DropdownMenuItem>
-                             <DropdownMenuItem onSelect={(e) => handleEditClick(e, student)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={(e) => handleDeleteClick(e, student)} className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
+                            {canEdit && (
+                                <DropdownMenuItem onSelect={(e) => handleEditClick(e, student)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Profile
+                                </DropdownMenuItem>
+                            )}
+                            {canDelete && (
+                                <DropdownMenuItem onSelect={(e) => handleDeleteClick(e, student)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                                </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>

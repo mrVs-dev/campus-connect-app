@@ -67,6 +67,7 @@ const teacherFormSchema = z.object({
 type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 
 interface TeacherListProps {
+  userRole: UserRole;
   teachers: Teacher[];
   onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status'>) => Promise<Teacher | null>;
 }
@@ -92,13 +93,15 @@ const formatDateSafe = (date: any): string => {
 };
 // ---
 
-export function TeacherList({ teachers: initialTeachers, onAddTeacher }: TeacherListProps) {
+export function TeacherList({ userRole, teachers: initialTeachers, onAddTeacher }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
   const [teachers, setTeachers] = React.useState(initialTeachers);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const { toast } = useToast();
+
+  const canEdit = userRole === 'Admin';
 
   React.useEffect(() => {
     setTeachers(initialTeachers);
@@ -128,6 +131,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   });
 
   const handleAddTeacher = async (values: TeacherFormValues) => {
+    if (!canEdit) return;
     const newTeacher = await onAddTeacher(values);
     if (newTeacher) {
       setTeachers(prev => [...prev, newTeacher]);
@@ -137,6 +141,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   };
   
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
+    if (!canEdit) return;
     try {
       const dataToSave = Object.fromEntries(
         Object.entries(updatedData).filter(([, value]) => value !== undefined)
@@ -165,6 +170,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
   };
   
   const handleEditClick = (teacher: Teacher) => {
+    if (!canEdit) return;
     setTeacherToEdit(teacher);
   };
 
@@ -179,86 +185,88 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                 Manage your school's teaching and administrative staff.
               </CardDescription>
             </div>
-            <Dialog open={isNewTeacherDialogOpen} onOpenChange={setIsNewTeacherDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-1">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  New Staff
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleAddTeacher)}>
-                    <DialogHeader>
-                      <DialogTitle>Add New Staff Member</DialogTitle>
-                      <DialogDescription>
-                        Enter the details for the new staff member.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <FormField control={form.control} name="firstName" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField control={form.control} name="lastName" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl><Input {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField control={form.control} name="email" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl><Input type="email" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField control={form.control} name="phone" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Phone</FormLabel>
-                            <FormControl><Input type="tel" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <FormField
-                        control={form.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Role</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {userRoles.map(role => (
-                                  <SelectItem key={role} value={role}>{role}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setIsNewTeacherDialogOpen(false)}>Cancel</Button>
-                      <Button type="submit">Save Staff</Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+            {canEdit && (
+                <Dialog open={isNewTeacherDialogOpen} onOpenChange={setIsNewTeacherDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm" className="gap-1">
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    New Staff
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                    <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleAddTeacher)}>
+                        <DialogHeader>
+                        <DialogTitle>Add New Staff Member</DialogTitle>
+                        <DialogDescription>
+                            Enter the details for the new staff member.
+                        </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                        <FormField control={form.control} name="firstName" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>First Name</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField control={form.control} name="lastName" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Last Name</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField control={form.control} name="email" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl><Input type="email" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField control={form.control} name="phone" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Phone</FormLabel>
+                                <FormControl><Input type="tel" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="role"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Role</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select a role" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {userRoles.map(role => (
+                                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        </div>
+                        <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsNewTeacherDialogOpen(false)}>Cancel</Button>
+                        <Button type="submit">Save Staff</Button>
+                        </DialogFooter>
+                    </form>
+                    </Form>
+                </DialogContent>
+                </Dialog>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -270,7 +278,7 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                 <TableHead>Role</TableHead>
                 <TableHead>Joined Date</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
+                {canEdit && <TableHead><span className="sr-only">Actions</span></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -297,26 +305,28 @@ export function TeacherList({ teachers: initialTeachers, onAddTeacher }: Teacher
                       {teacher.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleEditClick(teacher)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                           <Trash2 className="mr-2 h-4 w-4" />
-                           Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  {canEdit && (
+                    <TableCell>
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => handleEditClick(teacher)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

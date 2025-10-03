@@ -89,9 +89,9 @@ function PendingApproval() {
 
 const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
   { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Receptionist', 'Head of Department'] },
-  { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department'] },
+  { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department', 'Teacher'] },
   { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
-  { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department'] },
+  { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department', 'Teacher'] },
   { value: "fees", label: "Fees", roles: ['Admin', 'Receptionist'] },
   { value: "invoicing", label: "Invoicing", roles: ['Admin', 'Receptionist'] },
   { value: "inventory", label: "Inventory", roles: ['Admin', 'Receptionist'] },
@@ -176,7 +176,7 @@ export default function DashboardPage() {
                 email: loggedInUserEmail,
                 role: 'Admin',
             });
-            currentTeachers.push(newAdmin);
+            currentTeachers = [...currentTeachers, newAdmin];
           }
         } else {
            // --- Standard Role Verification Logic ---
@@ -687,6 +687,7 @@ export default function DashboardPage() {
 
             <TabsContent value="students">
               <StudentList 
+                userRole={userRole}
                 students={studentsWithLatestEnrollments}
                 assessments={assessments}
                 admissions={admissions}
@@ -702,11 +703,16 @@ export default function DashboardPage() {
             </TabsContent>
             
             <TabsContent value="teachers">
-              <TeacherList teachers={teachers} onAddTeacher={handleAddTeacher} />
+              <TeacherList 
+                userRole={userRole}
+                teachers={teachers} 
+                onAddTeacher={handleAddTeacher} 
+              />
             </TabsContent>
 
             <TabsContent value="assessments">
               <AssessmentList
+                userRole={userRole}
                 assessments={assessments}
                 students={students}
                 subjects={subjects}
