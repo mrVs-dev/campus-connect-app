@@ -157,41 +157,35 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         setIsDataLoading(true);
-
-        const initialTeachers = await getTeachers();
-        let currentUserRole: UserRole | null = null;
-        let shouldFetchData = false;
+        let currentRole: UserRole | null = null;
+        
+        let initialTeachers = await getTeachers();
 
         if (initialTeachers.length === 0 && user) {
-          console.log("No teachers found, creating first admin user.");
+          console.log("No teachers found. Creating first user as Admin.");
           const newAdmin = await addTeacher({
             firstName: user.displayName?.split(' ')[0] || 'Admin',
             lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
             email: user.email!,
             role: 'Admin',
           });
-          setTeachers([newAdmin]);
-          currentUserRole = 'Admin';
-          shouldFetchData = true;
+          initialTeachers = [newAdmin];
+          currentRole = 'Admin';
         } else {
-          setTeachers(initialTeachers);
-          const loggedInUser = initialTeachers.find(t => t.email === user.email);
-        
-          if (loggedInUser && loggedInUser.role) {
-            if (loggedInUser.role === 'Teacher') {
-              router.replace('/teacher/dashboard');
-              return; 
-            }
-            currentUserRole = loggedInUser.role;
-            shouldFetchData = true;
-          } else {
-            currentUserRole = null; // Pending approval
-          }
+           const loggedInUser = initialTeachers.find(t => t.email === user.email);
+           if (loggedInUser) {
+              if (loggedInUser.role === 'Teacher') {
+                router.replace('/teacher/dashboard');
+                return;
+              }
+              currentRole = loggedInUser.role;
+           }
         }
         
-        setUserRole(currentUserRole);
+        setTeachers(initialTeachers);
+        setUserRole(currentRole);
 
-        if (shouldFetchData) {
+        if (currentRole) {
            const [
             studentsData, 
             admissionsData, 
@@ -774,3 +768,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
