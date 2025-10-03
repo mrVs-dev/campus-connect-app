@@ -35,6 +35,10 @@ import { FeesList } from "@/components/dashboard/fees-list";
 import { InvoicingList } from "@/components/dashboard/invoicing-list";
 import { InventoryList } from "@/components/dashboard/inventory-list";
 
+// --- IMPORTANT: Admin Exception ---
+// This email will always be treated as an Admin and will bypass the approval process.
+const ADMIN_EMAIL = "user@example.com"; 
+
 function MissingFirebaseConfig() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
@@ -160,30 +164,36 @@ export default function DashboardPage() {
         let currentTeachers = await getTeachers();
         let finalRole: UserRole | null = null;
         
-        // --- Admin Bootstrapping Logic ---
-        if (currentTeachers.length === 0 && user?.email) {
-            console.log("No teachers found. Creating first user as Admin.");
-            await addTeacher({
+        const loggedInUserEmail = user.email;
+
+        // --- Admin Exception Logic ---
+        if (loggedInUserEmail === ADMIN_EMAIL) {
+          finalRole = 'Admin';
+          const adminExists = currentTeachers.some(t => t.email === ADMIN_EMAIL);
+          if (!adminExists) {
+             console.log("Admin email recognized. Creating admin profile.");
+             await addTeacher({
                 firstName: user.displayName?.split(' ')[0] || 'Admin',
                 lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
-                email: user.email!,
+                email: loggedInUserEmail,
                 role: 'Admin',
             });
-            // Re-fetch teachers to include the newly created admin
+            // Re-fetch teachers to ensure the new admin is included
             currentTeachers = await getTeachers();
+          }
+        } else {
+           // --- Standard Role Verification Logic ---
+            const loggedInUser = currentTeachers.find(t => t.email === loggedInUserEmail);
+            if (loggedInUser) {
+                if (loggedInUser.role === 'Teacher') {
+                    router.replace('/teacher/dashboard');
+                    return; // Exit early for teachers
+                }
+                finalRole = loggedInUser.role;
+            }
         }
         
-        // --- Role Verification Logic ---
-        const loggedInUser = currentTeachers.find(t => t.email === user.email);
-        if (loggedInUser) {
-            if (loggedInUser.role === 'Teacher') {
-                router.replace('/teacher/dashboard');
-                return; // Exit early for teachers
-            }
-            finalRole = loggedInUser.role;
-        }
-
-        // --- Set State and Fetch Data ---
+        // --- Set State and Fetch Data based on role ---
         setTeachers(currentTeachers);
         setUserRole(finalRole);
         
@@ -770,7 +780,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    
