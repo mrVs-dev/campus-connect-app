@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'Admin' | 'Receptionist' | 'Head of Department' | 'Teacher';
 
 export type Guardian = {

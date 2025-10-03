@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, Payment } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/app/dashboard/overview";
@@ -14,7 +15,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,6 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { FeesList } from "@/components/dashboard/fees-list";
+import { InvoicingList } from "@/components/dashboard/invoicing-list";
 
 function MissingFirebaseConfig() {
   return (
@@ -66,6 +68,7 @@ const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
   { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
   { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department'] },
   { value: "fees", label: "Fees", roles: ['Admin', 'Receptionist'] },
+  { value: "invoicing", label: "Invoicing", roles: ['Admin', 'Receptionist'] },
   { value: "admissions", label: "Admissions", roles: ['Admin', 'Receptionist'] },
   { value: "enrollment", label: "Enrollment", roles: ['Admin', 'Receptionist'] },
   { value: "statusHistory", label: "Status History", roles: ['Admin'] },
@@ -85,6 +88,7 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [fees, setFees] = React.useState<Fee[]>([]);
+  const [invoices, setInvoices] = React.useState<Invoice[]>([]);
   const [userRole, setUserRole] = React.useState<UserRole>('Admin');
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -134,7 +138,8 @@ export default function DashboardPage() {
           statusHistoryData, 
           subjectsData, 
           categoriesData,
-          feesData
+          feesData,
+          invoicesData,
         ] = await Promise.all([
           getStudents(),
           getAdmissions(),
@@ -144,6 +149,7 @@ export default function DashboardPage() {
           getSubjects(),
           getAssessmentCategories(),
           getFees(),
+          getInvoices(),
         ]);
         
         setStudents(studentsData);
@@ -154,6 +160,7 @@ export default function DashboardPage() {
         setSubjects(subjectsData);
         setAssessmentCategories(categoriesData);
         setFees(feesData);
+        setInvoices(invoicesData);
 
         // This ensures the user is always treated as an admin on this dashboard.
         setUserRole('Admin');
@@ -483,6 +490,54 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'invoiceId'> | Invoice) => {
+    try {
+      const savedInvoice = await saveInvoice(invoiceData);
+      setInvoices(prev => {
+        const existingIndex = prev.findIndex(i => i.invoiceId === savedInvoice.invoiceId);
+        if (existingIndex > -1) {
+          const updatedInvoices = [...prev];
+          updatedInvoices[existingIndex] = savedInvoice;
+          return updatedInvoices;
+        } else {
+          return [...prev, savedInvoice];
+        }
+      });
+      toast({
+        title: "Invoice Saved",
+        description: `Invoice ${savedInvoice.invoiceId} has been saved.`,
+      });
+      return true;
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      toast({
+        title: "Save Failed",
+        description: "There was an error saving the invoice.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    try {
+      await deleteInvoice(invoiceId);
+      setInvoices(prev => prev.filter(i => i.invoiceId !== invoiceId));
+      toast({
+        title: "Invoice Deleted",
+        description: `Invoice ${invoiceId} has been deleted.`,
+      });
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      toast({
+        title: "Deletion Failed",
+        description: "There was an error deleting the invoice.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
@@ -503,7 +558,7 @@ export default function DashboardPage() {
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
          {userRole && visibleTabs.length > 0 ? (
           <Tabs defaultValue={visibleTabs[0]?.value} className="flex flex-col gap-4">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-9 self-start">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-10 self-start">
               {visibleTabs.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
               ))}
@@ -548,6 +603,15 @@ export default function DashboardPage() {
                 fees={fees}
                 onSaveFee={handleSaveFee}
                 onDeleteFee={handleDeleteFee}
+              />
+            </TabsContent>
+            
+            <TabsContent value="invoicing">
+              <InvoicingList
+                invoices={invoices}
+                students={students}
+                onSaveInvoice={handleSaveInvoice}
+                onDeleteInvoice={handleDeleteInvoice}
               />
             </TabsContent>
 

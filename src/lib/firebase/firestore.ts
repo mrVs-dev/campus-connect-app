@@ -1,4 +1,5 @@
 
+
 import { 
   collection, 
   getDocs, 
@@ -18,7 +19,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 
 // Type guards to check for Firestore Timestamps
@@ -574,6 +575,47 @@ export async function deleteFee(feeId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const feeDoc = doc(db, 'fees', feeId);
     await deleteDoc(feeDoc);
+}
+
+// --- Invoicing Collection ---
+
+export async function getInvoices(): Promise<Invoice[]> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const invoicesCollection = collection(db, 'invoices');
+    const q = query(invoicesCollection, orderBy("issueDate", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return convertTimestampsToDates({
+            ...data,
+            invoiceId: doc.id,
+        }) as Invoice;
+    });
+}
+
+export async function saveInvoice(invoiceData: Omit<Invoice, 'invoiceId'> | Invoice): Promise<Invoice> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    
+    const dataWithTimestamps = convertDatesToTimestamps(invoiceData);
+
+    if ('invoiceId' in invoiceData) {
+        const invoiceDoc = doc(db, 'invoices', invoiceData.invoiceId);
+        await setDoc(invoiceDoc, dataWithTimestamps, { merge: true });
+        return invoiceData;
+    } else {
+        const invoicesCollection = collection(db, 'invoices');
+        const newDocRef = await addDoc(invoicesCollection, dataWithTimestamps);
+        return {
+            ...invoiceData,
+            invoiceId: newDocRef.id,
+        };
+    }
+}
+
+export async function deleteInvoice(invoiceId: string): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const invoiceDoc = doc(db, 'invoices', invoiceId);
+    await deleteDoc(invoiceDoc);
 }
 
 
