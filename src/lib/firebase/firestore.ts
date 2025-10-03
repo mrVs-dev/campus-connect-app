@@ -101,6 +101,13 @@ export async function getOrCreateUser(user: User) {
     }
 }
 
+export async function getUsers(): Promise<User[]> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const usersCollection = collection(db, 'users');
+    const snapshot = await getDocs(usersCollection);
+    return snapshot.docs.map(doc => convertTimestampsToDates(doc.data()) as User);
+}
+
 
 // --- App Metadata ---
 const getNextStudentId = async (): Promise<string> => {
