@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -361,4 +360,3 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
     </Dialog>
   );
 }
-
