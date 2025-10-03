@@ -167,6 +167,26 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
     if (student) {
       form.reset({
         ...student,
+        familyId: student.familyId || "",
+        middleName: student.middleName || "",
+        khmerFirstName: student.khmerFirstName || "",
+        khmerLastName: student.khmerLastName || "",
+        placeOfBirth: student.placeOfBirth || "",
+        nationality: student.nationality || "",
+        nationalId: student.nationalId || "",
+        previousSchool: student.previousSchool || "",
+        address: {
+          district: student.address?.district || "Siem Reap",
+          commune: student.address?.commune || "",
+          village: student.address?.village || "",
+          street: student.address?.street || "",
+          house: student.address?.house || "",
+        },
+        emergencyContact: {
+          name: student.emergencyContact?.name || "",
+          phone: student.emergencyContact?.phone || "",
+        },
+        avatarUrl: student.avatarUrl || "",
         dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth) : undefined,
         guardians: student.guardians?.map(g => ({ ...g, mobiles: g.mobiles || [""] })) || [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""] }]
       });
