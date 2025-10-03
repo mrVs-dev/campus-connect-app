@@ -90,7 +90,7 @@ function PendingApproval() {
 const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
   { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Receptionist', 'Head of Department'] },
   { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department', 'Teacher'] },
-  { value: "teachers", label: "Teachers", roles: ['Admin', 'Head of Department'] },
+  { value: "users", label: "Users", roles: ['Admin', 'Head of Department'] },
   { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department', 'Teacher'] },
   { value: "fees", label: "Fees", roles: ['Admin', 'Receptionist'] },
   { value: "invoicing", label: "Invoicing", roles: ['Admin', 'Receptionist'] },
@@ -702,7 +702,7 @@ export default function DashboardPage() {
               />
             </TabsContent>
             
-            <TabsContent value="teachers">
+            <TabsContent value="users">
               <TeacherList 
                 userRole={userRole}
                 teachers={teachers} 
