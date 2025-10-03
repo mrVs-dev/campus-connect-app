@@ -163,7 +163,7 @@ export default function DashboardPage() {
       setIsDataLoading(true);
       try {
         let currentTeachers = await getTeachers();
-        let currentUsers = await getUsers();
+        const currentUsers = await getUsers();
         let finalRole: UserRole | null = null;
         const loggedInUserEmail = user.email;
 
@@ -175,7 +175,7 @@ export default function DashboardPage() {
              const newAdmin = await addTeacher({
                 firstName: user.displayName?.split(' ')[0] || 'Admin',
                 lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
-                email: loggedInUserEmail,
+                email: loggedInUserEmail!,
                 role: 'Admin',
             });
             currentTeachers = [...currentTeachers, newAdmin];
