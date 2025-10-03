@@ -41,6 +41,7 @@ import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css'
 
 const formSchema = z.object({
+  familyId: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
@@ -88,6 +89,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const form = useForm<EnrollmentFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      familyId: "",
       firstName: "",
       middleName: "",
       lastName: "",
@@ -177,6 +179,16 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                   <CardDescription>Enter the student's personal details.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <FormField control={form.control} name="familyId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Family ID (Optional)</FormLabel>
+                      <FormControl><Input placeholder="e.g., FAM001" {...field} /></FormControl>
+                      <FormDescription>
+                        Enter an existing Family ID to link this student with siblings.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <FormField control={form.control} name="firstName" render={({ field }) => (
                       <FormItem>

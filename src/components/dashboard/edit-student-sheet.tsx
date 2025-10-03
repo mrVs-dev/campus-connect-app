@@ -107,6 +107,7 @@ function StatusReasonDialog({ open, onOpenChange, onSubmit, studentName, newStat
 
 
 const formSchema = z.object({
+  familyId: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
@@ -268,6 +269,16 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                       <Card>
                         <CardHeader><CardTitle>Personal Information</CardTitle></CardHeader>
                         <CardContent className="space-y-6">
+                           <FormField control={form.control} name="familyId" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Family ID</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormDescription>
+                                Link this student with siblings using a shared Family ID.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <FormField control={form.control} name="firstName" render={({ field }) => (
                               <FormItem>
