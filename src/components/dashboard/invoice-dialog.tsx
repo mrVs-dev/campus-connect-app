@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format, addMonths } from "date-fns";
@@ -61,6 +61,43 @@ const invoiceFormSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
+function TotalsSection({ control }: { control: any }) {
+  const lineItems = useWatch({ control, name: "lineItems" });
+  const discounts = useWatch({ control, name: "discounts" });
+
+  const subtotal = React.useMemo(() => {
+    return (lineItems || []).reduce((acc: number, item: any) => acc + (item.amount || 0), 0);
+  }, [lineItems]);
+
+  const totalDiscount = React.useMemo(() => {
+    return (discounts || []).reduce((acc: number, d: any) => acc + (d.discountedAmount || 0), 0);
+  }, [discounts]);
+  
+  const totalAmount = subtotal - totalDiscount;
+  
+  return (
+     <div className="space-y-4">
+        <Separator />
+        <div className="flex justify-end gap-4 font-medium">
+            <span>Subtotal</span>
+            <span>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        </div>
+        <div className="flex justify-end gap-4 font-medium text-destructive">
+          <span>Discount</span>
+          <span>
+            ${totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div className="flex justify-end gap-4 text-lg font-bold">
+            <span>Total</span>
+            <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        </div>
+        <Separator />
+      </div>
+  );
+}
+
+
 interface InvoiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -99,19 +136,6 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
     control: form.control,
     name: "discounts",
   });
-
-  const watchedLineItems = form.watch("lineItems");
-  const watchedDiscounts = form.watch("discounts");
-
-  const subtotal = React.useMemo(() => {
-    return (watchedLineItems || []).reduce((acc, item) => acc + (item.amount || 0), 0);
-  }, [watchedLineItems]);
-
-  const totalDiscount = React.useMemo(() => {
-    return (watchedDiscounts || []).reduce((acc, d) => acc + (d.discountedAmount || 0), 0);
-  }, [watchedDiscounts]);
-
-  const totalAmount = subtotal - totalDiscount;
 
   React.useEffect(() => {
     if (open) {
@@ -269,7 +293,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                         )} />
                         <FormField control={form.control} name={`lineItems.${index}.amount`} render={({ field }) => (
                           <FormItem className="w-32">
-                            <FormControl><Input type="number" {...field} /></FormControl>
+                            <FormControl><Input type="number" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -303,7 +327,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                         )} />
                         <FormField control={form.control} name={`discounts.${index}.discountedAmount`} render={({ field }) => (
                           <FormItem className="w-32">
-                            <FormControl><Input type="number" {...field} /></FormControl>
+                            <FormControl><Input type="number" {...field} value={field.value || ''} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -316,25 +340,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                   </div>
                 </div>
 
-
-                <div className="space-y-4">
-                  <Separator />
-                  <div className="flex justify-end gap-4 font-medium">
-                      <span>Subtotal</span>
-                      <span>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-end gap-4 font-medium text-destructive">
-                    <span>Discount</span>
-                    <span>
-                      - ${totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="flex justify-end gap-4 text-lg font-bold">
-                      <span>Total</span>
-                      <span>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <Separator />
-                </div>
+                <TotalsSection control={form.control} />
 
                 <FormField control={form.control} name="amountPaid" render={({ field }) => (
                     <FormItem>
@@ -356,4 +362,3 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
   );
 }
 
-    
