@@ -148,11 +148,15 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
   const handleSave = async (values: InvoiceFormValues) => {
     setIsSaving(true);
     
+    const calculatedSubtotal = (values.lineItems || []).reduce((acc, item) => acc + (item.amount || 0), 0);
+    const calculatedTotalDiscount = (values.discounts || []).reduce((acc, d) => acc + (d.discountedAmount || 0), 0);
+    const calculatedTotalAmount = calculatedSubtotal - calculatedTotalDiscount;
+
     const invoiceData = {
       ...values,
-      subtotal,
-      totalDiscount,
-      totalAmount,
+      subtotal: calculatedSubtotal,
+      totalDiscount: calculatedTotalDiscount,
+      totalAmount: calculatedTotalAmount,
       amountPaid: values.amountPaid || 0,
     };
     
@@ -318,9 +322,11 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
                       <span>Subtotal</span>
                       <span>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
-                    <div className="flex justify-end gap-4 font-medium text-destructive">
-                      <span>Discount</span>
-                      <span>-${totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <div className="flex justify-end gap-4 font-medium text-destructive">
+                    <span>Discount</span>
+                    <span>
+                      ${totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
                   <div className="flex justify-end gap-4 text-lg font-bold">
                       <span>Total</span>
