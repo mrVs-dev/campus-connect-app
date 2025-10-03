@@ -3,8 +3,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, User } from "firebase/auth";
 import { auth, firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/firebase";
+import { getOrCreateUser } from "@/lib/firebase/firestore";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,7 +75,8 @@ export default function LoginPage() {
     setIsSigningIn(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      await getOrCreateUser(result.user);
       // The onAuthStateChanged listener in useAuth will handle the redirect.
     } catch (error: any) {
       console.error("Authentication failed:", error);

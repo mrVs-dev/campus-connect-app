@@ -83,6 +83,25 @@ const convertDatesToTimestamps = (data: any): any => {
     return data;
 };
 
+// --- Users Collection (for auth approval) ---
+export async function getOrCreateUser(user: User) {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const userRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+        await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            approved: false, // Default to not approved
+            createdAt: serverTimestamp(),
+        });
+    }
+}
+
+
 // --- App Metadata ---
 const getNextStudentId = async (): Promise<string> => {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
