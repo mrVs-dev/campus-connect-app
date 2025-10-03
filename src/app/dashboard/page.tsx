@@ -159,8 +159,7 @@ export default function DashboardPage() {
         setIsDataLoading(true);
 
         const initialTeachers = await getTeachers();
-        let teachersData = initialTeachers;
-
+        
         // Bootstrap the first user as an Admin if no teachers exist
         if (initialTeachers.length === 0 && user) {
           console.log("No teachers found, creating first admin user.");
@@ -171,26 +170,29 @@ export default function DashboardPage() {
             role: 'Admin',
           });
           if(newAdmin) {
-            teachersData = [newAdmin];
-            setTeachers(teachersData);
+            setTeachers([newAdmin]);
+            setUserRole('Admin');
+             // Stop further processing for this run, as we've established the admin.
+             // Fetch other data in the next effect run or based on role.
           }
-        }
-        
-        const loggedInUser = teachersData.find(t => t.email === user.email);
-        
-        if (loggedInUser && loggedInUser.role) {
-          if (loggedInUser.role === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return; 
-          }
-          setUserRole(loggedInUser.role);
         } else {
-          setUserRole(null); // Pending approval
+          setTeachers(initialTeachers);
+          const loggedInUser = initialTeachers.find(t => t.email === user.email);
+        
+          if (loggedInUser && loggedInUser.role) {
+            if (loggedInUser.role === 'Teacher') {
+              router.replace('/teacher/dashboard');
+              return; 
+            }
+            setUserRole(loggedInUser.role);
+          } else {
+            setUserRole(null); // Pending approval
+          }
         }
-
-        // Fetch all other data only if the user is approved
-        if (loggedInUser) {
-          const [
+        
+        // Fetch all other data. This will run for the new admin on the next render.
+        if (userRole || (initialTeachers.length === 0 && user)) {
+           const [
             studentsData, 
             admissionsData, 
             assessmentsData, 
@@ -215,7 +217,6 @@ export default function DashboardPage() {
           setStudents(studentsData);
           setAdmissions(admissionsData);
           setAssessments(assessmentsData);
-          setTeachers(teachersData); // Already fetched
           setStatusHistory(statusHistoryData);
           setSubjects(subjectsData);
           setAssessmentCategories(categoriesData);
@@ -238,7 +239,8 @@ export default function DashboardPage() {
     
     fetchData();
 
-  }, [user, authLoading, router, toast]);
+  }, [user, authLoading, router, toast, userRole]);
+
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
     try {
@@ -440,7 +442,6 @@ export default function DashboardPage() {
       toast({
         title: "Deletion Failed",
         description: "There was an error deleting all students. Please try again.",
-        variant: "destructive",
       });
     }
   };
@@ -773,5 +774,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
