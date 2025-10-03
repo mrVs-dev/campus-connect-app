@@ -70,6 +70,16 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
+    defaultValues: {
+      studentId: "",
+      schoolYear: currentSchoolYear,
+      issueDate: new Date(),
+      dueDate: addMonths(new Date(), 1),
+      paymentPlan: "Monthly",
+      lineItems: [],
+      status: "Draft",
+      amountPaid: 0,
+    }
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -79,7 +89,7 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
 
   const watchedLineItems = form.watch("lineItems");
   const subtotal = React.useMemo(() => {
-    return watchedLineItems.reduce((acc, item) => acc + (item.amount || 0), 0);
+    return (watchedLineItems || []).reduce((acc, item) => acc + (item.amount || 0), 0);
   }, [watchedLineItems]);
 
   React.useEffect(() => {
@@ -296,4 +306,3 @@ export function InvoiceDialog({ open, onOpenChange, students, fees, onSave, exis
     </Dialog>
   );
 }
-
