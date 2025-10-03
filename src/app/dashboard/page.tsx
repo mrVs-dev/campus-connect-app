@@ -157,29 +157,24 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         setIsDataLoading(true);
-        const [
-          studentsData, 
-          admissionsData, 
-          assessmentsData, 
-          teachersData, 
-          statusHistoryData, 
-          subjectsData, 
-          categoriesData,
-          feesData,
-          invoicesData,
-          inventoryData,
-        ] = await Promise.all([
-          getStudents(),
-          getAdmissions(),
-          getAssessments(),
-          getTeachers(),
-          getStudentStatusHistory(),
-          getSubjects(),
-          getAssessmentCategories(),
-          getFees(),
-          getInvoices(),
-          getInventoryItems(),
-        ]);
+
+        const initialTeachers = await getTeachers();
+        let teachersData = initialTeachers;
+
+        // Bootstrap the first user as an Admin if no teachers exist
+        if (initialTeachers.length === 0 && user) {
+          console.log("No teachers found, creating first admin user.");
+          const newAdmin = await addTeacher({
+            firstName: user.displayName?.split(' ')[0] || 'Admin',
+            lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
+            email: user.email!,
+            role: 'Admin',
+          });
+          if(newAdmin) {
+            teachersData = [newAdmin];
+            setTeachers(teachersData);
+          }
+        }
         
         const loggedInUser = teachersData.find(t => t.email === user.email);
         
@@ -193,16 +188,41 @@ export default function DashboardPage() {
           setUserRole(null); // Pending approval
         }
 
-        setStudents(studentsData);
-        setAdmissions(admissionsData);
-        setAssessments(assessmentsData);
-        setTeachers(teachersData);
-        setStatusHistory(statusHistoryData);
-        setSubjects(subjectsData);
-        setAssessmentCategories(categoriesData);
-        setFees(feesData);
-        setInvoices(invoicesData);
-        setInventory(inventoryData);
+        // Fetch all other data only if the user is approved
+        if (loggedInUser) {
+          const [
+            studentsData, 
+            admissionsData, 
+            assessmentsData, 
+            statusHistoryData, 
+            subjectsData, 
+            categoriesData,
+            feesData,
+            invoicesData,
+            inventoryData,
+          ] = await Promise.all([
+            getStudents(),
+            getAdmissions(),
+            getAssessments(),
+            getStudentStatusHistory(),
+            getSubjects(),
+            getAssessmentCategories(),
+            getFees(),
+            getInvoices(),
+            getInventoryItems(),
+          ]);
+          
+          setStudents(studentsData);
+          setAdmissions(admissionsData);
+          setAssessments(assessmentsData);
+          setTeachers(teachersData); // Already fetched
+          setStatusHistory(statusHistoryData);
+          setSubjects(subjectsData);
+          setAssessmentCategories(categoriesData);
+          setFees(feesData);
+          setInvoices(invoicesData);
+          setInventory(inventoryData);
+        }
 
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -739,7 +759,7 @@ export default function DashboardPage() {
                 subjects={subjects}
                 assessmentCategories={assessmentCategories}
                 onSaveSubjects={handleSaveSubjects}
-                onSaveCategories={handleSaveCategories}
+                onSaveCategories={handleSaveAssessmentCategories}
               />
             </TabsContent>
 
@@ -753,3 +773,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

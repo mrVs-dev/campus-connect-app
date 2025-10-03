@@ -70,14 +70,11 @@ export default function TeacherDashboardPage() {
             getSubjects(),
             getAssessmentCategories(),
           ]);
-          setAllAssessments(assessments);
-          setSubjects(subjectsData);
-          setAssessmentCategories(categoriesData);
           
           let loggedInTeacher = teachers.find(t => t.email === user.email);
           
           if (!loggedInTeacher) {
-             // If user is not in the teacher list at all, they shouldn't be here.
+             // If user is not in the teacher list at all, they might be admin/other role
             router.replace('/dashboard');
             return;
           }
@@ -86,12 +83,19 @@ export default function TeacherDashboardPage() {
           if (!loggedInTeacher.role) {
             loggedInTeacher.role = 'Teacher';
             await updateTeacher(loggedInTeacher.teacherId, { role: 'Teacher'});
+             // Re-fetch teachers to get the latest role
+            teachers = await getTeachers();
+            loggedInTeacher = teachers.find(t => t.email === user.email)!;
           }
 
           if (loggedInTeacher.role !== 'Teacher') {
             router.replace('/dashboard');
             return;
           }
+          
+          setAllAssessments(assessments);
+          setSubjects(subjectsData);
+          setAssessmentCategories(categoriesData);
 
           const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
 
@@ -327,3 +331,5 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
+    
