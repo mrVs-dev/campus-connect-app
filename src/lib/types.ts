@@ -207,10 +207,12 @@ export interface InventoryItem {
   itemId: string;
   name: string;
   category: InventoryCategory;
+  imageUrl?: string;
+  cost: number;
+  stockedInDate: Date;
   quantity: number;
   reorderLevel: number;
   supplier?: string;
-  cost?: number;
 }
 
 export interface StudentSupply {

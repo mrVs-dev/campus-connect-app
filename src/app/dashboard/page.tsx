@@ -15,7 +15,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -543,6 +543,35 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSaveInventoryItem = async (itemData: Omit<InventoryItem, 'itemId'> | InventoryItem) => {
+    try {
+      const savedItem = await saveInventoryItem(itemData);
+      setInventory(prev => {
+        const existingIndex = prev.findIndex(i => i.itemId === savedItem.itemId);
+        if (existingIndex > -1) {
+          const updatedItems = [...prev];
+          updatedItems[existingIndex] = savedItem;
+          return updatedItems;
+        } else {
+          return [...prev, savedItem];
+        }
+      });
+      toast({
+        title: "Inventory Item Saved",
+        description: `Item "${savedItem.name}" has been saved.`,
+      });
+      return true;
+    } catch (error) {
+      console.error("Error saving inventory item:", error);
+      toast({
+        title: "Save Failed",
+        description: "There was an error saving the item.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
 
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
@@ -625,6 +654,7 @@ export default function DashboardPage() {
             <TabsContent value="inventory">
               <InventoryList
                 inventoryItems={inventory}
+                onSaveItem={handleSaveInventoryItem}
               />
             </TabsContent>
 
