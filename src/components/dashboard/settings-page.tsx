@@ -25,7 +25,7 @@ type Module = typeof modules[number];
 type Action = typeof actions[number];
 
 
-// Mock data for initial permissions state
+// Mock data for initial permissions structure
 const initialPermissions: Permissions = {
   Students: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -86,7 +86,6 @@ type RoleFormValues = z.infer<typeof roleSchema>;
 
 
 function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: (roles: UserRole[]) => Promise<void> }) {
-  const [isSaving, setIsSaving] = React.useState(false);
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleSchema),
     defaultValues: { newRole: "" },
@@ -143,7 +142,7 @@ function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: 
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={isSaving}>Add Role</Button>
+              <Button type="submit">Add Role</Button>
             </form>
           </Form>
         </div>
@@ -174,13 +173,35 @@ function PermissionSettings({ roles }: { roles: UserRole[] }) {
     async function loadPermissions() {
       setIsLoadingPermissions(true);
       const savedPermissions = await getPermissions();
-      // If no permissions are saved, use the initial default structure
-      const permissionsToLoad = Object.keys(savedPermissions).length > 0 ? savedPermissions : initialPermissions;
-      form.reset({ permissions: permissionsToLoad });
+      
+      const completePermissions = { ...initialPermissions };
+
+      // Ensure all modules, roles, and actions have a defined boolean value.
+      modules.forEach(module => {
+        if (!completePermissions[module]) {
+          completePermissions[module] = {};
+        }
+        roles.forEach(role => {
+          if (!completePermissions[module][role]) {
+            completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+          }
+          actions.forEach(action => {
+            const savedValue = savedPermissions[module]?.[role]?.[action];
+            // If there's a saved value, use it. Otherwise, use the initial/default, or false if none exists.
+            completePermissions[module][role][action] = typeof savedValue === 'boolean' 
+              ? savedValue 
+              : (completePermissions[module][role][action] || false);
+          });
+        });
+      });
+
+      form.reset({ permissions: completePermissions });
       setIsLoadingPermissions(false);
     }
-    loadPermissions();
-  }, [form]);
+    if (roles.length > 0) {
+      loadPermissions();
+    }
+  }, [form, roles]);
 
 
   const onSubmit = async (data: PermissionsFormValues) => {
