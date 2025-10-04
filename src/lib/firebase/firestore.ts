@@ -1,6 +1,5 @@
 
 
-
 import { 
   collection, 
   getDocs, 
@@ -20,7 +19,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole, Permissions } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 
 // Type guards to check for Firestore Timestamps
@@ -750,4 +749,22 @@ export async function saveRoles(roles: UserRole[]): Promise<void> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'roles');
   await setDoc(settingsDocRef, { list: roles });
+}
+
+export async function getPermissions(): Promise<Permissions> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'permissions');
+  const docSnap = await getDoc(settingsDocRef);
+  
+  if (docSnap.exists() && docSnap.data().config) {
+    return docSnap.data().config;
+  }
+  // Return a default if not found, we can define this elsewhere
+  return {} as Permissions;
+}
+
+export async function savePermissions(permissions: Permissions): Promise<void> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'permissions');
+  await setDoc(settingsDocRef, { config: permissions });
 }

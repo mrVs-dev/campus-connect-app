@@ -7,7 +7,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PlusCircle, Trash2 } from "lucide-react";
-import type { Subject, AssessmentCategory, UserRole } from "@/lib/types";
+import type { Subject, AssessmentCategory, UserRole, Permissions } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getRoles, saveRoles } from "@/lib/firebase/firestore";
+import { getRoles, saveRoles, getPermissions, savePermissions } from "@/lib/firebase/firestore";
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
 const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Settings'] as const;
@@ -24,7 +24,6 @@ const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
 type Module = typeof modules[number];
 type Action = typeof actions[number];
 
-type Permissions = Record<Module, Record<UserRole, Record<Action, boolean>>>;
 
 // Mock data for initial permissions state
 const initialPermissions: Permissions = {
@@ -157,30 +156,57 @@ function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: 
 // --- PERMISSIONS FORM ---
 
 const permissionSchema = z.object({
-  permissions: z.any(), // Using any for now, will be more specific with Zod later
+  permissions: z.any(),
 });
 type PermissionsFormValues = z.infer<typeof permissionSchema>;
 
 
 function PermissionSettings({ roles }: { roles: UserRole[] }) {
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isLoadingPermissions, setIsLoadingPermissions] = React.useState(true);
   const { toast } = useToast();
 
   const form = useForm<PermissionsFormValues>({
-    defaultValues: { permissions: initialPermissions },
+    defaultValues: { permissions: {} },
   });
 
-  const onSubmit = (data: PermissionsFormValues) => {
+  React.useEffect(() => {
+    async function loadPermissions() {
+      setIsLoadingPermissions(true);
+      const savedPermissions = await getPermissions();
+      // If no permissions are saved, use the initial default structure
+      const permissionsToLoad = Object.keys(savedPermissions).length > 0 ? savedPermissions : initialPermissions;
+      form.reset({ permissions: permissionsToLoad });
+      setIsLoadingPermissions(false);
+    }
+    loadPermissions();
+  }, [form]);
+
+
+  const onSubmit = async (data: PermissionsFormValues) => {
     setIsSaving(true);
-    console.log("Saving permissions:", data.permissions);
-    // Here we would call a function to save to Firestore
+    await savePermissions(data.permissions);
     toast({
       title: "Permissions Saved",
-      description: "Role permissions have been updated. (Note: This is a demo, enforcement is not yet implemented).",
+      description: "Role permissions have been updated.",
     });
     setIsSaving(false);
   };
   
+  if (isLoadingPermissions) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Role Permissions</CardTitle>
+          <CardDescription>Configure module access for each user role. Changes will be applied upon next login.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          Loading permissions...
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
      <Card>
       <CardHeader>

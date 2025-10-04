@@ -1,6 +1,7 @@
 
 
 
+
 export type UserRole = string;
 
 export type Guardian = {
@@ -225,3 +226,10 @@ export interface StudentSupply {
   issuedBy: string; // userId
   notes?: string;
 }
+
+// --- Settings ---
+const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Settings'] as const;
+const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
+type Module = typeof modules[number];
+type Action = typeof actions[number];
+export type Permissions = Record<Module, Record<UserRole, Record<Action, boolean>>>;
