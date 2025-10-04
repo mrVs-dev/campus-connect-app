@@ -188,37 +188,36 @@ export default function DashboardPage() {
           getInventoryItems(),
         ]);
         
-        setAllUsers(fetchedUsers as AuthUser[]);
-        setTeachers(fetchedTeachers);
-        
-        let finalRole: UserRole | null = null;
-        let currentTeachers = [...fetchedTeachers];
         const loggedInUserEmail = user.email;
 
-        // --- Temp code to allow admin to view student dashboard ---
-        if (loggedInUserEmail === ADMIN_EMAIL && studentsData.length > 0) {
+        // --- PRIORITY 1: Student Check ---
+        // Includes temporary admin view logic
+        let isStudent = studentsData.some(s => s.guardians?.some(g => g.mobiles.includes(user.email || '')) || s.studentId === user.email);
+
+        if (loggedInUserEmail === ADMIN_EMAIL && studentsData.length > 0 && !isStudent) {
             const firstStudent = studentsData[0];
-            if (!firstStudent.guardians) {
-                firstStudent.guardians = [];
-            }
-            const adminAsGuardian = firstStudent.guardians.find(g => g.mobiles.includes(ADMIN_EMAIL));
-            if (!adminAsGuardian) {
+             if (firstStudent.guardians?.some(g => g.mobiles.includes(ADMIN_EMAIL))) {
+                isStudent = true;
+            } else {
+                if (!firstStudent.guardians) firstStudent.guardians = [];
                 firstStudent.guardians.push({
                     relation: 'Admin Viewer',
                     name: 'Admin',
                     mobiles: [ADMIN_EMAIL]
                 });
+                isStudent = true;
             }
         }
-        // --- End temp code ---
-
-
-        // Student Check
-        const matchingStudent = studentsData.find(s => s.guardians?.some(g => g.mobiles.includes(user.email || '')) || s.studentId === user.email);
-        if(matchingStudent) {
+        
+        if(isStudent) {
             router.replace('/student/dashboard');
-            return;
+            setIsDataLoading(false);
+            return; // Stop further execution
         }
+
+        // --- PRIORITY 2: Staff Role Check ---
+        let currentTeachers = [...fetchedTeachers];
+        let finalRole: UserRole | null = null;
 
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
@@ -233,19 +232,22 @@ export default function DashboardPage() {
             };
             const addedAdmin = await addTeacher(newAdmin);
             currentTeachers.push(addedAdmin);
-            setTeachers(currentTeachers);
           }
         } else {
           const loggedInTeacher = currentTeachers.find(t => t.email === loggedInUserEmail);
           if (loggedInTeacher) {
             if (loggedInTeacher.role === 'Teacher') {
               router.replace('/teacher/dashboard');
+              setIsDataLoading(false);
               return; 
             }
             finalRole = loggedInTeacher.role;
           }
         }
         
+        // --- Set all state at the end ---
+        setAllUsers(fetchedUsers as AuthUser[]);
+        setTeachers(currentTeachers);
         setUserRole(finalRole);
         
         if (finalRole) {
@@ -789,7 +791,7 @@ export default function DashboardPage() {
               <InventoryList
                 inventoryItems={inventory}
                 onSaveItem={handleSaveInventoryItem}
-                onDeleteItem={handleDeleteInventoryItem}
+                onDeleteItem={handleDeleteItem}
               />
             </TabsContent>
 
@@ -829,3 +831,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
