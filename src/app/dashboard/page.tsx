@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -196,6 +195,13 @@ export default function DashboardPage() {
         let currentTeachers = [...fetchedTeachers];
         const loggedInUserEmail = user.email;
 
+        // Student Check
+        const matchingStudent = studentsData.find(s => s.guardians?.some(g => g.mobiles.includes(user.email || '')) || s.studentId === user.email);
+        if(matchingStudent) {
+            router.replace('/student/dashboard');
+            return;
+        }
+
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
           const adminExists = currentTeachers.some(t => t.email === ADMIN_EMAIL);
@@ -257,6 +263,7 @@ export default function DashboardPage() {
        if (user?.email === ADMIN_EMAIL && teachers.length === 0) {
          return [];
        }
+       return [];
     }
     const teacherEmails = new Set(teachers.map(t => t.email));
     return allUsers.filter(u => u && u.email && !teacherEmails.has(u.email));

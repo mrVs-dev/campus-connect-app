@@ -320,6 +320,7 @@ export default function TeacherDashboardPage() {
           <div>
              <h2 className="text-2xl font-bold mb-4">Assessments</h2>
              <AssessmentList
+                userRole="Teacher"
                 assessments={allAssessments}
                 students={assignedClasses.flatMap(c => c.students)}
                 subjects={subjects}
