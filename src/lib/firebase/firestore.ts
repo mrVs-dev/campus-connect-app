@@ -110,39 +110,46 @@ export async function getUsers(): Promise<User[]> {
 
 
 // --- App Metadata ---
-export const getNextStudentId = async (increment: boolean = true): Promise<string> => {
+const STARTING_STUDENT_ID = 1831;
+
+export async function peekNextStudentId(): Promise<string> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const metadataRef = doc(db, 'metadata', 'studentCounter');
-    const startingId = 1831;
-
-    let nextIdNumber: number;
-
+    
     try {
-        if (increment) {
-             nextIdNumber = await runTransaction(db, async (transaction) => {
-                const metadataDoc = await transaction.get(metadataRef);
-                let currentId = startingId;
-                if (metadataDoc.exists() && metadataDoc.data().lastId) {
-                    currentId = metadataDoc.data().lastId;
-                }
-                const newId = currentId + 1;
-                transaction.set(metadataRef, { lastId: newId }, { merge: true });
-                return newId;
-            });
-        } else {
-            const metadataDoc = await getDoc(metadataRef);
-            let currentId = startingId;
+        const metadataDoc = await getDoc(metadataRef);
+        let lastId = STARTING_STUDENT_ID;
+        if (metadataDoc.exists() && metadataDoc.data().lastId) {
+            lastId = metadataDoc.data().lastId;
+        }
+        return `STU${lastId + 1}`;
+    } catch (e) {
+        console.error("Could not peek next student ID: ", e);
+        throw new Error("Could not peek next student ID.");
+    }
+}
+
+
+export const getNextStudentId = async (): Promise<string> => {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const metadataRef = doc(db, 'metadata', 'studentCounter');
+    
+    try {
+        const newIdNumber = await runTransaction(db, async (transaction) => {
+            const metadataDoc = await transaction.get(metadataRef);
+            let currentId = STARTING_STUDENT_ID;
             if (metadataDoc.exists() && metadataDoc.data().lastId) {
                 currentId = metadataDoc.data().lastId;
             }
-            nextIdNumber = currentId + 1;
-        }
+            const newId = currentId + 1;
+            transaction.set(metadataRef, { lastId: newId }, { merge: true });
+            return newId;
+        });
+        return `STU${newIdNumber}`;
     } catch (e) {
         console.error("Transaction failed to get next student ID: ", e);
         throw new Error("Could not generate a new student ID.");
     }
-    
-    return `STU${nextIdNumber}`;
 };
 
 

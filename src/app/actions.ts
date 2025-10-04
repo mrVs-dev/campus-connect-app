@@ -1,7 +1,7 @@
 "use server";
 
 import { summarizeStudentProgress } from "@/ai/flows/summarize-student-progress";
-import { getNextStudentId } from "@/lib/firebase/firestore";
+import { peekNextStudentId } from "@/lib/firebase/firestore";
 import type { SummarizeStudentProgressInput } from "@/ai/flows/summarize-student-progress";
 
 export async function getStudentSummary(
@@ -21,7 +21,7 @@ export async function getStudentSummary(
 
 export async function getNextStudentIdAction(): Promise<string> {
     try {
-        const nextId = await getNextStudentId(false);
+        const nextId = await peekNextStudentId();
         return nextId;
     } catch (error: any) {
         console.error("Error fetching next student ID:", error.message);
