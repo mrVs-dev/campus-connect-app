@@ -2,6 +2,7 @@
 
 
 
+
 export type UserRole = string;
 
 export type Guardian = {
@@ -228,7 +229,7 @@ export interface StudentSupply {
 }
 
 // --- Settings ---
-const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Settings'] as const;
+const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Attendance', 'Settings'] as const;
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
 type Module = typeof modules[number];
 type Action = typeof actions[number];

@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { getRoles, saveRoles, getPermissions, savePermissions } from "@/lib/firebase/firestore";
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
-const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Settings'] as const;
+const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Attendance', 'Settings'] as const;
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
 
 type Module = typeof modules[number];
@@ -68,6 +68,12 @@ const initialPermissions: Permissions = {
     Receptionist: { Create: true, Read: true, Update: true, Delete: false },
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: true, Update: false, Delete: false },
+  },
+  Attendance: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
+    'Head of Department': { Create: true, Read: true, Update: true, Delete: false },
+    Teacher: { Create: true, Read: true, Update: true, Delete: false },
   },
   Settings: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
