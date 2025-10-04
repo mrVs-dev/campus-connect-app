@@ -1,5 +1,6 @@
 
 
+
 import { 
   collection, 
   getDocs, 
@@ -19,7 +20,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 
 // Type guards to check for Firestore Timestamps
@@ -678,7 +679,7 @@ export async function saveInventoryItem(itemData: Omit<InventoryItem, 'itemId'> 
 export async function deleteInventoryItem(itemId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const itemDoc = doc(db, 'inventory', itemId);
-    await deleteDoc(itemDoc);
+await deleteDoc(itemDoc);
 }
 
 // --- Settings Collections ---
@@ -730,4 +731,23 @@ export async function saveAssessmentCategories(categories: AssessmentCategory[])
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'assessmentCategories');
   await setDoc(settingsDocRef, { list: categories });
+}
+
+export async function getRoles(): Promise<UserRole[]> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'roles');
+  const docSnap = await getDoc(settingsDocRef);
+  
+  if (docSnap.exists() && docSnap.data().list) {
+    return docSnap.data().list;
+  } else {
+    // Default roles if none are set in the database
+    return ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
+  }
+}
+
+export async function saveRoles(roles: UserRole[]): Promise<void> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'roles');
+  await setDoc(settingsDocRef, { list: roles });
 }

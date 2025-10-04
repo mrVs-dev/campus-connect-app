@@ -1,6 +1,7 @@
 
 
-export type UserRole = 'Admin' | 'Receptionist' | 'Head of Department' | 'Teacher';
+
+export type UserRole = string;
 
 export type Guardian = {
   relation: string;

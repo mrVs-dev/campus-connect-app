@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -14,10 +15,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getRoles, saveRoles } from "@/lib/firebase/firestore";
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
 const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Settings'] as const;
-const roles: UserRole[] = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
 
 type Module = typeof modules[number];
@@ -78,6 +79,81 @@ const initialPermissions: Permissions = {
 };
 
 
+// --- ROLE MANAGEMENT ---
+const roleSchema = z.object({
+  newRole: z.string().min(3, "Role name must be at least 3 characters."),
+});
+type RoleFormValues = z.infer<typeof roleSchema>;
+
+
+function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: (roles: UserRole[]) => Promise<void> }) {
+  const [isSaving, setIsSaving] = React.useState(false);
+  const form = useForm<RoleFormValues>({
+    resolver: zodResolver(roleSchema),
+    defaultValues: { newRole: "" },
+  });
+
+  const handleAddRole = async (values: RoleFormValues) => {
+    if (roles.includes(values.newRole)) {
+      form.setError("newRole", { message: "This role already exists." });
+      return;
+    }
+    const newRoles = [...roles, values.newRole];
+    await onSaveRoles(newRoles);
+    form.reset();
+  };
+
+  const handleDeleteRole = async (roleToDelete: UserRole) => {
+    const newRoles = roles.filter(role => role !== roleToDelete);
+    await onSaveRoles(newRoles);
+  };
+  
+  const protectedRoles = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Manage Roles</CardTitle>
+        <CardDescription>Add or remove user roles. Default roles cannot be deleted.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {roles.map(role => (
+              <div key={role} className="flex items-center gap-2 bg-muted rounded-md pl-3 pr-1 py-1">
+                 <span className="text-sm font-medium">{role}</span>
+                 {!protectedRoles.includes(role) && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteRole(role)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+              </div>
+            ))}
+          </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleAddRole)} className="flex items-start gap-4 pt-4">
+              <FormField
+                control={form.control}
+                name="newRole"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormControl>
+                      <Input placeholder="e.g., Librarian" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" disabled={isSaving}>Add Role</Button>
+            </form>
+          </Form>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 // --- PERMISSIONS FORM ---
 
 const permissionSchema = z.object({
@@ -86,7 +162,7 @@ const permissionSchema = z.object({
 type PermissionsFormValues = z.infer<typeof permissionSchema>;
 
 
-function PermissionSettings() {
+function PermissionSettings({ roles }: { roles: UserRole[] }) {
   const [isSaving, setIsSaving] = React.useState(false);
   const { toast } = useToast();
 
@@ -382,9 +458,33 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, onSaveCategories }: SettingsPageProps) {
+  const [roles, setRoles] = React.useState<UserRole[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function loadRoles() {
+      setIsLoading(true);
+      const fetchedRoles = await getRoles();
+      setRoles(fetchedRoles);
+      setIsLoading(false);
+    }
+    loadRoles();
+  }, []);
+
+  const handleSaveRoles = async (newRoles: UserRole[]) => {
+    await saveRoles(newRoles);
+    const fetchedRoles = await getRoles(); // Re-fetch to ensure consistency
+    setRoles(fetchedRoles);
+  };
+  
+  if (isLoading) {
+    return <div>Loading settings...</div>;
+  }
+
   return (
     <div className="space-y-8">
-      <PermissionSettings />
+      <RoleSettings roles={roles} onSaveRoles={handleSaveRoles} />
+      <PermissionSettings roles={roles} />
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
     </div>

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -162,10 +163,9 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsDataLoading(true);
       try {
-        // Fetch all necessary data first
         const [
-          currentTeachers, 
-          currentUsers, 
+          fetchedUsers,
+          fetchedTeachers,
           studentsData, 
           admissionsData, 
           assessmentsData, 
@@ -176,41 +176,40 @@ export default function DashboardPage() {
           invoicesData,
           inventoryData
         ] = await Promise.all([
-            getTeachers(),
-            getUsers(),
-            getStudents(),
-            getAdmissions(),
-            getAssessments(),
-            getStudentStatusHistory(),
-            getSubjects(),
-            getAssessmentCategories(),
-            getFees(),
-            getInvoices(),
-            getInventoryItems(),
+          getUsers(),
+          getTeachers(),
+          getStudents(),
+          getAdmissions(),
+          getAssessments(),
+          getStudentStatusHistory(),
+          getSubjects(),
+          getAssessmentCategories(),
+          getFees(),
+          getInvoices(),
+          getInventoryItems(),
         ]);
         
-        setTeachers(currentTeachers);
-        setAllUsers(currentUsers as AuthUser[]);
-
+        setAllUsers(fetchedUsers as AuthUser[]);
+        setTeachers(fetchedTeachers);
+        
         let finalRole: UserRole | null = null;
+        let currentTeachers = [...fetchedTeachers];
         const loggedInUserEmail = user.email;
 
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
           const adminExists = currentTeachers.some(t => t.email === ADMIN_EMAIL);
           if (!adminExists) {
-            const newAdmin = {
+            const newAdmin: Omit<Teacher, 'teacherId'> = {
               firstName: user.displayName?.split(' ')[0] || 'Admin',
               lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
               email: loggedInUserEmail!,
-              role: 'Admin' as UserRole,
+              role: 'Admin',
+              status: 'Active',
             };
-            // This is an async operation, but we don't need to wait for it to block rendering.
-            // The next data fetch will include the new admin.
-            addTeacher(newAdmin).then(async () => {
-               const updatedTeachers = await getTeachers();
-               setTeachers(updatedTeachers);
-            });
+            const addedAdmin = await addTeacher(newAdmin);
+            currentTeachers.push(addedAdmin);
+            setTeachers(currentTeachers);
           }
         } else {
           const loggedInTeacher = currentTeachers.find(t => t.email === loggedInUserEmail);
@@ -225,7 +224,6 @@ export default function DashboardPage() {
         
         setUserRole(finalRole);
         
-        // If the user has a role, set all the application data.
         if (finalRole) {
            setStudents(studentsData);
            setAdmissions(admissionsData);
@@ -256,8 +254,6 @@ export default function DashboardPage() {
 
   const pendingUsers = React.useMemo(() => {
     if (!allUsers.length || !teachers.length) {
-       // If teachers haven't loaded, especially on first load for admin, all users might seem pending.
-       // It's better to wait until both are loaded.
        if (user?.email === ADMIN_EMAIL && teachers.length === 0) {
          return [];
        }
@@ -475,7 +471,6 @@ export default function DashboardPage() {
     try {
       const newTeacher = await addTeacher(teacherData);
       if (newTeacher) {
-        // Refetch all users and teachers to update the state
         const [updatedTeachers, updatedUsers] = await Promise.all([getTeachers(), getUsers()]);
         setTeachers(updatedTeachers);
         setAllUsers(updatedUsers as AuthUser[]);

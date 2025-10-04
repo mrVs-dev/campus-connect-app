@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,8 +43,8 @@ import 'react-image-crop/dist/ReactCrop.css';
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { programs, getLevelsForProgram } from "@/lib/program-data";
+import { getRoles } from "@/lib/firebase/firestore";
 
-const userRoles: UserRole[] = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
 
 const classAssignmentSchema = z.object({
   schoolYear: z.string().min(1, "School year is required"),
@@ -57,7 +58,7 @@ const formSchema = z.object({
   email: z.string().email("Invalid email format"),
   phone: z.string().optional(),
   status: z.enum(["Active", "Inactive"]),
-  role: z.enum(userRoles),
+  role: z.custom<UserRole>(val => typeof val === 'string' && val.length > 0, "Role is required"),
   joinedDate: z.date().optional(),
   avatarUrl: z.string().optional(),
   assignedSubjects: z.array(z.string()).optional(),
@@ -163,6 +164,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
+  const [roles, setRoles] = React.useState<UserRole[]>([]);
 
   const form = useForm<EditTeacherFormValues>({
     resolver: zodResolver(formSchema),
@@ -178,6 +180,12 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
   }, [admissions]);
 
   React.useEffect(() => {
+    async function loadRoles() {
+      const fetchedRoles = await getRoles();
+      setRoles(fetchedRoles);
+    }
+    loadRoles();
+
     if (teacher) {
       form.reset({
         ...teacher,
@@ -186,7 +194,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
         assignedClasses: teacher.assignedClasses || [],
       });
     }
-  }, [teacher, form]);
+  }, [teacher, form, open]);
 
   const avatarUrl = form.watch("avatarUrl");
 
@@ -336,7 +344,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
                                               </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                              {userRoles.map(role => (
+                                              {roles.map(role => (
                                                 <SelectItem key={role} value={role}>{role}</SelectItem>
                                               ))}
                                             </SelectContent>

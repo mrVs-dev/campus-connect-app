@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -55,14 +56,12 @@ import { updateTeacher, getSubjects, getAdmissions } from "@/lib/firebase/firest
 import { useToast } from "@/hooks/use-toast";
 import type { User as AuthUser } from "firebase/auth";
 
-const userRoles: UserRole[] = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
-
 const teacherFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
-  role: z.enum(userRoles),
+  role: z.custom<UserRole>(val => typeof val === 'string' && val.length > 0, "Role is required"),
 });
 
 type TeacherFormValues = z.infer<typeof teacherFormSchema>;
@@ -102,6 +101,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
   const [teachers, setTeachers] = React.useState(initialTeachers);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
+  const [roles, setRoles] = React.useState<UserRole[]>(['Admin', 'Receptionist', 'Head of Department', 'Teacher']);
   const { toast } = useToast();
 
   const canEdit = userRole === 'Admin';
@@ -321,7 +321,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {userRoles.map(role => (
+                                    {roles.map(role => (
                                     <SelectItem key={role} value={role}>{role}</SelectItem>
                                     ))}
                                 </SelectContent>
