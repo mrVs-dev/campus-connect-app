@@ -195,6 +195,24 @@ export default function DashboardPage() {
         let currentTeachers = [...fetchedTeachers];
         const loggedInUserEmail = user.email;
 
+        // --- Temp code to allow admin to view student dashboard ---
+        if (loggedInUserEmail === ADMIN_EMAIL && studentsData.length > 0) {
+            const firstStudent = studentsData[0];
+            if (!firstStudent.guardians) {
+                firstStudent.guardians = [];
+            }
+            const adminAsGuardian = firstStudent.guardians.find(g => g.mobiles.includes(ADMIN_EMAIL));
+            if (!adminAsGuardian) {
+                firstStudent.guardians.push({
+                    relation: 'Admin Viewer',
+                    name: 'Admin',
+                    mobiles: [ADMIN_EMAIL]
+                });
+            }
+        }
+        // --- End temp code ---
+
+
         // Student Check
         const matchingStudent = studentsData.find(s => s.guardians?.some(g => g.mobiles.includes(user.email || '')) || s.studentId === user.email);
         if(matchingStudent) {
@@ -811,5 +829,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
