@@ -46,9 +46,10 @@ interface InvoicingListProps {
   fees: Fee[];
   onSaveInvoice: (invoice: Omit<Invoice, 'invoiceId'> | Invoice) => Promise<boolean>;
   onDeleteInvoice: (invoiceId: string) => void;
+  isReadOnly?: boolean;
 }
 
-export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDeleteInvoice }: InvoicingListProps) {
+export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDeleteInvoice, isReadOnly = false }: InvoicingListProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [invoiceToEdit, setInvoiceToEdit] = React.useState<Invoice | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<Invoice | null>(null);
@@ -74,6 +75,7 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
   };
 
   const handleOpenDialog = (isOpen: boolean) => {
+    if (isReadOnly) return;
     if (!isOpen) {
       setInvoiceToEdit(null);
     }
@@ -81,11 +83,13 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
   };
 
   const handleEdit = (invoice: Invoice) => {
+    if (isReadOnly) return;
     setInvoiceToEdit(invoice);
     setIsDialogOpen(true);
   };
 
   const handleDelete = (invoice: Invoice) => {
+     if (isReadOnly) return;
     setInvoiceToDelete(invoice);
   };
 
@@ -103,12 +107,16 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Invoicing</CardTitle>
-              <CardDescription>Manage all student invoices.</CardDescription>
+              <CardDescription>
+                {isReadOnly ? "A list of all invoices for the selected student." : "Manage all student invoices."}
+              </CardDescription>
             </div>
-            <Button size="sm" className="gap-1" onClick={() => setIsDialogOpen(true)}>
-              <PlusCircle className="h-3.5 w-3.5" />
-              New Invoice
-            </Button>
+            {!isReadOnly && (
+              <Button size="sm" className="gap-1" onClick={() => setIsDialogOpen(true)}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                New Invoice
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -116,7 +124,7 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
             <TableHeader>
               <TableRow>
                 <TableHead>Invoice ID</TableHead>
-                <TableHead>Student</TableHead>
+                {!isReadOnly && <TableHead>Student</TableHead>}
                 <TableHead>Issue Date</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Payment Plan</TableHead>
@@ -129,7 +137,7 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
               {invoices.map((invoice) => (
                 <TableRow key={invoice.invoiceId}>
                   <TableCell className="font-mono">{invoice.invoiceId.substring(0, 7)}...</TableCell>
-                  <TableCell className="font-medium">{getStudentName(invoice.studentId)}</TableCell>
+                  {!isReadOnly && <TableCell className="font-medium">{getStudentName(invoice.studentId)}</TableCell>}
                   <TableCell>{format(new Date(invoice.issueDate), "MMM d, yyyy")}</TableCell>
                   <TableCell>{format(new Date(invoice.dueDate), "MMM d, yyyy")}</TableCell>
                   <TableCell>{invoice.paymentPlan}</TableCell>
@@ -145,8 +153,12 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem><FileText className="mr-2 h-4 w-4" /> View/Print</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleEdit(invoice)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                        {!isReadOnly && (
+                          <>
+                            <DropdownMenuItem onSelect={() => handleEdit(invoice)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -156,33 +168,37 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
           </Table>
           {invoices.length === 0 && (
              <div className="text-center p-8 text-muted-foreground">
-                No invoices found. Click "New Invoice" to get started.
+                No invoices found.
              </div>
           )}
         </CardContent>
       </Card>
-      <InvoiceDialog
-        open={isDialogOpen}
-        onOpenChange={handleOpenDialog}
-        students={students}
-        fees={fees}
-        onSave={onSaveInvoice}
-        existingInvoice={invoiceToEdit}
-      />
-      <AlertDialog open={!!invoiceToDelete} onOpenChange={(isOpen) => !isOpen && setInvoiceToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete invoice {invoiceToDelete?.invoiceId.substring(0,7)}. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {!isReadOnly && (
+        <>
+          <InvoiceDialog
+            open={isDialogOpen}
+            onOpenChange={handleOpenDialog}
+            students={students}
+            fees={fees}
+            onSave={onSaveInvoice}
+            existingInvoice={invoiceToEdit}
+          />
+          <AlertDialog open={!!invoiceToDelete} onOpenChange={(isOpen) => !isOpen && setInvoiceToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete invoice {invoiceToDelete?.invoiceId.substring(0,7)}. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </>
   );
 }

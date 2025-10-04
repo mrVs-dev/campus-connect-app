@@ -348,11 +348,10 @@ export default function GuardianDashboardPage() {
                 fees={allData.fees}
                 onSaveInvoice={async () => { console.log("Not implemented for guardians"); return false; }}
                 onDeleteInvoice={() => console.log("Not implemented for guardians")}
+                isReadOnly={true}
              />
           </TabsContent>
         </Tabs>
     </div>
   );
 }
-
-    
