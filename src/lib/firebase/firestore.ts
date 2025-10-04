@@ -117,8 +117,8 @@ export const getNextStudentId = async (increment: boolean = true): Promise<strin
 
     let nextIdNumber: number;
 
-    if (increment) {
-        try {
+    try {
+        if (increment) {
             nextIdNumber = await runTransaction(db, async (transaction) => {
                 const metadataDoc = await transaction.get(metadataRef);
                 let currentId = startingId;
@@ -129,19 +129,19 @@ export const getNextStudentId = async (increment: boolean = true): Promise<strin
                 transaction.set(metadataRef, { lastId: newId }, { merge: true });
                 return newId;
             });
-        } catch (e) {
-            console.error("Transaction failed to get next student ID: ", e);
-            throw new Error("Could not generate a new student ID.");
+        } else {
+            const metadataDoc = await getDoc(metadataRef);
+            let currentId = startingId;
+            if (metadataDoc.exists() && metadataDoc.data().lastId) {
+                currentId = metadataDoc.data().lastId;
+            }
+            nextIdNumber = currentId + 1;
         }
-    } else {
-        const metadataDoc = await getDoc(metadataRef);
-        let currentId = startingId;
-        if (metadataDoc.exists() && metadataDoc.data().lastId) {
-            currentId = metadataDoc.data().lastId;
-        }
-        nextIdNumber = currentId + 1;
+    } catch (e) {
+        console.error("Transaction failed to get next student ID: ", e);
+        throw new Error("Could not generate a new student ID.");
     }
-
+    
     return `STU${nextIdNumber}`;
 };
 
