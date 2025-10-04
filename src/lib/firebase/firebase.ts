@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getMessaging, type Messaging } from "firebase/messaging";
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -17,6 +18,7 @@ export const isFirebaseConfigured = !!firebaseConfig.projectId;
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
+let messaging: Messaging | undefined;
 
 if (isFirebaseConfigured) {
   if (!getApps().length) {
@@ -26,12 +28,18 @@ if (isFirebaseConfigured) {
   }
   auth = getAuth(app);
   db = getFirestore(app);
+  // Check if window is defined (i.e., we are on the client-side)
+  if (typeof window !== 'undefined') {
+    messaging = getMessaging(app);
+  }
+
 } else {
   console.warn("Firebase configuration is missing. The application will run in a limited mode.");
   // Provide mock objects if Firebase is not configured to avoid runtime errors
   app = {} as FirebaseApp;
   auth = {} as Auth;
   db = {} as Firestore;
+  messaging = undefined;
 }
 
-export { app, auth, db };
+export { app, auth, db, messaging };

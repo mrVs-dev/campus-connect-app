@@ -566,6 +566,18 @@ export async function saveAttendance(records: Omit<AttendanceRecord, 'attendance
     await batch.commit();
 }
 
+// --- FCM Tokens ---
+export async function saveFcmToken(userId: string, token: string): Promise<void> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const tokenRef = doc(db, 'fcmTokens', token);
+  await setDoc(tokenRef, {
+    userId: userId,
+    token: token,
+    createdAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+
 // --- Fees Collection ---
 
 export async function getFees(): Promise<Fee[]> {

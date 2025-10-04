@@ -7,6 +7,7 @@ import { Logo } from "../icons/logo";
 import { Button } from "../ui/button";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationBell } from "./notification-bell";
 
 export function Header() {
   const pathname = usePathname();
@@ -14,7 +15,7 @@ export function Header() {
   
   const isAdmin = user?.email === "vannak@api-school.com";
   const isTeacherDashboard = pathname.startsWith('/teacher');
-  const isStudentPortal = pathname.startsWith('/student');
+  const isStudentPortal = pathname.startsWith('/student') || pathname.startsWith('/guardian');
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -37,6 +38,7 @@ export function Header() {
           </Button>
         )}
       </div>
+      {isStudentPortal && <NotificationBell />}
       <UserNav />
     </header>
   );
