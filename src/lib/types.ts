@@ -1,4 +1,5 @@
 
+
 export type UserRole = string;
 
 export type Guardian = {
@@ -49,7 +50,7 @@ export interface Student {
     house?: string;
   };
   guardians?: Guardian[];
-  mediaConsent?: boolean;
+  mediaConsent: boolean;
   emergencyContact?: {
     name?: string;
     phone?: string;

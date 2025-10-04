@@ -32,8 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import type { Student } from "@/lib/types";
@@ -50,7 +49,6 @@ import {
   DialogTitle as DialogTitleComponent,
 } from "@/components/ui/dialog";
 import { Textarea } from "../ui/textarea";
-import { Avatar, AvatarFallback } from "../ui/avatar";
 
 
 const statusReasonSchema = z.object({
@@ -138,7 +136,7 @@ const formSchema = z.object({
     email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
     avatarUrl: z.string().optional(),
   })).optional(),
-  mediaConsent: z.boolean().optional(),
+  mediaConsent: z.string({ required_error: "Media consent is required." }).transform(val => val === 'true'),
   emergencyContact: z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
@@ -152,7 +150,7 @@ const formSchema = z.object({
   }).optional(),
 });
 
-type EditStudentFormValues = z.infer<typeof formSchema>;
+type EditStudentFormValues = z.output<typeof formSchema>;
 
 interface EditStudentSheetProps {
   student: Student | null;
@@ -201,6 +199,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
         dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth) : undefined,
         guardians: student.guardians?.map(g => ({ ...g, mobiles: g.mobiles || [""], email: g.email || "", avatarUrl: g.avatarUrl || "" })) || [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""], email: "", avatarUrl: "" }],
         pickupPerson: student.pickupPerson || { name: "", relation: "", phone: "", avatarUrl: "" },
+        mediaConsent: String(student.mediaConsent) as any,
       });
     }
   }, [student, form]);
@@ -649,19 +648,30 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                               <FormControl><Input type="tel" {...field} /></FormControl>
                             </FormItem>
                           )} />
-                          <FormField control={form.control} name="mediaConsent" render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                              <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                              <div className="space-y-1 leading-none">
+                           <FormField
+                            control={form.control}
+                            name="mediaConsent"
+                            render={({ field }) => (
+                              <FormItem>
                                 <FormLabel>Media Consent</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select an option" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="true">Yes</SelectItem>
+                                    <SelectItem value="false">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
                                 <FormDescription>
-                                  The student can be featured in school promotional materials.
+                                  Can the student be featured in school promotional materials?
                                 </FormDescription>
-                              </div>
-                            </FormItem>
-                          )} />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </CardContent>
                       </Card>
                     </div>

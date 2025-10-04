@@ -368,8 +368,8 @@ export function StudentList({
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <Badge variant={student.mediaConsent ? "default" : "secondary"}>
-                        {student.mediaConsent ? "Yes" : "No"}
+                      <Badge variant={student.mediaConsent ? "outline" : "secondary"}>
+                          {student.mediaConsent ? "Yes" : "No"}
                       </Badge>
                     </TableCell>
                     <TableCell>

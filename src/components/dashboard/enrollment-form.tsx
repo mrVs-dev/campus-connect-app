@@ -32,14 +32,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import type { Student } from "@/lib/types";
 import { communes, getVillagesByCommune } from "@/lib/address-data";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css';
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Avatar } from "../ui/avatar";
 
 const formSchema = z.object({
   familyId: z.string().optional(),
@@ -71,7 +70,7 @@ const formSchema = z.object({
     email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
     avatarUrl: z.string().optional(),
   })).optional(),
-  mediaConsent: z.boolean().optional(),
+  mediaConsent: z.string({ required_error: "Media consent is required." }).transform(val => val === 'true'),
   emergencyContact: z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
@@ -98,7 +97,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const form = useForm<EnrollmentFormValues>({
+  const form = useForm<z.output<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       familyId: "",
@@ -120,7 +119,6 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
         house: "",
       },
       guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""], email: "", avatarUrl: "" }],
-      mediaConsent: false,
       emergencyContact: {
         name: "",
         phone: "",
@@ -178,7 +176,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   };
 
 
-  async function onSubmit(values: EnrollmentFormValues) {
+  async function onSubmit(values: z.output<typeof formSchema>) {
     setIsSubmitting(true);
     const success = await onEnroll(values);
     if (success) {
@@ -566,19 +564,30 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                       <FormControl><Input type="tel" {...field} /></FormControl>
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="mediaConsent" render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
+                  <FormField
+                    control={form.control}
+                    name="mediaConsent"
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>Media Consent</FormLabel>
+                        <Select onValueChange={field.onChange} value={String(field.value)}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select an option" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="true">Yes</SelectItem>
+                            <SelectItem value="false">No</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormDescription>
-                          The student can be featured in school promotional materials.
+                          Can the student be featured in school promotional materials?
                         </FormDescription>
-                      </div>
-                    </FormItem>
-                  )} />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
             </div>

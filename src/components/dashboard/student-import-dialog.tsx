@@ -117,6 +117,9 @@ export function StudentImportDialog({
                     mobiles: findValue(row, ['guardian2_mobiles', 'Guardian 2 Mobiles'])?.split(',') || [],
                 });
             }
+            
+            const mediaConsentValue = findValue(row, ['mediaConsent', 'Media Consent'])?.toLowerCase();
+            const mediaConsent = mediaConsentValue === 'true' || mediaConsentValue === 'yes';
 
             const student: Partial<Student> = {
               studentId: findValue(row, ['studentId', 'Student ID']),
@@ -143,7 +146,7 @@ export function StudentImportDialog({
                 house: findValue(row, ['address.house', 'house', 'House No']),
               },
               guardians: guardians.length > 0 ? guardians : undefined,
-              mediaConsent: findValue(row, ['mediaConsent', 'Media Consent'])?.toLowerCase() === 'true',
+              mediaConsent: mediaConsent,
               emergencyContact: {
                 name: findValue(row, ['emergencyContact.name', 'Emergency Contact Name']),
                 phone: findValue(row, ['emergencyContact.phone', 'Emergency Contact Phone']),
