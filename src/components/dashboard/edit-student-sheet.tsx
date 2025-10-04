@@ -108,6 +108,7 @@ function StatusReasonDialog({ open, onOpenChange, onSubmit, studentName, newStat
 
 const formSchema = z.object({
   familyId: z.string().optional(),
+  studentEmail: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
@@ -133,6 +134,7 @@ const formSchema = z.object({
     occupation: z.string().optional(),
     workplace: z.string().optional(),
     mobiles: z.array(z.string()).min(1, "At least one mobile number is required"),
+    email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   })).optional(),
   mediaConsent: z.boolean().optional(),
   emergencyContact: z.object({
@@ -168,6 +170,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
       form.reset({
         ...student,
         familyId: student.familyId || "",
+        studentEmail: student.studentEmail || "",
         middleName: student.middleName || "",
         khmerFirstName: student.khmerFirstName || "",
         khmerLastName: student.khmerLastName || "",
@@ -188,7 +191,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
         },
         avatarUrl: student.avatarUrl || "",
         dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth) : undefined,
-        guardians: student.guardians?.map(g => ({ ...g, mobiles: g.mobiles || [""] })) || [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""] }]
+        guardians: student.guardians?.map(g => ({ ...g, mobiles: g.mobiles || [""], email: g.email || "" })) || [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""], email: "" }]
       });
     }
   }, [student, form]);
@@ -299,6 +302,13 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                               <FormMessage />
                             </FormItem>
                           )} />
+                           <FormField control={form.control} name="studentEmail" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Student Login Email</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <FormField control={form.control} name="firstName" render={({ field }) => (
                               <FormItem>
@@ -515,6 +525,13 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                                   <FormMessage />
                                 </FormItem>
                               )} />
+                               <FormField control={form.control} name={`guardians.${index}.email`} render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Guardian Login Email</FormLabel>
+                                  <FormControl><Input type="email" {...field} /></FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )} />
                               {fields.length > 1 && (
                                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}>
                                   <Trash2 className="h-4 w-4" />
@@ -522,7 +539,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                               )}
                             </div>
                           ))}
-                          <Button type="button" variant="outline" size="sm" onClick={() => append({ relation: '', name: '', occupation: '', workplace: '', mobiles: [''] })}>
+                          <Button type="button" variant="outline" size="sm" onClick={() => append({ relation: '', name: '', occupation: '', workplace: '', mobiles: [''], email: '' })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Guardian
                           </Button>
                         </CardContent>

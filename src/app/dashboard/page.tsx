@@ -191,21 +191,28 @@ export default function DashboardPage() {
         
         const loggedInUserEmail = user.email;
 
-        // --- PRIORITY 1: Student Check (includes special admin view) ---
-        let isStudent = studentsData.some(s => s.guardians?.some(g => g.mobiles.includes(user.email || '')) || s.studentId === user.email);
-
-        if (loggedInUserEmail === ADMIN_EMAIL && !isStudent) {
-            // Special case for admin to view as a student
-            const isAssociatedWithFirstStudent = studentsData.length > 0 && studentsData[0].guardians?.some(g => g.mobiles.includes(ADMIN_EMAIL));
-            if (isAssociatedWithFirstStudent) {
-               isStudent = true;
-            }
-        }
-        
-        if(isStudent) {
+        // --- PRIORITY 1: Student or Guardian Login Check ---
+        const isStudentLogin = studentsData.some(s => s.studentEmail === loggedInUserEmail);
+        if (isStudentLogin) {
             router.replace('/student/dashboard');
             return;
         }
+
+        const isGuardianLogin = studentsData.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
+        if (isGuardianLogin) {
+             // Special case for admin to view as a student/guardian
+            if (loggedInUserEmail === ADMIN_EMAIL) {
+                const isAssociatedWithFirstStudent = studentsData.length > 0 && (studentsData[0].guardians?.some(g => g.email === ADMIN_EMAIL) || studentsData[0].studentEmail === ADMIN_EMAIL);
+                if (isAssociatedWithFirstStudent) {
+                    router.replace('/guardian/dashboard');
+                    return;
+                }
+            } else {
+                 router.replace('/guardian/dashboard');
+                 return;
+            }
+        }
+
 
         // --- PRIORITY 2: Staff Role Check ---
         let finalRole: UserRole | null = null;

@@ -42,6 +42,7 @@ import 'react-image-crop/dist/ReactCrop.css'
 
 const formSchema = z.object({
   familyId: z.string().optional(),
+  studentEmail: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
@@ -66,6 +67,7 @@ const formSchema = z.object({
     occupation: z.string().optional(),
     workplace: z.string().optional(),
     mobiles: z.array(z.string()).min(1, "At least one mobile number is required"),
+    email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   })).optional(),
   mediaConsent: z.boolean().optional(),
   emergencyContact: z.object({
@@ -90,6 +92,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       familyId: "",
+      studentEmail: "",
       firstName: "",
       middleName: "",
       lastName: "",
@@ -106,7 +109,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
         street: "",
         house: "",
       },
-      guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""] }],
+      guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""], email: "" }],
       mediaConsent: false,
       emergencyContact: {
         name: "",
@@ -185,6 +188,16 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                       <FormControl><Input placeholder="e.g., FAM001" {...field} /></FormControl>
                       <FormDescription>
                         Enter an existing Family ID to link this student with siblings.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="studentEmail" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Student Login Email (Optional)</FormLabel>
+                      <FormControl><Input placeholder="student.name@example.com" {...field} /></FormControl>
+                      <FormDescription>
+                        If the student has their own email to log into the portal.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -427,6 +440,13 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                           <FormMessage />
                         </FormItem>
                       )} />
+                       <FormField control={form.control} name={`guardians.${index}.email`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Guardian Login Email</FormLabel>
+                          <FormControl><Input type="email" placeholder="guardian@example.com" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
                       {fields.length > 1 && (
                         <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}>
                           <Trash2 className="h-4 w-4" />
@@ -434,7 +454,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                       )}
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => append({ relation: '', name: '', occupation: '', workplace: '', mobiles: [''] })}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => append({ relation: '', name: '', occupation: '', workplace: '', mobiles: [''], email: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Guardian
                   </Button>
                 </CardContent>

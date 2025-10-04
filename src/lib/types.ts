@@ -3,6 +3,7 @@
 
 
 
+
 export type UserRole = string;
 
 export type Guardian = {
@@ -11,6 +12,7 @@ export type Guardian = {
   occupation?: string;
   workplace?: string;
   mobiles: string[];
+  email?: string;
 };
 
 export type Enrollment = {
@@ -21,6 +23,7 @@ export type Enrollment = {
 
 export interface Student {
   studentId: string;
+  studentEmail?: string;
   familyId?: string; // For sibling discounts
   enrollmentDate?: Date;
   firstName: string;
