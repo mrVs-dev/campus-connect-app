@@ -142,6 +142,7 @@ function PermissionSettings() {
                                       <Checkbox
                                         checked={field.value}
                                         onCheckedChange={field.onChange}
+                                        disabled={role === 'Admin'}
                                       />
                                     </FormControl>
                                     <FormLabel className="text-xs text-muted-foreground">{action}</FormLabel>
