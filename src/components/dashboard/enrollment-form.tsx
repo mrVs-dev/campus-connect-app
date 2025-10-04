@@ -38,7 +38,8 @@ import type { Student } from "@/lib/types";
 import { communes, getVillagesByCommune } from "@/lib/address-data";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
-import 'react-image-crop/dist/ReactCrop.css'
+import 'react-image-crop/dist/ReactCrop.css';
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 const formSchema = z.object({
   familyId: z.string().optional(),
@@ -68,6 +69,7 @@ const formSchema = z.object({
     workplace: z.string().optional(),
     mobiles: z.array(z.string()).min(1, "At least one mobile number is required"),
     email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
+    avatarUrl: z.string().optional(),
   })).optional(),
   mediaConsent: z.boolean().optional(),
   emergencyContact: z.object({
@@ -75,6 +77,12 @@ const formSchema = z.object({
     phone: z.string().optional(),
   }).optional(),
   avatarUrl: z.string().optional(),
+  pickupPerson: z.object({
+    name: z.string().optional(),
+    relation: z.string().optional(),
+    phone: z.string().optional(),
+    avatarUrl: z.string().optional(),
+  }).optional(),
 });
 
 type EnrollmentFormValues = z.infer<typeof formSchema>;
@@ -85,8 +93,10 @@ type EnrollmentFormProps = {
 
 export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
+  const [cropTarget, setCropTarget] = React.useState<string | null>(null);
+  
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<EnrollmentFormValues>({
     resolver: zodResolver(formSchema),
@@ -109,13 +119,19 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
         street: "",
         house: "",
       },
-      guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""], email: "" }],
+      guardians: [{ relation: "", name: "", occupation: "", workplace: "", mobiles: [""], email: "", avatarUrl: "" }],
       mediaConsent: false,
       emergencyContact: {
         name: "",
         phone: "",
       },
       avatarUrl: "",
+      pickupPerson: {
+          name: "",
+          relation: "",
+          phone: "",
+          avatarUrl: "",
+      }
     },
   });
 
@@ -126,13 +142,16 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
 
   const watchedCommune = form.watch("address.commune");
   const villages = React.useMemo(() => getVillagesByCommune(watchedCommune || ""), [watchedCommune]);
-  const avatarUrl = form.watch("avatarUrl");
+  const studentAvatarUrl = form.watch("avatarUrl");
+  const guardianAvatars = form.watch("guardians");
+  const pickupPersonAvatarUrl = form.watch("pickupPerson.avatarUrl");
 
   React.useEffect(() => {
     form.setValue("address.village", "");
   }, [watchedCommune, form]);
 
-  const handleAvatarClick = () => {
+  const handleAvatarClick = (target: string) => {
+    setCropTarget(target);
     fileInputRef.current?.click();
   };
 
@@ -148,10 +167,13 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   };
 
   const handlePhotoCropped = (croppedDataUri: string) => {
-    form.setValue("avatarUrl", croppedDataUri);
-    setPhotoToCrop(null); // Close the dialog
+    if (cropTarget) {
+      form.setValue(cropTarget as any, croppedDataUri);
+    }
+    setPhotoToCrop(null);
+    setCropTarget(null);
     if (fileInputRef.current) {
-        fileInputRef.current.value = ""; // Reset file input
+        fileInputRef.current.value = "";
     }
   };
 
@@ -170,7 +192,19 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
      <ImageCropDialog 
         imageSrc={photoToCrop}
         onCropComplete={handlePhotoCropped}
-        onOpenChange={(isOpen) => !isOpen && setPhotoToCrop(null)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setPhotoToCrop(null);
+            setCropTarget(null);
+          }
+        }}
+      />
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleFileChange}
       />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -367,6 +401,50 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                   </div>
                 </CardContent>
               </Card>
+              
+               <Card>
+                <CardHeader>
+                  <CardTitle>Student Pickup Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start gap-6">
+                    <div
+                      className="w-24 h-24 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors flex-shrink-0"
+                      onClick={() => handleAvatarClick('pickupPerson.avatarUrl')}
+                      data-ai-hint="person portrait"
+                    >
+                      {pickupPersonAvatarUrl ? (
+                        <img src={pickupPersonAvatarUrl} alt="Pickup Person" className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <div className="text-center text-muted-foreground p-1">
+                          <UserIcon className="mx-auto h-8 w-8" />
+                          <p className="text-xs mt-1">Upload Photo</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-4">
+                       <FormField control={form.control} name="pickupPerson.name" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                       <FormField control={form.control} name="pickupPerson.relation" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Relation to Student</FormLabel>
+                          <FormControl><Input placeholder="e.g., Aunt" {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                       <FormField control={form.control} name="pickupPerson.phone" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number</FormLabel>
+                          <FormControl><Input type="tel" {...field} /></FormControl>
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <div className="space-y-8">
@@ -375,20 +453,13 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                   <CardTitle>Student Photo</CardTitle>
                 </CardHeader>
                 <CardContent className="flex justify-center items-center">
-                   <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                  />
                   <div
                     className="w-40 h-40 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors"
-                    onClick={handleAvatarClick}
+                    onClick={() => handleAvatarClick('avatarUrl')}
                     data-ai-hint="student portrait"
                   >
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt="Student" className="w-full h-full object-cover rounded-lg" />
+                    {studentAvatarUrl ? (
+                      <img src={studentAvatarUrl} alt="Student" className="w-full h-full object-cover rounded-lg" />
                     ) : (
                       <div className="text-center text-muted-foreground">
                         <UserIcon className="mx-auto h-12 w-12" />
@@ -405,20 +476,38 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                 <CardContent className="space-y-4">
                   {fields.map((field, index) => (
                     <div key={field.id} className="p-4 border rounded-lg space-y-4 relative">
-                      <FormField control={form.control} name={`guardians.${index}.relation`} render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Relation</FormLabel>
-                          <FormControl><Input placeholder="e.g., Father" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name={`guardians.${index}.name`} render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
+                        <div className="flex items-start gap-4">
+                            <div
+                                className="w-20 h-20 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors flex-shrink-0"
+                                onClick={() => handleAvatarClick(`guardians.${index}.avatarUrl`)}
+                                data-ai-hint="person portrait"
+                            >
+                                {guardianAvatars?.[index]?.avatarUrl ? (
+                                    <img src={guardianAvatars[index].avatarUrl} alt="Guardian" className="w-full h-full object-cover rounded-lg" />
+                                ) : (
+                                    <div className="text-center text-muted-foreground p-1">
+                                    <UserIcon className="mx-auto h-6 w-6" />
+                                    <p className="text-xs mt-1">Upload</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1 space-y-4">
+                                <FormField control={form.control} name={`guardians.${index}.relation`} render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Relation</FormLabel>
+                                    <FormControl><Input placeholder="e.g., Father" {...field} /></FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name={`guardians.${index}.name`} render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Full Name</FormLabel>
+                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                        </div>
                       <FormField control={form.control} name={`guardians.${index}.occupation`} render={({ field }) => (
                         <FormItem>
                           <FormLabel>Occupation</FormLabel>
@@ -454,7 +543,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                       )}
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => append({ relation: '', name: '', occupation: '', workplace: '', mobiles: [''], email: '' })}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => append({ relation: '', name: '', occupation: '', workplace: '', mobiles: [''], email: '', avatarUrl: '' })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Guardian
                   </Button>
                 </CardContent>

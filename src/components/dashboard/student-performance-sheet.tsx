@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { Student, Guardian, Enrollment, Assessment, Subject, AssessmentCategory } from "@/lib/types";
+import type { Student, Guardian, Enrollment, Assessment, Subject, AssessmentCategory, PickupPerson } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ImageCropDialog } from "./image-crop-dialog";
 import { programs } from "@/lib/program-data";
 import 'react-image-crop/dist/ReactCrop.css'
+import { User } from "lucide-react";
 
 interface StudentPerformanceSheetProps {
   student: Student | null;
@@ -46,9 +47,35 @@ function GuardianDetails({ guardian }: { guardian: Guardian }) {
   const occupationInfo = [guardian.occupation, guardian.workplace].filter(Boolean).join(' at ');
   return (
     <div className="space-y-2 rounded-lg border p-4">
-      <h4 className="font-semibold">{guardian.relation} - {guardian.name}</h4>
-      {occupationInfo && <p className="text-sm text-muted-foreground">{occupationInfo}</p>}
-      <p className="text-sm">Mobiles: {guardian.mobiles.join(', ')}</p>
+      <div className="flex items-center gap-4">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={guardian.avatarUrl} alt={guardian.name} className="object-cover" />
+            <AvatarFallback><User /></AvatarFallback>
+          </Avatar>
+          <div>
+            <h4 className="font-semibold">{guardian.relation} - {guardian.name}</h4>
+            {occupationInfo && <p className="text-sm text-muted-foreground">{occupationInfo}</p>}
+          </div>
+      </div>
+      <p className="text-sm pt-2">Mobiles: {guardian.mobiles.join(', ')}</p>
+      {guardian.email && <p className="text-sm">Email: {guardian.email}</p>}
+    </div>
+  );
+}
+
+function PickupPersonDetails({ person }: { person: PickupPerson }) {
+  return (
+    <div className="space-y-2 rounded-lg border p-4">
+      <div className="flex items-center gap-4">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={person.avatarUrl} alt={person.name} className="object-cover" />
+            <AvatarFallback><User /></AvatarFallback>
+          </Avatar>
+          <div>
+            <h4 className="font-semibold">{person.name} ({person.relation})</h4>
+             <p className="text-sm text-muted-foreground">Phone: {person.phone}</p>
+          </div>
+      </div>
     </div>
   );
 }
@@ -275,6 +302,17 @@ export function StudentPerformanceSheet({
                 ))}
               </CardContent>
             </Card>
+            
+            {student.pickupPerson && student.pickupPerson.name && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Designated Pickup Person</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PickupPersonDetails person={student.pickupPerson} />
+                </CardContent>
+              </Card>
+            )}
 
           </TabsContent>
         </Tabs>

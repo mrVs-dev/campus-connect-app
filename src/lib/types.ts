@@ -1,9 +1,4 @@
 
-
-
-
-
-
 export type UserRole = string;
 
 export type Guardian = {
@@ -13,6 +8,14 @@ export type Guardian = {
   workplace?: string;
   mobiles: string[];
   email?: string;
+  avatarUrl?: string;
+};
+
+export type PickupPerson = {
+  name: string;
+  relation: string;
+  phone: string;
+  avatarUrl?: string;
 };
 
 export type Enrollment = {
@@ -55,6 +58,7 @@ export interface Student {
   enrollments?: Enrollment[];
   deactivationDate?: Date;
   deactivationReason?: string;
+  pickupPerson?: PickupPerson;
 }
 
 export type StudentStatusHistory = {
