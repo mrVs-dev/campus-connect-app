@@ -55,8 +55,8 @@ export default function StudentDashboardPage() {
           const loggedInStudent = allStudents.find(s => s.guardians?.some(g => g.mobiles.includes(user.email || '')) || s.studentId === user.email);
 
           if (!loggedInStudent) {
-            // Not a student, or not found, redirect away
-            router.replace('/login');
+            setError("Could not find student data for the logged-in user.");
+            setLoading(false);
             return;
           }
           
@@ -156,13 +156,23 @@ export default function StudentDashboardPage() {
   
   if (error) {
      return (
-         <Card className="border-destructive">
+        <div className="flex flex-col gap-8 items-center justify-center h-screen">
+         <Card className="border-destructive max-w-lg">
             <CardHeader>
-                <CardTitle>Error</CardTitle>
-                <CardDescription>{error}</CardDescription>
+                <CardTitle className="text-center">Error</CardTitle>
+                <CardDescription className="text-center">{error}</CardDescription>
             </CardHeader>
         </Card>
+        </div>
       );
+  }
+
+  if (!student) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <p>No student data found for your account.</p>
+        </div>
+    );
   }
 
   return (

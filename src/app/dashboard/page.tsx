@@ -119,6 +119,7 @@ export default function DashboardPage() {
   const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
   const [userRole, setUserRole] = React.useState<UserRole | null>(null);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
+  const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
 
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -191,66 +192,45 @@ export default function DashboardPage() {
         const loggedInUserEmail = user.email;
 
         // --- PRIORITY 1: Student Check ---
-        // Includes temporary admin view logic
         let isStudent = studentsData.some(s => s.guardians?.some(g => g.mobiles.includes(user.email || '')) || s.studentId === user.email);
 
-        if (loggedInUserEmail === ADMIN_EMAIL && studentsData.length > 0 && !isStudent) {
-            const firstStudent = studentsData[0];
-             if (firstStudent.guardians?.some(g => g.mobiles.includes(ADMIN_EMAIL))) {
-                isStudent = true;
-            } else {
-                if (!firstStudent.guardians) firstStudent.guardians = [];
-                firstStudent.guardians.push({
-                    relation: 'Admin Viewer',
-                    name: 'Admin',
-                    mobiles: [ADMIN_EMAIL]
-                });
-                isStudent = true;
+        if (loggedInUserEmail === ADMIN_EMAIL && !isStudent) {
+            const isAssociatedWithFirstStudent = studentsData.length > 0 && studentsData[0].guardians?.some(g => g.mobiles.includes(ADMIN_EMAIL));
+            if (isAssociatedWithFirstStudent) {
+               isStudent = true;
             }
         }
         
         if(isStudent) {
             router.replace('/student/dashboard');
             setIsDataLoading(false);
-            return; // Stop further execution
+            return;
         }
 
         // --- PRIORITY 2: Staff Role Check ---
-        let currentTeachers = [...fetchedTeachers];
         let finalRole: UserRole | null = null;
 
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
-          const adminExists = currentTeachers.some(t => t.email === ADMIN_EMAIL);
-          if (!adminExists) {
-            const newAdmin: Omit<Teacher, 'teacherId'> = {
-              firstName: user.displayName?.split(' ')[0] || 'Admin',
-              lastName: user.displayName?.split(' ').slice(1).join(' ') || 'User',
-              email: loggedInUserEmail!,
-              role: 'Admin',
-              status: 'Active',
-            };
-            const addedAdmin = await addTeacher(newAdmin);
-            currentTeachers.push(addedAdmin);
-          }
         } else {
-          const loggedInTeacher = currentTeachers.find(t => t.email === loggedInUserEmail);
+          const loggedInTeacher = fetchedTeachers.find(t => t.email === loggedInUserEmail);
           if (loggedInTeacher) {
-            if (loggedInTeacher.role === 'Teacher') {
-              router.replace('/teacher/dashboard');
-              setIsDataLoading(false);
-              return; 
-            }
             finalRole = loggedInTeacher.role;
           }
         }
         
-        // --- Set all state at the end ---
+        // --- Set state and determine next steps ---
         setAllUsers(fetchedUsers as AuthUser[]);
-        setTeachers(currentTeachers);
+        setTeachers(fetchedTeachers);
         setUserRole(finalRole);
         
-        if (finalRole) {
+        if (finalRole === 'Teacher') {
+            router.replace('/teacher/dashboard');
+            setIsDataLoading(false);
+            return;
+        }
+
+        if (finalRole) { // Admin, Receptionist, Head of Dept etc.
            setStudents(studentsData);
            setAdmissions(admissionsData);
            setAssessments(assessmentsData);
@@ -260,6 +240,10 @@ export default function DashboardPage() {
            setFees(feesData);
            setInvoices(invoicesData);
            setInventory(inventoryData);
+           
+           const teacherEmails = new Set(fetchedTeachers.map(t => t.email));
+           setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
+
         }
 
       } catch (error) {
@@ -277,18 +261,6 @@ export default function DashboardPage() {
     fetchData();
 
   }, [user, authLoading, router, toast]);
-
-  const pendingUsers = React.useMemo(() => {
-    if (!allUsers.length || !teachers.length) {
-       if (user?.email === ADMIN_EMAIL && teachers.length === 0) {
-         return [];
-       }
-       return [];
-    }
-    const teacherEmails = new Set(teachers.map(t => t.email));
-    return allUsers.filter(u => u && u.email && !teacherEmails.has(u.email));
-  }, [allUsers, teachers, user]);
-
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
     try {
