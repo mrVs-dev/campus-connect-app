@@ -5,13 +5,169 @@ import * as React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { PlusCircle, Trash2, GripVertical } from "lucide-react";
-import type { Subject, AssessmentCategory } from "@/lib/types";
+import { PlusCircle, Trash2 } from "lucide-react";
+import type { Subject, AssessmentCategory, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// --- PERMISSIONS MOCK DATA AND TYPES ---
+const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Settings'] as const;
+const roles: UserRole[] = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
+const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
+
+type Module = typeof modules[number];
+type Action = typeof actions[number];
+
+type Permissions = Record<Module, Record<UserRole, Record<Action, boolean>>>;
+
+// Mock data for initial permissions state
+const initialPermissions: Permissions = {
+  Students: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: true, Update: false, Delete: false },
+  },
+  Users: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: false, Update: false, Delete: false },
+    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Assessments: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
+    'Head of Department': { Create: true, Read: true, Update: true, Delete: true },
+    Teacher: { Create: true, Read: true, Update: true, Delete: false },
+  },
+  Fees: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Invoicing: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Inventory: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Admissions: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: true, Update: false, Delete: false },
+  },
+  Settings: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: false, Update: false, Delete: false },
+    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+};
+
+
+// --- PERMISSIONS FORM ---
+
+const permissionSchema = z.object({
+  permissions: z.any(), // Using any for now, will be more specific with Zod later
+});
+type PermissionsFormValues = z.infer<typeof permissionSchema>;
+
+
+function PermissionSettings() {
+  const [isSaving, setIsSaving] = React.useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<PermissionsFormValues>({
+    defaultValues: { permissions: initialPermissions },
+  });
+
+  const onSubmit = (data: PermissionsFormValues) => {
+    setIsSaving(true);
+    console.log("Saving permissions:", data.permissions);
+    // Here we would call a function to save to Firestore
+    toast({
+      title: "Permissions Saved",
+      description: "Role permissions have been updated. (Note: This is a demo, enforcement is not yet implemented).",
+    });
+    setIsSaving(false);
+  };
+  
+  return (
+     <Card>
+      <CardHeader>
+        <CardTitle>Role Permissions</CardTitle>
+        <CardDescription>Configure module access for each user role. Changes will be applied upon next login.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="overflow-x-auto">
+              <Table className="border">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-bold border-r">Module</TableHead>
+                    {roles.map(role => (
+                      <TableHead key={role} className="text-center font-bold border-r last:border-r-0">{role}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {modules.map(module => (
+                    <TableRow key={module}>
+                      <TableCell className="font-semibold border-r">{module}</TableCell>
+                      {roles.map(role => (
+                        <TableCell key={role} className="border-r last:border-r-0">
+                          <div className="flex justify-around items-center gap-2">
+                            {actions.map(action => (
+                              <FormField
+                                key={action}
+                                control={form.control}
+                                name={`permissions.${module}.${role}.${action}`}
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-col items-center space-y-1">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-xs text-muted-foreground">{action}</FormLabel>
+                                  </FormItem>
+                                )}
+                              />
+                            ))}
+                          </div>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+             <div className="flex justify-end pt-4">
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Permissions"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  )
+}
 
 // Subjects Schema and Form
 const subjectSchema = z.object({
@@ -227,6 +383,7 @@ interface SettingsPageProps {
 export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, onSaveCategories }: SettingsPageProps) {
   return (
     <div className="space-y-8">
+      <PermissionSettings />
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
     </div>
