@@ -119,7 +119,7 @@ export const getNextStudentId = async (increment: boolean = true): Promise<strin
 
     try {
         if (increment) {
-            nextIdNumber = await runTransaction(db, async (transaction) => {
+             nextIdNumber = await runTransaction(db, async (transaction) => {
                 const metadataDoc = await transaction.get(metadataRef);
                 let currentId = startingId;
                 if (metadataDoc.exists() && metadataDoc.data().lastId) {
