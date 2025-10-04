@@ -4,7 +4,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getStudents, getAdmissions, getAssessments, getSubjects, getAssessmentCategories, getAttendanceForClass, getInvoices } from "@/lib/firebase/firestore";
+import { getStudents, getAdmissions, getAssessments, getSubjects, getAssessmentCategories, getAttendanceForClass, getInvoices, getFees } from "@/lib/firebase/firestore";
 import type { Student, Admission, Assessment, Subject, AssessmentCategory, Enrollment, AttendanceRecord, Invoice, Fee } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { programs } from "@/lib/program-data";
@@ -354,3 +354,5 @@ export default function GuardianDashboardPage() {
     </div>
   );
 }
+
+    
