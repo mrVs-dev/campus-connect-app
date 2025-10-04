@@ -191,51 +191,47 @@ export default function DashboardPage() {
         
         const loggedInUserEmail = user.email;
 
-        // --- PRIORITY 1: Student or Guardian Login Check ---
+        // --- START OF NEW, PRIORITIZED ROUTING LOGIC ---
+
+        // PRIORITY 1: Check if the user is a student or guardian first.
         const isStudentLogin = studentsData.some(s => s.studentEmail === loggedInUserEmail);
+        const isGuardianLogin = studentsData.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
+        
+        // Special case for admin to view as guardian
+        const isAdminAsGuardian = loggedInUserEmail === ADMIN_EMAIL && isGuardianLogin;
+
         if (isStudentLogin) {
             router.replace('/student/dashboard');
             return;
         }
-
-        const isGuardianLogin = studentsData.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
-        if (isGuardianLogin) {
-             // Special case for admin to view as a student/guardian
-            if (loggedInUserEmail === ADMIN_EMAIL) {
-                const isAssociatedWithFirstStudent = studentsData.length > 0 && (studentsData[0].guardians?.some(g => g.email === ADMIN_EMAIL) || studentsData[0].studentEmail === ADMIN_EMAIL);
-                if (isAssociatedWithFirstStudent) {
-                    router.replace('/guardian/dashboard');
-                    return;
-                }
-            } else {
-                 router.replace('/guardian/dashboard');
-                 return;
-            }
+        if (isGuardianLogin && !isAdminAsGuardian) {
+            router.replace('/guardian/dashboard');
+            return;
         }
+        // If admin is also a guardian, allow them to proceed to staff checks but handle later.
+        if(isAdminAsGuardian){
+             router.replace('/guardian/dashboard');
+            return;
+        }
+        
 
-
-        // --- PRIORITY 2: Staff Role Check ---
+        // PRIORITY 2: If not a student/guardian, check if they are an approved staff member.
         let finalRole: UserRole | null = null;
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
           const loggedInTeacher = fetchedTeachers.find(t => t.email === loggedInUserEmail);
-          if (loggedInTeacher) {
+          if (loggedInTeacher && loggedInTeacher.role) { // Check if role exists
             finalRole = loggedInTeacher.role;
           }
         }
         
-        // --- Set state and determine next steps ---
-        setAllUsers(fetchedUsers as AuthUser[]);
-        setTeachers(fetchedTeachers);
         setUserRole(finalRole);
         
-        if (finalRole === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-        }
-
-        if (finalRole) { // Admin, Receptionist, Head of Dept etc.
+        // PRIORITY 3: If they are a staff member, redirect or load data accordingly.
+        if (finalRole) {
+           setAllUsers(fetchedUsers as AuthUser[]);
+           setTeachers(fetchedTeachers);
            setStudents(studentsData);
            setAdmissions(admissionsData);
            setAssessments(assessmentsData);
@@ -246,9 +242,23 @@ export default function DashboardPage() {
            setInvoices(invoicesData);
            setInventory(inventoryData);
            
-           const teacherEmails = new Set(fetchedTeachers.map(t => t.email));
+           const teacherEmails = new Set(fetchedTeachers.map(t => t.email).filter(Boolean));
            setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
+           
+           // If they have the Teacher role, send them to the teacher dashboard.
+           // Other staff roles (Admin, Receptionist) will stay on the main dashboard.
+           if (finalRole === 'Teacher') {
+               router.replace('/teacher/dashboard');
+               return; // Stop execution
+           }
+
+        } else {
+            // If they reach here, they are not a student, guardian, or approved staff.
+            // They are a pending user. No data is loaded, and the PendingApproval component will show.
+             setAllUsers(fetchedUsers as AuthUser[]);
+             setTeachers(fetchedTeachers);
         }
+        // --- END OF NEW ROUTING LOGIC ---
 
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
