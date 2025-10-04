@@ -207,7 +207,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
 
   return (
     <div className="space-y-8">
-      {userRole === 'Admin' && pendingUsers.length > 0 && (
+      {canEdit && pendingUsers.length > 0 && (
           <Card>
               <CardHeader>
                   <CardTitle>Pending Approvals</CardTitle>
