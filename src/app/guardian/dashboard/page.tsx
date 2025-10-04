@@ -204,7 +204,7 @@ export default function GuardianDashboardPage() {
   }, [user, authLoading, router]);
 
   React.useEffect(() => {
-    if (user) {
+    if (user?.email) {
       const fetchData = async () => {
         try {
           setLoading(true);
@@ -218,7 +218,30 @@ export default function GuardianDashboardPage() {
             getFees(),
           ]);
 
-          const guardianChildren = allStudents.filter(s => s.guardians?.some(g => g.email === user.email));
+          // Find children directly linked by guardian email
+          const directChildren = allStudents.filter(s => s.guardians?.some(g => g.email === user.email));
+          
+          // Find family IDs from direct children
+          const familyIds = new Set<string>();
+          directChildren.forEach(child => {
+            if (child.familyId) {
+              familyIds.add(child.familyId);
+            }
+          });
+
+          // Find other children sharing the same family ID
+          let familyChildren: Student[] = [];
+          if (familyIds.size > 0) {
+            familyChildren = allStudents.filter(s => s.familyId && familyIds.has(s.familyId));
+          }
+
+          // Combine and deduplicate the list of children
+          const allGuardianChildrenMap = new Map<string, Student>();
+          [...directChildren, ...familyChildren].forEach(child => {
+            allGuardianChildrenMap.set(child.studentId, child);
+          });
+          const guardianChildren = Array.from(allGuardianChildrenMap.values());
+
 
           if (guardianChildren.length === 0) {
             setError("Could not find any students associated with your account.");
