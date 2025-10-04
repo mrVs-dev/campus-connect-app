@@ -191,10 +191,11 @@ export default function DashboardPage() {
         
         const loggedInUserEmail = user.email;
 
-        // --- PRIORITY 1: Student Check ---
+        // --- PRIORITY 1: Student Check (includes special admin view) ---
         let isStudent = studentsData.some(s => s.guardians?.some(g => g.mobiles.includes(user.email || '')) || s.studentId === user.email);
 
         if (loggedInUserEmail === ADMIN_EMAIL && !isStudent) {
+            // Special case for admin to view as a student
             const isAssociatedWithFirstStudent = studentsData.length > 0 && studentsData[0].guardians?.some(g => g.mobiles.includes(ADMIN_EMAIL));
             if (isAssociatedWithFirstStudent) {
                isStudent = true;
@@ -203,13 +204,11 @@ export default function DashboardPage() {
         
         if(isStudent) {
             router.replace('/student/dashboard');
-            setIsDataLoading(false);
             return;
         }
 
         // --- PRIORITY 2: Staff Role Check ---
         let finalRole: UserRole | null = null;
-
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
@@ -226,7 +225,6 @@ export default function DashboardPage() {
         
         if (finalRole === 'Teacher') {
             router.replace('/teacher/dashboard');
-            setIsDataLoading(false);
             return;
         }
 
@@ -243,7 +241,6 @@ export default function DashboardPage() {
            
            const teacherEmails = new Set(fetchedTeachers.map(t => t.email));
            setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
-
         }
 
       } catch (error) {
@@ -763,7 +760,7 @@ export default function DashboardPage() {
               <InventoryList
                 inventoryItems={inventory}
                 onSaveItem={handleSaveInventoryItem}
-                onDeleteItem={handleDeleteItem}
+                onDeleteItem={handleDeleteInventoryItem}
               />
             </TabsContent>
 
@@ -803,5 +800,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
