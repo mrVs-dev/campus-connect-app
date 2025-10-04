@@ -110,31 +110,41 @@ export async function getUsers(): Promise<User[]> {
 
 
 // --- App Metadata ---
-const getNextStudentId = async (): Promise<string> => {
+export const getNextStudentId = async (increment: boolean = true): Promise<string> => {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const metadataRef = doc(db, 'metadata', 'studentCounter');
-    const startingId = 1831; // Start counting from here, so first student is 1832
-    
-    let nextId = startingId + 1;
+    const startingId = 1831;
 
-    try {
-        await runTransaction(db, async (transaction) => {
-            const metadataDoc = await transaction.get(metadataRef);
-            if (!metadataDoc.exists() || !metadataDoc.data().lastId || metadataDoc.data().lastId < startingId) {
-                // If it doesn't exist or is lower than our new starting point, set it.
-                 transaction.set(metadataRef, { lastId: nextId });
-            } else {
-                const currentId = metadataDoc.data().lastId;
-                nextId = currentId + 1;
-                transaction.update(metadataRef, { lastId: nextId });
-            }
-        });
-    } catch (e) {
-        console.error("Transaction failed: ", e);
-        throw new Error("Could not generate a new student ID.");
+    let nextIdNumber: number;
+
+    if (increment) {
+        // Run a transaction to safely increment the counter and get the new ID
+        try {
+            nextIdNumber = await runTransaction(db, async (transaction) => {
+                const metadataDoc = await transaction.get(metadataRef);
+                let currentId = startingId;
+                if (metadataDoc.exists() && metadataDoc.data().lastId) {
+                    currentId = metadataDoc.data().lastId;
+                }
+                const newId = currentId + 1;
+                transaction.set(metadataRef, { lastId: newId }, { merge: true });
+                return newId;
+            });
+        } catch (e) {
+            console.error("Transaction failed to get next student ID: ", e);
+            throw new Error("Could not generate a new student ID.");
+        }
+    } else {
+        // Just peek at the next ID without incrementing
+        const metadataDoc = await getDoc(metadataRef);
+        let currentId = startingId;
+        if (metadataDoc.exists() && metadataDoc.data().lastId) {
+            currentId = metadataDoc.data().lastId;
+        }
+        nextIdNumber = currentId + 1;
     }
 
-    return `STU${nextId}`;
+    return `STU${nextIdNumber}`;
 };
 
 

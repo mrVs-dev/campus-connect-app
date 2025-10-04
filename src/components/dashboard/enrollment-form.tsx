@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css';
 import { Avatar } from "../ui/avatar";
+import { getNextStudentIdAction } from "@/app/actions";
 
 const formSchema = z.object({
   familyId: z.string().optional(),
@@ -94,6 +94,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
   const [cropTarget, setCropTarget] = React.useState<string | null>(null);
+  const [nextStudentId, setNextStudentId] = React.useState("Loading...");
   
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -137,6 +138,16 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     control: form.control,
     name: "guardians",
   });
+  
+  const fetchNextId = React.useCallback(async () => {
+    setNextStudentId("Loading...");
+    const id = await getNextStudentIdAction();
+    setNextStudentId(id);
+  }, []);
+
+  React.useEffect(() => {
+    fetchNextId();
+  }, [fetchNextId]);
 
   const watchedCommune = form.watch("address.commune");
   const villages = React.useMemo(() => getVillagesByCommune(watchedCommune || ""), [watchedCommune]);
@@ -181,6 +192,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     const success = await onEnroll(values);
     if (success) {
       form.reset();
+      fetchNextId(); // Fetch the next ID for the new form
     }
     setIsSubmitting(false);
   }
@@ -206,6 +218,25 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
       />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="lg:col-span-2 space-y-4">
+              <Card>
+                  <CardHeader>
+                      <CardTitle>New Student Enrollment</CardTitle>
+                      <CardDescription>Fill out the form below to enroll a new student.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                       <div>
+                          <FormLabel>Next Student ID</FormLabel>
+                          <FormControl>
+                            <Input value={nextStudentId} disabled />
+                          </FormControl>
+                          <FormDescription>
+                            This is the projected ID for the new student. It may change if another user enrolls a student at the same time.
+                          </FormDescription>
+                       </div>
+                  </CardContent>
+              </Card>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2 space-y-8">
               <Card>

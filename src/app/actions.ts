@@ -1,6 +1,7 @@
 "use server";
 
 import { summarizeStudentProgress } from "@/ai/flows/summarize-student-progress";
+import { getNextStudentId } from "@/lib/firebase/firestore";
 import type { SummarizeStudentProgressInput } from "@/ai/flows/summarize-student-progress";
 
 export async function getStudentSummary(
@@ -16,4 +17,15 @@ export async function getStudentSummary(
       error: "Failed to generate AI summary. Please try again later.",
     };
   }
+}
+
+export async function getNextStudentIdAction(): Promise<string> {
+    try {
+        // This will fetch the next ID based on the counter but won't increment it yet.
+        const nextId = await getNextStudentId(false);
+        return nextId;
+    } catch (error) {
+        console.error("Error fetching next student ID:", error);
+        return "Error";
+    }
 }
