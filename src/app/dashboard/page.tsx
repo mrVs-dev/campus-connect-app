@@ -162,9 +162,31 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsDataLoading(true);
       try {
-        const [currentTeachers, currentUsers] = await Promise.all([
-          getTeachers(),
-          getUsers()
+        // Fetch all necessary data first
+        const [
+          currentTeachers, 
+          currentUsers, 
+          studentsData, 
+          admissionsData, 
+          assessmentsData, 
+          statusHistoryData, 
+          subjectsData, 
+          categoriesData,
+          feesData,
+          invoicesData,
+          inventoryData
+        ] = await Promise.all([
+            getTeachers(),
+            getUsers(),
+            getStudents(),
+            getAdmissions(),
+            getAssessments(),
+            getStudentStatusHistory(),
+            getSubjects(),
+            getAssessmentCategories(),
+            getFees(),
+            getInvoices(),
+            getInventoryItems(),
         ]);
         
         setTeachers(currentTeachers);
@@ -176,7 +198,6 @@ export default function DashboardPage() {
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
           const adminExists = currentTeachers.some(t => t.email === ADMIN_EMAIL);
-
           if (!adminExists) {
             const newAdmin = {
               firstName: user.displayName?.split(' ')[0] || 'Admin',
@@ -184,11 +205,12 @@ export default function DashboardPage() {
               email: loggedInUserEmail!,
               role: 'Admin' as UserRole,
             };
-            // This await ensures the admin is added before any potential re-render
-            await addTeacher(newAdmin);
-            // Re-fetch teachers to have the most current list including the new admin
-            const updatedTeachers = await getTeachers();
-            setTeachers(updatedTeachers);
+            // This is an async operation, but we don't need to wait for it to block rendering.
+            // The next data fetch will include the new admin.
+            addTeacher(newAdmin).then(async () => {
+               const updatedTeachers = await getTeachers();
+               setTeachers(updatedTeachers);
+            });
           }
         } else {
           const loggedInTeacher = currentTeachers.find(t => t.email === loggedInUserEmail);
@@ -203,38 +225,17 @@ export default function DashboardPage() {
         
         setUserRole(finalRole);
         
+        // If the user has a role, set all the application data.
         if (finalRole) {
-           const [
-            studentsData, 
-            admissionsData, 
-            assessmentsData, 
-            statusHistoryData, 
-            subjectsData, 
-            categoriesData,
-            feesData,
-            invoicesData,
-            inventoryData,
-          ] = await Promise.all([
-            getStudents(),
-            getAdmissions(),
-            getAssessments(),
-            getStudentStatusHistory(),
-            getSubjects(),
-            getAssessmentCategories(),
-            getFees(),
-            getInvoices(),
-            getInventoryItems(),
-          ]);
-          
-          setStudents(studentsData);
-          setAdmissions(admissionsData);
-          setAssessments(assessmentsData);
-          setStatusHistory(statusHistoryData);
-          setSubjects(subjectsData);
-          setAssessmentCategories(categoriesData);
-          setFees(feesData);
-          setInvoices(invoicesData);
-          setInventory(inventoryData);
+           setStudents(studentsData);
+           setAdmissions(admissionsData);
+           setAssessments(assessmentsData);
+           setStatusHistory(statusHistoryData);
+           setSubjects(subjectsData);
+           setAssessmentCategories(categoriesData);
+           setFees(feesData);
+           setInvoices(invoicesData);
+           setInventory(inventoryData);
         }
 
       } catch (error) {
@@ -252,6 +253,18 @@ export default function DashboardPage() {
     fetchData();
 
   }, [user, authLoading, router, toast]);
+
+  const pendingUsers = React.useMemo(() => {
+    if (!allUsers.length || !teachers.length) {
+       // If teachers haven't loaded, especially on first load for admin, all users might seem pending.
+       // It's better to wait until both are loaded.
+       if (user?.email === ADMIN_EMAIL && teachers.length === 0) {
+         return [];
+       }
+    }
+    const teacherEmails = new Set(teachers.map(t => t.email));
+    return allUsers.filter(u => u && u.email && !teacherEmails.has(u.email));
+  }, [allUsers, teachers, user]);
 
 
   const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
@@ -679,9 +692,6 @@ export default function DashboardPage() {
     return <PendingApproval />;
   }
   
-  // This calculation must happen here, after `allUsers` and `teachers` states are set.
-  const pendingUsers = allUsers.filter(u => u && u.email && !teachers.some(t => t.email === u.email));
-
   const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
 
   return (
@@ -799,3 +809,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
