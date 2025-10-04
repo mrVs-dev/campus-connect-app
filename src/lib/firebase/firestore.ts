@@ -118,7 +118,6 @@ export const getNextStudentId = async (increment: boolean = true): Promise<strin
     let nextIdNumber: number;
 
     if (increment) {
-        // Run a transaction to safely increment the counter and get the new ID
         try {
             nextIdNumber = await runTransaction(db, async (transaction) => {
                 const metadataDoc = await transaction.get(metadataRef);
@@ -135,7 +134,6 @@ export const getNextStudentId = async (increment: boolean = true): Promise<strin
             throw new Error("Could not generate a new student ID.");
         }
     } else {
-        // Just peek at the next ID without incrementing
         const metadataDoc = await getDoc(metadataRef);
         let currentId = startingId;
         if (metadataDoc.exists() && metadataDoc.data().lastId) {

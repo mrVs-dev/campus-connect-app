@@ -24,8 +24,8 @@ export async function getNextStudentIdAction(): Promise<string> {
         // This will fetch the next ID based on the counter but won't increment it yet.
         const nextId = await getNextStudentId(false);
         return nextId;
-    } catch (error) {
-        console.error("Error fetching next student ID:", error);
+    } catch (error: any) {
+        console.error("Error fetching next student ID:", error.message);
         return "Error";
     }
 }
