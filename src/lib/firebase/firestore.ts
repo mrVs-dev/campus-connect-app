@@ -125,10 +125,10 @@ export async function peekNextStudentId(): Promise<string> {
         return `STU${lastId + 1}`;
     } catch (e) {
         console.error("Could not peek next student ID: ", e);
-        throw new Error("Could not peek next student ID.");
+        // This is a safe fallback in case of read errors. The actual ID generation is transactional.
+        return `STU${STARTING_STUDENT_ID + 1}`;
     }
 }
-
 
 export const getNextStudentId = async (): Promise<string> => {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
