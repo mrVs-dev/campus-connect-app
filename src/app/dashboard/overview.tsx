@@ -15,7 +15,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { programs, sortLevels } from "@/lib/program-data";
+import { programs } from "@/lib/program-data";
 import * as React from "react";
 import { addDays, format, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -102,6 +102,27 @@ interface OverviewProps {
   admissions: Admission[];
 }
 
+const getSortValue = (level: string): number => {
+    const specialLevels: { [key: string]: number } = {
+        'DayCare': 1, 'Toddler': 2, 'Pre-K': 3, 'Kindergarten': 4,
+        'Starters': 1, 'Starter': 1, // Handle typo
+    };
+    if (specialLevels[level] !== undefined) return specialLevels[level];
+    
+    const gradeMatch = level.match(/Grade (\d+)/);
+    if (gradeMatch) return 100 + parseInt(gradeMatch[1], 10);
+    
+    const levelMatch = level.match(/Level (\d+)/);
+    if (levelMatch) return 100 + parseInt(levelMatch[1], 10);
+
+    return 999;
+};
+
+const sortLevels = (levels: { level: string }[]): { level: string }[] => {
+    return [...levels].sort((a, b) => getSortValue(a.level) - getSortValue(b.level));
+};
+
+
 export function Overview({ students, admissions }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
@@ -110,7 +131,7 @@ export function Overview({ students, admissions }: OverviewProps) {
   React.useEffect(() => {
     const now = new Date();
     setDateRange({
-      from: new Date("2025-07-21"),
+      from: startOfMonth(now),
       to: now
     });
   }, []);
@@ -184,9 +205,9 @@ export function Overview({ students, admissions }: OverviewProps) {
                 if (levelName === 'Starter') levelName = 'Starters'; // Consolidate typo
                 programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
 
-                 if (programInfo.subDivisions) {
+                 if (programInfo.subDivisions && programData[programName].subDivisions) {
                     for (const sub of programInfo.subDivisions) {
-                        if (sub.levels.includes(levelName)) {
+                        if (sub.levels.includes(enrollment.level)) { // Use original level for matching
                             programData[programName].subDivisions![sub.name]++;
                             break;
                         }
@@ -382,3 +403,5 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
+
+    
