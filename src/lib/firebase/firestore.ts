@@ -184,7 +184,7 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     const studentForFirestore = {
         ...studentData,
         status: "Active",
-        enrollmentDate: serverTimestamp() 
+        enrollmentDate: studentData.enrollmentDate ? Timestamp.fromDate(studentData.enrollmentDate) : serverTimestamp()
     };
     
     const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
@@ -193,7 +193,7 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     const newStudent: Student = {
         ...studentData,
         studentId: newStudentId,
-        enrollmentDate: new Date(),
+        enrollmentDate: studentData.enrollmentDate || new Date(),
         status: "Active",
     };
     
@@ -534,7 +534,7 @@ export async function getTeachers(): Promise<Teacher[]> {
     });
 }
 
-export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>): Promise<Teacher> {
+export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teachersCollection = collection(db, 'teachers');
     const teacherForFirestore = {
@@ -845,3 +845,5 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
   const settingsDocRef = doc(db, 'settings', 'permissions');
   await setDoc(settingsDocRef, { config: permissions });
 }
+
+    
