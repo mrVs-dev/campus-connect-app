@@ -116,6 +116,7 @@ type RoleFormValues = z.infer<typeof roleSchema>;
 
 
 function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: (roles: UserRole[]) => Promise<void> }) {
+  const { toast } = useToast();
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleSchema),
     defaultValues: { newRole: "" },
@@ -128,12 +129,14 @@ function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: 
     }
     const newRoles = [...roles, values.newRole];
     await onSaveRoles(newRoles);
+    toast({ title: "Role Added", description: `The role "${values.newRole}" has been created.`});
     form.reset();
   };
 
   const handleDeleteRole = async (roleToDelete: UserRole) => {
     const newRoles = roles.filter(role => role !== roleToDelete);
     await onSaveRoles(newRoles);
+    toast({ title: "Role Deleted", description: `The role "${roleToDelete}" has been removed.`});
   };
   
   const protectedRoles = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
