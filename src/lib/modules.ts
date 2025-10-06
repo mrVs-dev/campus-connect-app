@@ -69,7 +69,7 @@ export const initialPermissions = {
   },
   Admissions: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: true, Read:true, Update: true, Delete: false },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: true, Update: false, Delete: false },
     'Office Manager': { Create: false, Read: true, Update: false, Delete: false },
