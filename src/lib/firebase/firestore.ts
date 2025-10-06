@@ -803,7 +803,7 @@ export async function saveAssessmentCategories(categories: AssessmentCategory[])
 }
 
 export async function getRoles(): Promise<UserRole[]> {
-  if (!db || !db.g) throw new Error("Firestore is not initialized.");
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'roles');
   const docSnap = await getDoc(settingsDocRef);
   
