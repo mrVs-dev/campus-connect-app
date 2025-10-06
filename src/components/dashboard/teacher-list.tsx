@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -61,7 +62,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { format } from "date-fns";
 import { EditTeacherSheet } from "./edit-teacher-sheet";
-import { updateTeacher, getSubjects, getAdmissions, getRoles, deleteTeacher } from "@/lib/firebase/firestore";
+import { updateTeacher, getSubjects, getAdmissions, getRoles, deleteTeacher, deleteMainUser } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { User as AuthUser } from "firebase/auth";
 
@@ -103,12 +104,13 @@ const formatDateSafe = (date: any): string => {
 };
 // ---
 
-export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers, onAddTeacher }: TeacherListProps) {
+export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers: initialPendingUsers, onAddTeacher }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = React.useState<Teacher | null>(null);
   const [userToApprove, setUserToApprove] = React.useState<AuthUser | null>(null);
   const [teachers, setTeachers] = React.useState(initialTeachers);
+  const [pendingUsers, setPendingUsers] = React.useState(initialPendingUsers);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [roles, setRoles] = React.useState<UserRole[]>([]);
@@ -119,7 +121,8 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
 
   React.useEffect(() => {
     setTeachers(initialTeachers);
-  }, [initialTeachers]);
+    setPendingUsers(initialPendingUsers);
+  }, [initialTeachers, initialPendingUsers]);
   
   React.useEffect(() => {
     async function fetchSupportingData() {
@@ -179,7 +182,6 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
   const handleAddTeacher = async (values: TeacherFormValues) => {
     if (!canEdit) return;
 
-    // Check for duplicate email
     if (teachers.some(teacher => teacher.email.toLowerCase() === values.email.toLowerCase())) {
         form.setError("email", { message: "A staff member with this email already exists." });
         return;
@@ -187,6 +189,10 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
 
     const newTeacher = await onAddTeacher(values);
     if (newTeacher) {
+      setTeachers(prev => [...prev, newTeacher]);
+      if (userToApprove) {
+        setPendingUsers(prev => prev.filter(u => u.uid !== userToApprove.uid));
+      }
       form.reset();
       setIsNewTeacherDialogOpen(false);
     }
@@ -223,14 +229,24 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
 
   const handleDeleteTeacher = async () => {
     if (!canDelete || !teacherToDelete) return;
+    const teacherIdToDelete = teacherToDelete.teacherId;
+    const userToDelete = initialPendingUsers.find(u => u.email === teacherToDelete.email);
+
     try {
-        await deleteTeacher(teacherToDelete.teacherId);
-        setTeachers(prev => prev.filter(t => t.teacherId !== teacherToDelete.teacherId));
+        await deleteTeacher(teacherIdToDelete);
+        
+        // Also delete the main user record if it exists
+        if (userToDelete) {
+            await deleteMainUser(userToDelete.uid);
+            setPendingUsers(prev => prev.filter(u => u.uid !== userToDelete.uid));
+        }
+
+        setTeachers(prev => prev.filter(t => t.teacherId !== teacherIdToDelete));
+
         toast({
             title: "Staff Deleted",
             description: `${teacherToDelete.firstName} ${teacherToDelete.lastName} has been removed.`,
         });
-        setTeacherToDelete(null);
     } catch (error) {
         console.error("Error deleting teacher:", error);
         toast({
@@ -238,6 +254,8 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
             description: "There was an error deleting the staff member.",
             variant: "destructive",
         });
+    } finally {
+        setTeacherToDelete(null);
     }
   };
   

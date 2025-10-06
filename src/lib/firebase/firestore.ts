@@ -1,4 +1,5 @@
 
+
 import { 
   collection, 
   getDocs, 
@@ -105,6 +106,12 @@ export async function getUsers(): Promise<User[]> {
     const usersCollection = collection(db, 'users');
     const snapshot = await getDocs(usersCollection);
     return snapshot.docs.map(doc => convertTimestampsToDates(doc.data()) as User);
+}
+
+export async function deleteMainUser(uid: string): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const userDoc = doc(db, 'users', uid);
+    await deleteDoc(userDoc);
 }
 
 
