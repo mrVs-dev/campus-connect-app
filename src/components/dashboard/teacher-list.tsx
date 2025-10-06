@@ -81,6 +81,7 @@ interface TeacherListProps {
   teachers: Teacher[];
   pendingUsers: AuthUser[];
   onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => Promise<Teacher | null>;
+  onDeleteTeacher: (teacher: Teacher) => void;
 }
 
 // --- Helper functions for robust date handling ---
@@ -104,7 +105,7 @@ const formatDateSafe = (date: any): string => {
 };
 // ---
 
-export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers: initialPendingUsers, onAddTeacher }: TeacherListProps) {
+export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers: initialPendingUsers, onAddTeacher, onDeleteTeacher }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = React.useState<Teacher | null>(null);
@@ -187,15 +188,9 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
         return;
     }
 
-    const newTeacher = await onAddTeacher(values);
-    if (newTeacher) {
-      setTeachers(prev => [...prev, newTeacher]);
-      if (userToApprove) {
-        setPendingUsers(prev => prev.filter(u => u.uid !== userToApprove.uid));
-      }
-      form.reset();
-      setIsNewTeacherDialogOpen(false);
-    }
+    await onAddTeacher(values);
+    form.reset();
+    setIsNewTeacherDialogOpen(false);
   };
   
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
@@ -227,46 +222,6 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
     }
   };
 
-  const handleDeleteTeacher = async () => {
-    if (!canDelete || !teacherToDelete) return;
-
-    const teacherIdToDelete = teacherToDelete.teacherId;
-    const teacherEmailToDelete = teacherToDelete.email;
-    const userToDelete = initialPendingUsers.find(u => u.email === teacherEmailToDelete);
-
-    try {
-      await deleteTeacher(teacherIdToDelete);
-      if (userToDelete) {
-        await deleteMainUser(userToDelete.uid);
-      }
-      
-      // Update local state immediately and correctly
-      setTeachers(prev => prev.filter(t => t.teacherId !== teacherIdToDelete));
-      if (userToDelete) {
-          setPendingUsers(prev => prev.filter(u => u.uid !== userToDelete.uid));
-      }
-
-      toast({
-        title: "Staff Deleted",
-        description: `${teacherToDelete.firstName} ${teacherToDelete.lastName} has been removed.`,
-      });
-    } catch (error) {
-      console.error("Error deleting teacher:", error);
-      toast({
-        title: "Deletion Failed",
-        description: "There was an error deleting the staff member.",
-        variant: "destructive",
-      });
-    } finally {
-      setTeacherToDelete(null);
-    }
-  };
-  
-  const handleEditClick = (teacher: Teacher) => {
-    if (!canEdit) return;
-    setTeacherToEdit(teacher);
-  };
-  
   const handleDeleteClick = (teacher: Teacher) => {
     if (!canDelete) return;
     setTeacherToDelete(teacher);
@@ -461,7 +416,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => handleEditClick(teacher)}>
+                            <DropdownMenuItem onSelect={() => setTeacherToEdit(teacher)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                             </DropdownMenuItem>
@@ -497,7 +452,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTeacher}>Continue</AlertDialogAction>
+            <AlertDialogAction onClick={() => teacherToDelete && onDeleteTeacher(teacherToDelete)}>Continue</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
