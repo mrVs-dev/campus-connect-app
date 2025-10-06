@@ -529,57 +529,6 @@ function CategorySettings({ initialCategories, onSave }: { initialCategories: As
   );
 }
 
-function DangerZone({ onDeleteAllStudents }: { onDeleteAllStudents: () => void }) {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-
-  return (
-    <>
-      <Card className="border-destructive">
-        <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>
-            These actions are irreversible. Please proceed with caution.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-medium">Delete All Students</p>
-              <p className="text-sm text-muted-foreground">
-                This will permanently remove all student records from the database.
-              </p>
-            </div>
-            <Button
-              variant="destructive"
-              onClick={() => setIsDeleteDialogOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete All Students
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete all student records, including their grades and admissions data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onDeleteAllStudents}>
-              I understand, delete all students
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-}
-
-
 // Main Page Component
 interface SettingsPageProps {
   subjects: Subject[];
@@ -619,9 +568,6 @@ export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, o
       <PermissionSettings roles={roles} />
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
-      <DangerZone onDeleteAllStudents={onDeleteAllStudents} />
     </div>
   );
 }
-
-    
