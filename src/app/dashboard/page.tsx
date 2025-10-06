@@ -153,95 +153,34 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsDataLoading(true);
       try {
-        const [
-          fetchedUsers,
-          fetchedTeachers,
-          studentsData, 
-          admissionsData, 
-          assessmentsData, 
-          statusHistoryData, 
-          subjectsData, 
-          categoriesData,
-          feesData,
-          invoicesData,
-          inventoryData,
-          savedPermissions,
-          allRoles
-        ] = await Promise.all([
-          getUsers(),
-          getTeachers(),
-          getStudents(),
-          getAdmissions(),
-          getAssessments(),
-          getStudentStatusHistory(),
-          getSubjects(),
-          getAssessmentCategories(),
-          getFees(),
-          getInvoices(),
-          getInventoryItems(),
-          getPermissions(),
-          getRoles(),
-        ]);
-        
-        let currentRoles = [...allRoles];
-        const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
-        let madeChanges = false;
-        rolesToAdd.forEach(role => {
-            if (!currentRoles.some(r => r.toLowerCase() === role.toLowerCase())) {
-                currentRoles.push(role);
-                madeChanges = true;
-            }
-        });
-        if (madeChanges) {
-          await saveRoles(currentRoles);
-        }
-
-
-        // --- Build a complete, reliable permissions object ---
-        const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-        APP_MODULES.forEach(module => {
-           if (!completePermissions[module]) completePermissions[module] = {};
-           currentRoles.forEach(role => {
-               if (!completePermissions[module][role]) {
-                  completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-               }
-               const saved = savedPermissions[module]?.[role];
-               if (saved) {
-                   completePermissions[module][role] = { ...completePermissions[module][role], ...saved };
-               }
-           });
-        });
-        setPermissions(completePermissions);
-
-
         const loggedInUserEmail = user.email;
 
-        // --- START OF RE-ARCHITECTED ROUTING LOGIC ---
-
-        // PRIORITY 1: Check for student/guardian roles first as they are definitive redirects.
-        const isStudentLogin = studentsData.some(s => s.studentEmail === loggedInUserEmail);
+        // --- PRIORITY 1: Check for student/guardian roles first ---
+        const allStudents = await getStudents();
+        const isStudentLogin = allStudents.some(s => s.studentEmail === loggedInUserEmail);
         if (isStudentLogin) {
             router.replace('/student/dashboard');
             return;
         }
 
-        const isGuardianLogin = studentsData.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
+        const isGuardianLogin = allStudents.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
         const isAdminAsGuardian = loggedInUserEmail === ADMIN_EMAIL && isGuardianLogin;
         if (isGuardianLogin && !isAdminAsGuardian) {
             router.replace('/guardian/dashboard');
             return;
         }
-         if(isAdminAsGuardian){
-             router.replace('/guardian/dashboard');
+        if(isAdminAsGuardian){
+            router.replace('/guardian/dashboard');
             return;
         }
 
-        // PRIORITY 2: If not a student/guardian, determine their staff role.
+        // --- PRIORITY 2: Determine Staff Role ---
         let finalRole: UserRole | null = null;
+        const allTeachers = await getTeachers();
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
-          const loggedInTeacher = fetchedTeachers.find(t => t.email === loggedInUserEmail);
+          const loggedInTeacher = allTeachers.find(t => t.email === loggedInUserEmail);
           if (loggedInTeacher && loggedInTeacher.role) {
             finalRole = loggedInTeacher.role;
           }
@@ -249,38 +188,92 @@ export default function DashboardPage() {
         
         setUserRole(finalRole);
         
-        // PRIORITY 3: If they have an assigned role, load all data and proceed.
+        // --- PRIORITY 3: If role is determined, fetch all data. Otherwise, they are pending. ---
         if (finalRole) {
-           setAllUsers(fetchedUsers as AuthUser[]);
-           setTeachers(fetchedTeachers);
-           setStudents(studentsData);
-           setAdmissions(admissionsData);
-           setAssessments(assessmentsData);
-           setStatusHistory(statusHistoryData);
-           setSubjects(subjectsData);
-           setAssessmentCategories(categoriesData);
-           setFees(feesData);
-           setInvoices(invoicesData);
-           setInventory(inventoryData);
-           
-           const teacherEmails = new Set(fetchedTeachers.map(t => t.email).filter(Boolean));
-           setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
-           
-           // Redirect teachers to their specific dashboard. Other roles stay here.
+          // Redirect teachers away immediately after setting role
            if (finalRole === 'Teacher') {
                router.replace('/teacher/dashboard');
                return; // Stop execution
            }
 
+          const [
+            fetchedUsers,
+            admissionsData, 
+            assessmentsData, 
+            statusHistoryData, 
+            subjectsData, 
+            categoriesData,
+            feesData,
+            invoicesData,
+            inventoryData,
+            savedPermissions,
+            allRoles
+          ] = await Promise.all([
+            getUsers(),
+            getAdmissions(),
+            getAssessments(),
+            getStudentStatusHistory(),
+            getSubjects(),
+            getAssessmentCategories(),
+            getFees(),
+            getInvoices(),
+            getInventoryItems(),
+            getPermissions(),
+            getRoles(),
+          ]);
+
+          let currentRoles = [...allRoles];
+          const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
+          let madeChanges = false;
+          rolesToAdd.forEach(role => {
+              if (!currentRoles.some(r => r.toLowerCase() === role.toLowerCase())) {
+                  currentRoles.push(role);
+                  madeChanges = true;
+              }
+          });
+          if (madeChanges) {
+            await saveRoles(currentRoles);
+          }
+
+          const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+          APP_MODULES.forEach(module => {
+             if (!completePermissions[module]) completePermissions[module] = {};
+             currentRoles.forEach(role => {
+                 if (!completePermissions[module][role]) {
+                    completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+                 }
+                 const saved = savedPermissions[module]?.[role];
+                 if (saved) {
+                     completePermissions[module][role] = { ...completePermissions[module][role], ...saved };
+                 }
+             });
+          });
+          setPermissions(completePermissions);
+
+          setAllUsers(fetchedUsers as AuthUser[]);
+          setTeachers(allTeachers);
+          setStudents(allStudents);
+          setAdmissions(admissionsData);
+          setAssessments(assessmentsData);
+          setStatusHistory(statusHistoryData);
+          setSubjects(subjectsData);
+          setAssessmentCategories(categoriesData);
+          setFees(feesData);
+          setInvoices(invoicesData);
+          setInventory(inventoryData);
+          
+          const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
+          setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
+
         } else {
-            // If they reach here, they are not a student, guardian, or approved staff. 
-            // They are a pending user. Only load user/teacher data for the approval list.
-             setAllUsers(fetchedUsers as AuthUser[]);
-             setTeachers(fetchedTeachers);
-             const teacherEmails = new Set(fetchedTeachers.map(t => t.email).filter(Boolean));
-             setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
+            // User is not a student, guardian, or approved staff. They are pending.
+            // Only load minimal data for the approval list.
+            const fetchedUsers = await getUsers();
+            setAllUsers(fetchedUsers as AuthUser[]);
+            setTeachers(allTeachers);
+            const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
+            setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
         }
-        // --- END OF RE-ARCHITECTED ROUTING LOGIC ---
 
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -759,7 +752,8 @@ export default function DashboardPage() {
     if (userRole === 'Admin') return true;
     
     const modulePermissions = permissions[tab.module];
-    return modulePermissions?.[userRole]?.Read;
+    if (!modulePermissions || !modulePermissions[userRole]) return false;
+    return modulePermissions[userRole].Read;
   });
 
   return (
@@ -879,3 +873,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

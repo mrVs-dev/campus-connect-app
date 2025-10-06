@@ -107,3 +107,5 @@ export const initialPermissions = {
     'Finance Officer': { Create: false, Read: false, Update: false, Delete: false },
   },
 };
+
+    

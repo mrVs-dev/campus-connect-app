@@ -188,7 +188,11 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
         return;
     }
 
-    await onAddTeacher(values);
+    const newTeacher = await onAddTeacher(values);
+    if(newTeacher){
+        setTeachers(prev => [...prev, newTeacher]);
+        setPendingUsers(prev => prev.filter(p => p.email !== newTeacher.email));
+    }
     form.reset();
     setIsNewTeacherDialogOpen(false);
   };
@@ -459,3 +463,5 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
     </div>
   );
 }
+
+    
