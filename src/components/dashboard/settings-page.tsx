@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -29,28 +28,20 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getRoles, saveRoles, getPermissions, savePermissions } from "@/lib/firebase/firestore";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
+import { APP_MODULES, AppModule } from "@/lib/modules";
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
-const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Attendance', 'Settings'] as const;
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
-
-type Module = typeof modules[number];
 type Action = typeof actions[number];
-
 
 // Mock data for initial permissions structure
 const initialPermissions: Permissions = {
+  Dashboard: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
   Students: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
     Receptionist: { Create: true, Read: true, Update: true, Delete: false },
@@ -69,7 +60,7 @@ const initialPermissions: Permissions = {
     'Head of Department': { Create: true, Read: true, Update: true, Delete: true },
     Teacher: { Create: true, Read: true, Update: true, Delete: false },
   },
-  Fees: {
+   Fees: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
     Receptionist: { Create: true, Read: true, Update: true, Delete: true },
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
@@ -93,11 +84,17 @@ const initialPermissions: Permissions = {
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: true, Update: false, Delete: false },
   },
-  Attendance: {
+  Enrollment: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
-    'Head of Department': { Create: true, Read: true, Update: true, Delete: false },
-    Teacher: { Create: true, Read: true, Update: true, Delete: false },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
+    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  'Status History': {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
   },
   Settings: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -210,20 +207,19 @@ function PermissionSettings({ roles }: { roles: UserRole[] }) {
       const completePermissions = { ...initialPermissions };
 
       // Ensure all modules, roles, and actions have a defined boolean value.
-      modules.forEach(module => {
-        if (!completePermissions[module]) {
-          completePermissions[module] = {};
+      APP_MODULES.forEach(module => {
+        if (!completePermissions[module as keyof typeof completePermissions]) {
+          (completePermissions as any)[module] = {};
         }
         roles.forEach(role => {
-          if (!completePermissions[module][role]) {
-            completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+          if (!completePermissions[module as keyof typeof completePermissions][role]) {
+            (completePermissions as any)[module][role] = { Create: false, Read: false, Update: false, Delete: false };
           }
           actions.forEach(action => {
-            const savedValue = savedPermissions[module]?.[role]?.[action];
-            // If there's a saved value, use it. Otherwise, use the initial/default, or false if none exists.
-            completePermissions[module][role][action] = typeof savedValue === 'boolean' 
+            const savedValue = savedPermissions[module as keyof typeof savedPermissions]?.[role]?.[action];
+            (completePermissions as any)[module][role][action] = typeof savedValue === 'boolean' 
               ? savedValue 
-              : (completePermissions[module][role][action] || false);
+              : ((completePermissions as any)[module][role][action] || false);
           });
         });
       });
@@ -281,7 +277,7 @@ function PermissionSettings({ roles }: { roles: UserRole[] }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {modules.map(module => (
+                  {APP_MODULES.map(module => (
                     <TableRow key={module}>
                       <TableCell className="font-semibold border-r">{module}</TableCell>
                       {roles.map(role => (
@@ -535,10 +531,9 @@ interface SettingsPageProps {
   assessmentCategories: AssessmentCategory[];
   onSaveSubjects: (subjects: Subject[]) => void;
   onSaveCategories: (categories: AssessmentCategory[]) => void;
-  onDeleteAllStudents: () => void;
 }
 
-export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, onSaveCategories, onDeleteAllStudents }: SettingsPageProps) {
+export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, onSaveCategories }: SettingsPageProps) {
   const [roles, setRoles] = React.useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 

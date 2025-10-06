@@ -14,27 +14,17 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteInvoice, getInvoices, saveInvoice, deleteFee, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { FeesList } from "@/components/dashboard/fees-list";
 import { InvoicingList } from "@/components/dashboard/invoicing-list";
 import { InventoryList } from "@/components/dashboard/inventory-list";
 import type { User as AuthUser } from "firebase/auth";
+import type { AppModule } from "@/lib/modules";
 
 // --- IMPORTANT: Admin Exception ---
 const ADMIN_EMAIL = "vannak@api-school.com"; 
@@ -87,8 +77,8 @@ function PendingApproval() {
 }
 
 
-const TABS_CONFIG = [
-  { value: "dashboard", label: "Dashboard", module: "Admissions" },
+const TABS_CONFIG: { value: string, label: string, module: AppModule }[] = [
+  { value: "dashboard", label: "Dashboard", module: "Dashboard" },
   { value: "students", label: "Students", module: "Students" },
   { value: "users", label: "Users", module: "Users" },
   { value: "assessments", label: "Assessments", module: "Assessments" },
@@ -96,8 +86,8 @@ const TABS_CONFIG = [
   { value: "invoicing", label: "Invoicing", module: "Invoicing" },
   { value: "inventory", label: "Inventory", module: "Inventory" },
   { value: "admissions", label: "Admissions", module: "Admissions" },
-  { value: "enrollment", label: "Enrollment", module: "Students" }, 
-  { value: "statusHistory", label: "Status History", module: "Students" },
+  { value: "enrollment", label: "Enrollment", module: "Enrollment" }, 
+  { value: "statusHistory", label: "Status History", module: "Status History" },
   { value: "settings", label: "Settings", module: "Settings" },
 ];
 
@@ -485,24 +475,6 @@ export default function DashboardPage() {
     }
   };
 
-  const deleteAllStudents = async () => {
-    try {
-      await deleteAllStudentsFromDB();
-      setStudents([]);
-      toast({
-        title: "All Students Deleted",
-        description: "All student records have been removed from the database.",
-      });
-    } catch (error) {
-      console.error("Error deleting all students:", error);
-      toast({
-        title: "Deletion Failed",
-        description: "There was an error deleting all students. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
   const handleAddTeacher = async (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => {
     try {
       const newTeacher = await addTeacher(teacherData);
@@ -724,7 +696,7 @@ export default function DashboardPage() {
   }
   
   const visibleTabs = TABS_CONFIG.filter(tab => {
-    if (!userRole || !permissions || !tab.module) return false;
+    if (!userRole || !permissions) return false;
     // Admin sees all tabs.
     if (userRole === 'Admin') return true;
     
@@ -836,7 +808,6 @@ export default function DashboardPage() {
                 assessmentCategories={assessmentCategories}
                 onSaveSubjects={handleSaveSubjects}
                 onSaveCategories={handleSaveAssessmentCategories}
-                onDeleteAllStudents={deleteAllStudents}
               />
             </TabsContent>
 
