@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
@@ -289,24 +288,19 @@ export function Overview({ students, admissions }: OverviewProps) {
               </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 items-center gap-4">
-              <div className="flex flex-col space-y-2">
-                  <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
-                  <p className="text-xs text-muted-foreground">New students in period</p>
-              </div>
-              <ChartContainer config={chartConfig} className="h-[100px] w-full">
-                  <PieChart accessibilityLayer>
-                    <ChartTooltip
-                      cursor={false}
-                      content={<ChartTooltipContent hideLabel />}
-                    />
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} fill="#8884d8">
-                      {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-              </ChartContainer>
+             <div className="flex flex-col space-y-2">
+                <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
+                <p className="text-xs text-muted-foreground">New students in period</p>
+                 <div className="flex items-center gap-4 text-sm pt-2">
+                    <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-primary" />
+                        <span>{enrollmentGenderDistribution['Male'] || 0} Male</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <User className="h-4 w-4 text-accent" />
+                        <span>{enrollmentGenderDistribution['Female'] || 0} Female</span>
+                    </div>
+                </div>
             </div>
           </CardContent>
         </Card>
