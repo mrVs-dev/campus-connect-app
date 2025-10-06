@@ -620,3 +620,5 @@ export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, o
     </div>
   );
 }
+
+    
