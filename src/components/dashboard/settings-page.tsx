@@ -6,16 +6,40 @@ import * as React from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, AlertTriangle } from "lucide-react";
 import type { Subject, AssessmentCategory, UserRole, Permissions } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getRoles, saveRoles, getPermissions, savePermissions } from "@/lib/firebase/firestore";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
 const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Attendance', 'Settings'] as const;
@@ -502,15 +526,67 @@ function CategorySettings({ initialCategories, onSave }: { initialCategories: As
   );
 }
 
+function DangerZone({ onDeleteAllStudents }: { onDeleteAllStudents: () => void }) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+
+  return (
+    <>
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger Zone</CardTitle>
+          <CardDescription>
+            These actions are irreversible. Please proceed with caution.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="font-medium">Delete All Students</p>
+              <p className="text-sm text-muted-foreground">
+                This will permanently remove all student records from the database.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete All Students
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete all student records, including their grades and admissions data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onDeleteAllStudents}>
+              I understand, delete all students
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+
 // Main Page Component
 interface SettingsPageProps {
   subjects: Subject[];
   assessmentCategories: AssessmentCategory[];
   onSaveSubjects: (subjects: Subject[]) => void;
   onSaveCategories: (categories: AssessmentCategory[]) => void;
+  onDeleteAllStudents: () => void;
 }
 
-export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, onSaveCategories }: SettingsPageProps) {
+export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, onSaveCategories, onDeleteAllStudents }: SettingsPageProps) {
   const [roles, setRoles] = React.useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -540,6 +616,7 @@ export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, o
       <PermissionSettings roles={roles} />
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
+      <DangerZone onDeleteAllStudents={onDeleteAllStudents} />
     </div>
   );
 }

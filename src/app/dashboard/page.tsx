@@ -495,6 +495,7 @@ export default function DashboardPage() {
       toast({
         title: "Deletion Failed",
         description: "There was an error deleting all students. Please try again.",
+        variant: "destructive",
       });
     }
   };
@@ -824,6 +825,7 @@ export default function DashboardPage() {
                 assessmentCategories={assessmentCategories}
                 onSaveSubjects={handleSaveSubjects}
                 onSaveCategories={handleSaveAssessmentCategories}
+                onDeleteAllStudents={deleteAllStudents}
               />
             </TabsContent>
 
