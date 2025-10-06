@@ -182,18 +182,15 @@ export function Overview({ students, admissions }: OverviewProps) {
     
     admissionsToConsider.forEach(admission => {
       admission.students.forEach(studentAdmission => {
-        const student = students.find(s => s.studentId === studentAdmission.studentId);
-        if (student) {
-           studentAdmission.enrollments.forEach(enrollment => {
-                const programName = programs.find(p => p.id === enrollment.programId)?.name;
-                if (programName) {
-                    programData[programName].total++;
-                    let levelName = enrollment.level;
-                    if (levelName === 'Starter') levelName = 'Starters'; // Consolidate typo
-                    programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
-                }
-            });
-        }
+        studentAdmission.enrollments.forEach(enrollment => {
+            const programName = programs.find(p => p.id === enrollment.programId)?.name;
+            if (programName) {
+                programData[programName].total++;
+                let levelName = enrollment.level;
+                if (levelName === 'Starter') levelName = 'Starters'; // Consolidate typo
+                programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
+            }
+        });
       });
     });
     
@@ -204,11 +201,19 @@ export function Overview({ students, admissions }: OverviewProps) {
         levels: sortLevels(Object.entries(data.levels).map(([level, count]) => ({ level, students: count }))),
       }))
       .filter(p => p.total > 0);
-  }, [students, admissions, admissionYearFilter]);
+  }, [admissions, admissionYearFilter]);
 
   const totalAdmissions = React.useMemo(() => {
-    return enrollmentsByProgramAndLevel.reduce((acc, program) => acc + program.total, 0);
-  }, [enrollmentsByProgramAndLevel]);
+    const admissionsToConsider = admissionYearFilter === 'All'
+      ? admissions
+      : admissions.filter(a => a.schoolYear === admissionYearFilter);
+      
+    return admissionsToConsider.reduce((acc, admission) => {
+        return acc + admission.students.reduce((studentAcc, studentAdmission) => {
+            return studentAcc + studentAdmission.enrollments.length;
+        }, 0);
+    }, 0);
+  }, [admissions, admissionYearFilter]);
 
   const chartConfig = {
     students: {
