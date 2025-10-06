@@ -346,7 +346,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Role</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value || 'Teacher'}>
                                 <FormControl>
                                     <SelectTrigger>
                                     <SelectValue placeholder="Select a role" />
@@ -463,5 +463,3 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
     </div>
   );
 }
-
-    

@@ -176,13 +176,13 @@ export default function DashboardPage() {
 
         // --- PRIORITY 2: Determine Staff Role ---
         let finalRole: UserRole | null = null;
-        const allTeachers = await getTeachers();
+        const allTeachers = await getTeachers(); // This collection holds ALL staff members
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
-          const loggedInTeacher = allTeachers.find(t => t.email === loggedInUserEmail);
-          if (loggedInTeacher && loggedInTeacher.role) {
-            finalRole = loggedInTeacher.role;
+          const loggedInStaffMember = allTeachers.find(t => t.email === loggedInUserEmail);
+          if (loggedInStaffMember && loggedInStaffMember.role) {
+            finalRole = loggedInStaffMember.role;
           }
         }
         
@@ -190,7 +190,7 @@ export default function DashboardPage() {
         
         // --- PRIORITY 3: If role is determined, fetch all data. Otherwise, they are pending. ---
         if (finalRole) {
-          // Redirect teachers away immediately after setting role
+          // Redirect non-admin/manager roles away immediately after setting role
            if (finalRole === 'Teacher') {
                router.replace('/teacher/dashboard');
                return; // Stop execution
@@ -873,5 +873,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
