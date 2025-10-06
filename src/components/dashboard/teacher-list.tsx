@@ -33,6 +33,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -51,7 +61,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { format } from "date-fns";
 import { EditTeacherSheet } from "./edit-teacher-sheet";
-import { updateTeacher, getSubjects, getAdmissions, getRoles } from "@/lib/firebase/firestore";
+import { updateTeacher, getSubjects, getAdmissions, getRoles, deleteTeacher } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { User as AuthUser } from "firebase/auth";
 
@@ -96,6 +106,7 @@ const formatDateSafe = (date: any): string => {
 export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers, onAddTeacher }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
+  const [teacherToDelete, setTeacherToDelete] = React.useState<Teacher | null>(null);
   const [userToApprove, setUserToApprove] = React.useState<AuthUser | null>(null);
   const [teachers, setTeachers] = React.useState(initialTeachers);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
@@ -104,6 +115,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
   const { toast } = useToast();
 
   const canEdit = userRole === 'Admin';
+  const canDelete = userRole === 'Admin';
 
   React.useEffect(() => {
     setTeachers(initialTeachers);
@@ -166,6 +178,13 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
 
   const handleAddTeacher = async (values: TeacherFormValues) => {
     if (!canEdit) return;
+
+    // Check for duplicate email
+    if (teachers.some(teacher => teacher.email.toLowerCase() === values.email.toLowerCase())) {
+        form.setError("email", { message: "A staff member with this email already exists." });
+        return;
+    }
+
     const newTeacher = await onAddTeacher(values);
     if (newTeacher) {
       form.reset();
@@ -201,10 +220,35 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
       });
     }
   };
+
+  const handleDeleteTeacher = async () => {
+    if (!canDelete || !teacherToDelete) return;
+    try {
+        await deleteTeacher(teacherToDelete.teacherId);
+        setTeachers(prev => prev.filter(t => t.teacherId !== teacherToDelete.teacherId));
+        toast({
+            title: "Staff Deleted",
+            description: `${teacherToDelete.firstName} ${teacherToDelete.lastName} has been removed.`,
+        });
+        setTeacherToDelete(null);
+    } catch (error) {
+        console.error("Error deleting teacher:", error);
+        toast({
+            title: "Deletion Failed",
+            description: "There was an error deleting the staff member.",
+            variant: "destructive",
+        });
+    }
+  };
   
   const handleEditClick = (teacher: Teacher) => {
     if (!canEdit) return;
     setTeacherToEdit(teacher);
+  };
+  
+  const handleDeleteClick = (teacher: Teacher) => {
+    if (!canDelete) return;
+    setTeacherToDelete(teacher);
   };
 
   return (
@@ -400,7 +444,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem onSelect={() => handleDeleteClick(teacher)} className="text-destructive">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                             </DropdownMenuItem>
@@ -422,8 +466,20 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
         subjects={subjects}
         admissions={admissions}
       />
+      <AlertDialog open={!!teacherToDelete} onOpenChange={(isOpen) => !isOpen && setTeacherToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the staff member "{teacherToDelete?.firstName} {teacherToDelete?.lastName}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTeacher}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-
-    

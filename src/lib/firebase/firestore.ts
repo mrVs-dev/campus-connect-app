@@ -555,6 +555,12 @@ export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Tea
     await updateDoc(teacherDoc, dataWithTimestamps);
 }
 
+export async function deleteTeacher(teacherId: string): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const teacherDoc = doc(db, 'teachers', teacherId);
+    await deleteDoc(teacherDoc);
+}
+
 // --- Attendance Collection ---
 
 export async function getAttendanceForClass(classId: string, date: Date): Promise<AttendanceRecord[]> {
@@ -797,7 +803,7 @@ export async function saveAssessmentCategories(categories: AssessmentCategory[])
 }
 
 export async function getRoles(): Promise<UserRole[]> {
-  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  if (!db || !db.g) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'roles');
   const docSnap = await getDoc(settingsDocRef);
   
