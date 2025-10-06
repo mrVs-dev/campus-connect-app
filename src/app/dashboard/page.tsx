@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -185,11 +185,17 @@ export default function DashboardPage() {
           getRoles(),
         ]);
         
+        let currentRoles = [...allRoles];
+        if (!currentRoles.includes('Office Manager')) {
+          currentRoles.push('Office Manager');
+          await saveRoles(currentRoles);
+        }
+
         // --- Build a complete, reliable permissions object ---
         const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
         APP_MODULES.forEach(module => {
            if (!completePermissions[module]) completePermissions[module] = {};
-           allRoles.forEach(role => {
+           currentRoles.forEach(role => {
                if (!completePermissions[module][role]) {
                   completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
                }
