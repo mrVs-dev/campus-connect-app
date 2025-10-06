@@ -14,3 +14,73 @@ export const APP_MODULES = [
 ] as const;
 
 export type AppModule = (typeof APP_MODULES)[number];
+
+// This becomes the single source of truth for the default permission structure.
+export const initialPermissions = {
+  Dashboard: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Students: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: true, Update: false, Delete: false },
+  },
+  Users: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: false, Update: false, Delete: false },
+    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Assessments: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
+    'Head of Department': { Create: true, Read: true, Update: true, Delete: true },
+    Teacher: { Create: true, Read: true, Update: true, Delete: false },
+  },
+   Fees: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Invoicing: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Inventory: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Admissions: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read:true, Update: true, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: true, Update: false, Delete: false },
+  },
+  Enrollment: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
+    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  'Status History': {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
+    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+  Settings: {
+    Admin: { Create: true, Read: true, Update: true, Delete: true },
+    Receptionist: { Create: false, Read: false, Update: false, Delete: false },
+    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
+    Teacher: { Create: false, Read: false, Update: false, Delete: false },
+  },
+};

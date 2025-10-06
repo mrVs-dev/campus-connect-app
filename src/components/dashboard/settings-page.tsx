@@ -28,82 +28,11 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getRoles, saveRoles, getPermissions, savePermissions } from "@/lib/firebase/firestore";
-import { APP_MODULES, AppModule } from "@/lib/modules";
+import { APP_MODULES, initialPermissions, AppModule } from "@/lib/modules";
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
 type Action = typeof actions[number];
-
-// Mock data for initial permissions structure
-const initialPermissions: Permissions = {
-  Dashboard: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
-    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
-    Teacher: { Create: false, Read: false, Update: false, Delete: false },
-  },
-  Students: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
-    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
-    Teacher: { Create: false, Read: true, Update: false, Delete: false },
-  },
-  Users: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: false, Read: false, Update: false, Delete: false },
-    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
-    Teacher: { Create: false, Read: false, Update: false, Delete: false },
-  },
-  Assessments: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
-    'Head of Department': { Create: true, Read: true, Update: true, Delete: true },
-    Teacher: { Create: true, Read: true, Update: true, Delete: false },
-  },
-   Fees: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
-    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
-    Teacher: { Create: false, Read: false, Update: false, Delete: false },
-  },
-  Invoicing: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
-    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
-    Teacher: { Create: false, Read: false, Update: false, Delete: false },
-  },
-  Inventory: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
-    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
-    Teacher: { Create: false, Read: false, Update: false, Delete: false },
-  },
-  Admissions: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: true, Read: true, Update: true, Delete: false },
-    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
-    Teacher: { Create: false, Read: true, Update: false, Delete: false },
-  },
-  Enrollment: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: true, Read: true, Update: true, Delete: true },
-    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
-    Teacher: { Create: false, Read: false, Update: false, Delete: false },
-  },
-  'Status History': {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: false, Read: true, Update: false, Delete: false },
-    'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
-    Teacher: { Create: false, Read: false, Update: false, Delete: false },
-  },
-  Settings: {
-    Admin: { Create: true, Read: true, Update: true, Delete: true },
-    Receptionist: { Create: false, Read: false, Update: false, Delete: false },
-    'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
-    Teacher: { Create: false, Read: false, Update: false, Delete: false },
-  },
-};
-
 
 // --- ROLE MANAGEMENT ---
 const roleSchema = z.object({
@@ -120,7 +49,7 @@ function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: 
   });
 
   const handleAddRole = async (values: RoleFormValues) => {
-    if (roles.includes(values.newRole)) {
+    if (roles.find(role => role.toLowerCase() === values.newRole.toLowerCase())) {
       form.setError("newRole", { message: "This role already exists." });
       return;
     }
@@ -204,22 +133,22 @@ function PermissionSettings({ roles }: { roles: UserRole[] }) {
       setIsLoadingPermissions(true);
       const savedPermissions = await getPermissions();
       
-      const completePermissions = { ...initialPermissions };
+      const completePermissions = JSON.parse(JSON.stringify(initialPermissions));
 
       // Ensure all modules, roles, and actions have a defined boolean value.
       APP_MODULES.forEach(module => {
-        if (!completePermissions[module as keyof typeof completePermissions]) {
-          (completePermissions as any)[module] = {};
+        if (!completePermissions[module]) {
+          completePermissions[module] = {};
         }
         roles.forEach(role => {
-          if (!completePermissions[module as keyof typeof completePermissions][role]) {
-            (completePermissions as any)[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+          if (!completePermissions[module][role]) {
+            completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
           }
           actions.forEach(action => {
             const savedValue = savedPermissions[module as keyof typeof savedPermissions]?.[role]?.[action];
-            (completePermissions as any)[module][role][action] = typeof savedValue === 'boolean' 
+            completePermissions[module][role][action] = typeof savedValue === 'boolean' 
               ? savedValue 
-              : ((completePermissions as any)[module][role][action] || false);
+              : (completePermissions[module][role][action] || false);
           });
         });
       });

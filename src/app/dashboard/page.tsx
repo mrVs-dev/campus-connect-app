@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -24,7 +24,7 @@ import { FeesList } from "@/components/dashboard/fees-list";
 import { InvoicingList } from "@/components/dashboard/invoicing-list";
 import { InventoryList } from "@/components/dashboard/inventory-list";
 import type { User as AuthUser } from "firebase/auth";
-import type { AppModule } from "@/lib/modules";
+import { AppModule, initialPermissions, APP_MODULES } from "@/lib/modules";
 
 // --- IMPORTANT: Admin Exception ---
 const ADMIN_EMAIL = "vannak@api-school.com"; 
@@ -167,7 +167,8 @@ export default function DashboardPage() {
           feesData,
           invoicesData,
           inventoryData,
-          permissionsData,
+          savedPermissions,
+          allRoles
         ] = await Promise.all([
           getUsers(),
           getTeachers(),
@@ -181,8 +182,26 @@ export default function DashboardPage() {
           getInvoices(),
           getInventoryItems(),
           getPermissions(),
+          getRoles(),
         ]);
         
+        // --- Build a complete, reliable permissions object ---
+        const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+        APP_MODULES.forEach(module => {
+           if (!completePermissions[module]) completePermissions[module] = {};
+           allRoles.forEach(role => {
+               if (!completePermissions[module][role]) {
+                  completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+               }
+               const saved = savedPermissions[module]?.[role];
+               if (saved) {
+                   completePermissions[module][role] = { ...completePermissions[module][role], ...saved };
+               }
+           });
+        });
+        setPermissions(completePermissions);
+
+
         const loggedInUserEmail = user.email;
 
         // --- START OF RE-ARCHITECTED ROUTING LOGIC ---
@@ -218,7 +237,6 @@ export default function DashboardPage() {
         }
         
         setUserRole(finalRole);
-        setPermissions(permissionsData);
         
         // PRIORITY 3: If they have an assigned role, load all data and proceed.
         if (finalRole) {
@@ -701,7 +719,7 @@ export default function DashboardPage() {
     if (userRole === 'Admin') return true;
     
     // For other roles, check read permission for the module.
-    const modulePermissions = permissions[tab.module as keyof Permissions];
+    const modulePermissions = permissions[tab.module];
     return modulePermissions?.[userRole]?.Read;
   });
 
@@ -821,5 +839,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
