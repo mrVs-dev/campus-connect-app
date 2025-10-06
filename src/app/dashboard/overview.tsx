@@ -111,7 +111,7 @@ export function Overview({ students, admissions }: OverviewProps) {
   React.useEffect(() => {
     const now = new Date();
     setDateRange({
-      from: startOfMonth(now),
+      from: new Date("2025-07-21"),
       to: now
     });
   }, []);
