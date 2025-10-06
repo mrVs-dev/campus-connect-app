@@ -2,12 +2,12 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, Trash2, Check, ChevronsUpDown, User, BookOpen } from "lucide-react";
+import { PlusCircle, Trash2, Check, ChevronsUpDown, User, BookOpen, PenSquare } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 
-import type { Admission, Student, Enrollment, Teacher } from "@/lib/types";
+import type { Admission, Student, Enrollment, Teacher, ClassDefinition } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +16,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -50,6 +58,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { programs, getLevelsForProgram } from "@/lib/program-data";
 import { cn } from "@/lib/utils";
 import { Separator } from "../ui/separator";
+import { MultiSelectTeacher } from "./multi-select-teacher";
 
 
 const enrollmentSchema = z.object({
@@ -64,6 +73,111 @@ const admissionFormSchema = z.object({
 });
 
 type AdmissionFormValues = z.infer<typeof admissionFormSchema>;
+
+
+const classDefinitionSchema = z.object({
+    programId: z.string().min(1, "Program is required"),
+    level: z.string().min(1, "Level is required"),
+    teacherIds: z.array(z.string()).optional(),
+});
+type ClassDefinitionFormValues = z.infer<typeof classDefinitionSchema>;
+
+function ClassDialog({ open, onOpenChange, schoolYear, teachers, onSave, existingClass }: { open: boolean, onOpenChange: (open: boolean) => void, schoolYear: string, teachers: Teacher[], onSave: (classDef: ClassDefinition) => void, existingClass?: ClassDefinition | null }) {
+  const [isSaving, setIsSaving] = React.useState(false);
+  const form = useForm<ClassDefinitionFormValues>({
+    resolver: zodResolver(classDefinitionSchema),
+  });
+
+  const watchedProgramId = form.watch('programId');
+  const levels = React.useMemo(() => getLevelsForProgram(watchedProgramId || ''), [watchedProgramId]);
+
+  React.useEffect(() => {
+    if (open) {
+      form.reset(existingClass ? {
+        programId: existingClass.programId,
+        level: existingClass.level,
+        teacherIds: existingClass.teacherIds || [],
+      } : {
+        programId: '',
+        level: '',
+        teacherIds: [],
+      });
+    }
+  }, [open, existingClass, form]);
+
+  const handleSave = (values: ClassDefinitionFormValues) => {
+    setIsSaving(true);
+    onSave(values);
+    setIsSaving(false);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{existingClass ? 'Edit Class' : 'Create New Class'} for {schoolYear}</DialogTitle>
+            <DialogDescription>Define a class and assign teachers to it.</DialogDescription>
+          </DialogHeader>
+           <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="programId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Program</FormLabel>
+                      <Select onValueChange={(value) => { field.onChange(value); form.setValue('level', ''); }} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {programs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="level"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Level / Grade</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={!watchedProgramId}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select a level" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="teacherIds"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Assign Teacher(s)</FormLabel>
+                        <MultiSelectTeacher
+                            teachers={teachers}
+                            selected={field.value || []}
+                            onChange={field.onChange}
+                        />
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <DialogFooter className="pt-4">
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button type="submit" disabled={isSaving}>{isSaving ? "Saving..." : "Save Class"}</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+        </DialogContent>
+    </Dialog>
+  )
+}
 
 interface AdmissionsListProps {
   admissions: Admission[];
@@ -81,6 +195,10 @@ export function AdmissionsList({
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const activeStudents = React.useMemo(() => students.filter(s => s.status === 'Active'), [students]);
     
+    const [isClassDialogOpen, setIsClassDialogOpen] = React.useState(false);
+    const [classToEdit, setClassToEdit] = React.useState<ClassDefinition | null>(null);
+    const [activeSchoolYear, setActiveSchoolYear] = React.useState('');
+
     const admissionYears = React.useMemo(() => {
         const years = new Set(admissions.map(a => a.schoolYear));
         const currentYear = new Date().getFullYear();
@@ -144,13 +262,44 @@ export function AdmissionsList({
         }
         setIsSubmitting(false);
     }
+
+    const handleClassSave = async (classDef: ClassDefinition) => {
+        const existingAdmission = admissions.find(a => a.schoolYear === activeSchoolYear);
+        const newAdmission: Admission = existingAdmission 
+            ? JSON.parse(JSON.stringify(existingAdmission)) 
+            : { schoolYear: activeSchoolYear, admissionId: activeSchoolYear, students: [], classes: [] };
+        
+        if (!newAdmission.classes) {
+            newAdmission.classes = [];
+        }
+
+        const existingClassIndex = newAdmission.classes.findIndex(c => c.programId === classToEdit?.programId && c.level === classToEdit?.level);
+
+        if (existingClassIndex > -1) {
+            newAdmission.classes[existingClassIndex] = classDef;
+        } else {
+            newAdmission.classes.push(classDef);
+        }
+        
+        await onSave(newAdmission, true);
+    };
+
+    const handleOpenClassDialog = (schoolYear: string, classDef?: ClassDefinition) => {
+        setActiveSchoolYear(schoolYear);
+        setClassToEdit(classDef || null);
+        setIsClassDialogOpen(true);
+    }
     
     const getStudentInfo = (studentId: string) => {
         return students.find(s => s.studentId === studentId);
     };
 
-    const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
+    const getTeacherName = (teacherId: string) => {
+        const teacher = teachers.find(t => t.teacherId === teacherId);
+        return teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Unknown';
+    };
 
+    const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
 
   return (
     <div className="space-y-8">
@@ -269,7 +418,7 @@ export function AdmissionsList({
             <CardHeader>
                 <CardTitle>Existing Admissions</CardTitle>
                 <CardDescription>
-                    Review all student admissions grouped by school year.
+                    Review all student admissions and manage class assignments for each school year.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -278,40 +427,79 @@ export function AdmissionsList({
                         <AccordionItem key={admission.admissionId} value={admission.admissionId}>
                             <AccordionTrigger>{admission.schoolYear}</AccordionTrigger>
                             <AccordionContent>
-                               <div className="space-y-4">
-                                {admission.students.map(studentAdmission => {
-                                    const student = getStudentInfo(studentAdmission.studentId);
-                                    if (!student) return null;
-                                    return (
-                                        <div key={student.studentId} className="p-4 border rounded-md">
-                                             <div className="flex items-center gap-4">
-                                                <Avatar>
-                                                    <AvatarImage src={student.avatarUrl} alt={student.firstName} />
-                                                    <AvatarFallback>
-                                                        {student.firstName?.[0]}{student.lastName?.[0]}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <p className="font-semibold">{student.firstName} {student.lastName}</p>
-                                                    <p className="text-sm text-muted-foreground">{student.studentId}</p>
-                                                </div>
-                                             </div>
-                                             <Separator className="my-3" />
-                                             <div className="space-y-2">
-                                                {studentAdmission.enrollments.map((enrollment, index) => {
-                                                    const program = programs.find(p => p.id === enrollment.programId);
-                                                    return (
-                                                        <div key={index} className="flex items-center gap-2 text-sm">
-                                                            <BookOpen className="h-4 w-4 text-muted-foreground" />
-                                                            <span className="font-medium">{program?.name || 'Unknown Program'}</span>
-                                                            <span className="text-muted-foreground">- {enrollment.level}</span>
+                               <div className="space-y-6">
+                                  {/* Class Definitions Section */}
+                                   <div className="space-y-4">
+                                       <div className="flex justify-between items-center">
+                                           <h4 className="font-semibold text-md">Classes & Teacher Assignments</h4>
+                                           <Button variant="outline" size="sm" onClick={() => handleOpenClassDialog(admission.schoolYear)}>
+                                                <PlusCircle className="mr-2 h-4 w-4" /> New Class
+                                            </Button>
+                                       </div>
+                                       {admission.classes && admission.classes.length > 0 ? (
+                                           admission.classes.map((classDef, index) => {
+                                                const program = programs.find(p => p.id === classDef.programId);
+                                                return (
+                                                    <div key={index} className="p-3 border rounded-md bg-muted/50 flex justify-between items-center">
+                                                        <div>
+                                                            <p className="font-medium">{program?.name || 'Unknown'} - {classDef.level}</p>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {classDef.teacherIds && classDef.teacherIds.length > 0 
+                                                                    ? `Teacher(s): ${classDef.teacherIds.map(getTeacherName).join(', ')}`
+                                                                    : 'No teachers assigned'
+                                                                }
+                                                            </p>
                                                         </div>
-                                                    )
-                                                })}
-                                             </div>
-                                        </div>
-                                    )
-                                })}
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenClassDialog(admission.schoolYear, classDef)}>
+                                                            <PenSquare className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )
+                                           })
+                                       ) : (
+                                           <p className="text-sm text-muted-foreground text-center py-4">No classes defined for this year.</p>
+                                       )}
+                                   </div>
+
+                                   <Separator />
+
+                                   {/* Student Admissions Section */}
+                                   <div className="space-y-4">
+                                      <h4 className="font-semibold text-md">Student Enrollments</h4>
+                                      {admission.students.map(studentAdmission => {
+                                          const student = getStudentInfo(studentAdmission.studentId);
+                                          if (!student) return null;
+                                          return (
+                                              <div key={student.studentId} className="p-4 border rounded-md">
+                                                   <div className="flex items-center gap-4">
+                                                      <Avatar>
+                                                          <AvatarImage src={student.avatarUrl} alt={student.firstName} />
+                                                          <AvatarFallback>
+                                                              {student.firstName?.[0]}{student.lastName?.[0]}
+                                                          </AvatarFallback>
+                                                      </Avatar>
+                                                      <div>
+                                                          <p className="font-semibold">{student.firstName} {student.lastName}</p>
+                                                          <p className="text-sm text-muted-foreground">{student.studentId}</p>
+                                                      </div>
+                                                   </div>
+                                                   <Separator className="my-3" />
+                                                   <div className="space-y-2">
+                                                      {studentAdmission.enrollments.map((enrollment, index) => {
+                                                          const program = programs.find(p => p.id === enrollment.programId);
+                                                          return (
+                                                              <div key={index} className="flex items-center gap-2 text-sm">
+                                                                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                                                                  <span className="font-medium">{program?.name || 'Unknown Program'}</span>
+                                                                  <span className="text-muted-foreground">- {enrollment.level}</span>
+                                                              </div>
+                                                          )
+                                                      })}
+                                                   </div>
+                                              </div>
+                                          )
+                                      })}
+                                   </div>
                                </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -324,6 +512,15 @@ export function AdmissionsList({
                 )}
             </CardContent>
         </Card>
+        
+        <ClassDialog 
+            open={isClassDialogOpen}
+            onOpenChange={setIsClassDialogOpen}
+            schoolYear={activeSchoolYear}
+            teachers={teachers}
+            onSave={handleClassSave}
+            existingClass={classToEdit}
+        />
     </div>
   );
 }
@@ -380,3 +577,5 @@ function EnrollmentCard({ form, index, remove }: { form: any, index: number; rem
     </div>
   );
 }
+
+    
