@@ -155,7 +155,6 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
 
-        // --- PRIORITY 1: Check for student/guardian roles first ---
         const allStudents = await getStudents();
         const isStudentLogin = allStudents.some(s => s.studentEmail === loggedInUserEmail);
         if (isStudentLogin) {
@@ -174,9 +173,9 @@ export default function DashboardPage() {
             return;
         }
 
-        // --- PRIORITY 2: Determine Staff Role ---
         let finalRole: UserRole | null = null;
-        const allTeachers = await getTeachers(); // This collection holds ALL staff members
+        let allTeachers = await getTeachers(); 
+        
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
@@ -188,12 +187,10 @@ export default function DashboardPage() {
         
         setUserRole(finalRole);
         
-        // --- PRIORITY 3: If role is determined, fetch all data. Otherwise, they are pending. ---
         if (finalRole) {
-          // Redirect non-admin/manager roles away immediately after setting role
            if (finalRole === 'Teacher') {
                router.replace('/teacher/dashboard');
-               return; // Stop execution
+               return;
            }
 
           const [
@@ -249,6 +246,8 @@ export default function DashboardPage() {
              });
           });
           setPermissions(completePermissions);
+          
+          allTeachers = await getTeachers();
 
           setAllUsers(fetchedUsers as AuthUser[]);
           setTeachers(allTeachers);
@@ -266,8 +265,6 @@ export default function DashboardPage() {
           setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
 
         } else {
-            // User is not a student, guardian, or approved staff. They are pending.
-            // Only load minimal data for the approval list.
             const fetchedUsers = await getUsers();
             setAllUsers(fetchedUsers as AuthUser[]);
             setTeachers(allTeachers);
