@@ -1,4 +1,5 @@
 
+
 export type ProgramLevel = {
     name: string;
     levels: string[];
@@ -85,4 +86,34 @@ export const getLevelsForProgram = (programId: string): string[] => {
     }
 
     return [];
+};
+
+const getSortValue = (level: string): number => {
+    const specialLevels: { [key: string]: number } = {
+        'DayCare': 1,
+        'Toddler': 2,
+        'Pre-K': 3,
+        'Kindergarten': 4,
+        'Starters': 1
+    };
+
+    if (specialLevels[level] !== undefined) {
+        return specialLevels[level];
+    }
+
+    const gradeMatch = level.match(/Grade (\d+)/);
+    if (gradeMatch) {
+        return 100 + parseInt(gradeMatch[1], 10);
+    }
+
+    const levelMatch = level.match(/Level (\d+)/);
+    if (levelMatch) {
+        return 100 + parseInt(levelMatch[1], 10);
+    }
+
+    return 999; // Fallback for unknown levels
+};
+
+export const sortLevels = (levels: { level: string }[]): { level: string }[] => {
+    return [...levels].sort((a, b) => getSortValue(a.level) - getSortValue(b.level));
 };

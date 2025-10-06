@@ -1,7 +1,8 @@
 
+
 "use client";
 
-import { Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
+import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,8 +15,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid } from "recharts";
-import { programs } from "@/lib/program-data";
+import { Bar, BarChart as RechartsBarChart, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { programs, sortLevels } from "@/lib/program-data";
 import * as React from "react";
 import { addDays, format, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -44,73 +45,59 @@ function DatePickerWithRange({
   onDateChange,
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
-  const handleFromChange = (from: Date | undefined) => {
-    onDateChange({ from: from, to: value?.to });
+  const handleDateSelect = (newDate: DateRange | undefined) => {
+    onDateChange(newDate);
   };
-  
-  const handleToChange = (to: Date | undefined) => {
-    onDateChange({ from: value?.from, to: to });
-  };
-
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            id="date-from"
+            id="date"
             variant={"outline"}
             className={cn(
-              "w-[150px] justify-start text-left font-normal",
-              !value?.from && "text-muted-foreground"
+              "w-[240px] justify-start text-left font-normal",
+              !value && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {value?.from ? (
-              format(value.from, "LLL dd, y")
+              value.to ? (
+                <>
+                  {format(value.from, "LLL dd, y")} -{" "}
+                  {format(value.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(value.from, "LLL dd, y")
+              )
             ) : (
-              <span>Start date</span>
+              <span>Pick a date</span>
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 bg-card" align="start">
+        <PopoverContent className="w-auto p-0" align="end">
           <Calendar
             initialFocus
-            mode="single"
-            selected={value?.from}
-            onSelect={handleFromChange}
+            mode="range"
+            defaultMonth={value?.from}
+            selected={value}
+            onSelect={handleDateSelect}
+            numberOfMonths={2}
           />
         </PopoverContent>
       </Popover>
-       <span className="text-muted-foreground">to</span>
-       <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            id="date-to"
-            variant={"outline"}
-            className={cn(
-              "w-[150px] justify-start text-left font-normal",
-              !value?.to && "text-muted-foreground"
-            )}
+      {value && (
+         <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDateChange(undefined)}
+            className="h-8 w-8"
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {value?.to ? (
-              format(value.to, "LLL dd, y")
-            ) : (
-              <span>End date</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 bg-card" align="start">
-          <Calendar
-            initialFocus
-            mode="single"
-            selected={value?.to}
-            onSelect={handleToChange}
-            disabled={{ before: value?.from }}
-          />
-        </PopoverContent>
-      </Popover>
+            <XIcon className="h-4 w-4" />
+            <span className="sr-only">Clear</span>
+        </Button>
+      )}
     </div>
   )
 }
@@ -126,9 +113,10 @@ export function Overview({ students, admissions }: OverviewProps) {
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
 
   React.useEffect(() => {
+    const now = new Date();
     setDateRange({
-      from: new Date(2025, 6, 21),
-      to: new Date()
+      from: startOfMonth(now),
+      to: now
     });
   }, []);
   
@@ -173,6 +161,14 @@ export function Overview({ students, admissions }: OverviewProps) {
     }, {} as Record<string, number>);
   }, [enrollmentFilteredStudents]);
 
+  const pieData = [
+    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0 },
+    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0 },
+    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0 },
+  ].filter(d => d.value > 0);
+
+  const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--muted-foreground))"];
+
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
     const programData: Record<string, { total: number; levels: Record<string, number> }> = {};
 
@@ -204,9 +200,7 @@ export function Overview({ students, admissions }: OverviewProps) {
       .map(([name, data]) => ({
         name,
         ...data,
-        levels: Object.entries(data.levels)
-          .map(([level, count]) => ({ level, students: count }))
-          .sort((a,b) => a.level.localeCompare(b.level)),
+        levels: sortLevels(Object.entries(data.levels).map(([level, count]) => ({ level, students: count }))),
       }))
       .filter(p => p.total > 0);
   }, [students, admissions, admissionYearFilter]);
@@ -228,17 +222,13 @@ export function Overview({ students, admissions }: OverviewProps) {
       label: "Female",
       color: "hsl(var(--accent))",
     },
-    other: {
-        label: "Other",
-        color: "hsl(var(--muted-foreground))"
-    }
   };
 
   const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>Student Population</CardTitle>
@@ -272,34 +262,6 @@ export function Overview({ students, admissions }: OverviewProps) {
           </CardContent>
         </Card>
         
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                  <CardTitle>New Student Enrollments</CardTitle>
-                  <CardDescription>Headcount of new students in a date range.</CardDescription>
-              </div>
-              <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col space-y-2">
-                <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
-                <p className="text-xs text-muted-foreground">New students in period</p>
-                <div className="flex items-center gap-4 text-sm pt-2">
-                    <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-primary" />
-                        <span>{enrollmentGenderDistribution['Male'] || 0} Male</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-accent" />
-                        <span>{enrollmentGenderDistribution['Female'] || 0} Female</span>
-                    </div>
-                </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Total Admissions</CardTitle>
@@ -313,69 +275,103 @@ export function Overview({ students, admissions }: OverviewProps) {
             </div>
           </CardContent>
         </Card>
-        <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-                <CardTitle>Program Admissions</CardTitle>
-                <CardDescription>Total program enrollments across programs and levels.</CardDescription>
+
+        <Card>
+          <CardHeader>
+              <div className="flex items-start justify-between">
+                  <div>
+                      <CardTitle>New Student Enrollments</CardTitle>
+                      <CardDescription>Headcount of new students in a date range.</CardDescription>
+                  </div>
+                  <DatePickerWithRange value={dateRange} onDateChange={setDateRange} />
+              </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 items-center gap-4">
+              <div className="flex flex-col space-y-2">
+                  <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
+                  <p className="text-xs text-muted-foreground">New students in period</p>
+              </div>
+              <ChartContainer config={chartConfig} className="h-[100px] w-full">
+                  <PieChart accessibilityLayer>
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel />}
+                    />
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} fill="#8884d8">
+                      {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+              </ChartContainer>
             </div>
-            <Select value={admissionYearFilter} onValueChange={setAdmissionYearFilter}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select admission year" />
-                </SelectTrigger>
-                <SelectContent>
-                    {admissionYears.map(year => (
-                    <SelectItem key={year} value={year}>{year === 'All' ? 'All Years' : year}</SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
-            </CardHeader>
-            <CardContent className="grid gap-6">
-            {enrollmentsByProgramAndLevel.length > 0 ? (
-                enrollmentsByProgramAndLevel.map((program) => (
-                <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
-                    <div className="flex flex-col space-y-2">
-                    <p className="font-semibold text-lg">{program.name}</p>
-                    <p className="text-4xl font-bold">{program.total}</p>
-                    <p className="text-sm text-muted-foreground">Total Admissions</p>
-                    </div>
-                    <div className="md:col-span-2">
-                    <ChartContainer config={chartConfig} className="h-[200px] w-full">
-                        <RechartsBarChart 
-                        data={program.levels} 
-                        layout="vertical"
-                        margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
-                        >
-                        <CartesianGrid horizontal={false} />
-                        <YAxis
-                            dataKey="level"
-                            type="category"
-                            tickLine={false}
-                            axisLine={false}
-                            tickMargin={8}
-                            interval={0}
-                            width={80}
-                            tick={{ fontSize: 12 }}
-                        />
-                        <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} allowDecimals={false} />
-                        <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent indicator="dot" />}
-                        />
-                        <Bar dataKey="students" fill="hsl(var(--primary))" radius={4} barSize={15} />
-                        </RechartsBarChart>
-                    </ChartContainer>
-                    </div>
-                </div>
-                ))
-            ) : (
-                <div className="text-center text-muted-foreground py-8">
-                No admission data available for the selected year.
-                </div>
-            )}
-            </CardContent>
+          </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Program Admissions</CardTitle>
+            <CardDescription>Total program enrollments across programs and levels.</CardDescription>
+          </div>
+           <Select value={admissionYearFilter} onValueChange={setAdmissionYearFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select admission year" />
+              </SelectTrigger>
+              <SelectContent>
+                {admissionYears.map(year => (
+                  <SelectItem key={year} value={year}>{year === 'All' ? 'All Years' : year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+        </CardHeader>
+        <CardContent className="grid gap-6">
+          {enrollmentsByProgramAndLevel.length > 0 ? (
+            enrollmentsByProgramAndLevel.map((program) => (
+              <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
+                <div className="flex flex-col space-y-2">
+                  <p className="font-semibold text-lg">{program.name}</p>
+                  <p className="text-4xl font-bold">{program.total}</p>
+                  <p className="text-sm text-muted-foreground">Total Admissions</p>
+                </div>
+                <div className="md:col-span-2">
+                  <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                    <RechartsBarChart 
+                      data={program.levels} 
+                      layout="vertical"
+                      margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
+                    >
+                      <CartesianGrid horizontal={false} />
+                      <YAxis
+                        dataKey="level"
+                        type="category"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        interval={0}
+                        width={80}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} allowDecimals={false} />
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent indicator="dot" />}
+                      />
+                      <Bar dataKey="students" fill="var(--color-students)" radius={4} barSize={15} />
+                    </RechartsBarChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-muted-foreground py-8">
+              No admission data available for the selected year.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
