@@ -65,7 +65,7 @@ function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: 
     toast({ title: "Role Deleted", description: `The role "${roleToDelete}" has been removed.`});
   };
   
-  const protectedRoles = ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
+  const protectedRoles = ['Admin', 'Receptionist', 'Head of Department', 'Teacher', 'Office Manager'];
 
   return (
     <Card>
