@@ -82,12 +82,13 @@ const formSchema = z.object({
     phone: z.string().optional(),
     avatarUrl: z.string().optional(),
   }).optional(),
+  enrollmentDate: z.date().optional(),
 });
 
 type EnrollmentFormValues = z.infer<typeof formSchema>;
 
 type EnrollmentFormProps = {
-  onEnroll: (student: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => Promise<boolean>;
+  onEnroll: (student: Omit<Student, 'studentId' | 'status'>) => Promise<boolean>;
 };
 
 export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
@@ -147,7 +148,8 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
 
   React.useEffect(() => {
     fetchNextId();
-  }, [fetchNextId]);
+    form.setValue('enrollmentDate', new Date('2025-07-21'));
+  }, [fetchNextId, form]);
 
   const watchedCommune = form.watch("address.commune");
   const villages = React.useMemo(() => getVillagesByCommune(watchedCommune || ""), [watchedCommune]);
@@ -192,7 +194,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     const success = await onEnroll(values);
     if (success) {
       form.reset();
-      fetchNextId(); // Fetch the next ID for the new form
+      fetchNextId();
     }
     setIsSubmitting(false);
   }
@@ -234,6 +236,44 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                             This is the projected ID for the new student. It may change if another user enrolls a student at the same time.
                           </FormDescription>
                        </div>
+                       <FormField
+                        control={form.control}
+                        name="enrollmentDate"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Enrollment Date</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                   </CardContent>
               </Card>
           </div>
@@ -633,3 +673,5 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     </>
   );
 }
+
+    

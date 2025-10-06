@@ -287,7 +287,7 @@ export default function DashboardPage() {
 
   }, [user, authLoading, router, toast]);
 
-  const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
+  const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'status'>) => {
     try {
       const newStudent = await addStudent(newStudentData);
       setStudents(prev => [...prev, newStudent]);
@@ -839,3 +839,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
