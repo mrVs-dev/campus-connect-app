@@ -141,15 +141,6 @@ export default function TeacherDashboardPage() {
                     addStudentToClass(admission.schoolYear, classDef.programId, classDef.level, '');
                 }
               });
-
-              // Add students who have this teacher specifically assigned to their enrollment record
-              admission.students.forEach(studentAdmission => {
-                studentAdmission.enrollments.forEach(enrollment => {
-                  if (enrollment.teacherIds?.includes(teacherId)) {
-                     addStudentToClass(admission.schoolYear, enrollment.programId, enrollment.level, studentAdmission.studentId);
-                  }
-                });
-              });
           });
           
           const classes: AssignedClass[] = Array.from(classMap.values()).map(classInfo => {
@@ -332,5 +323,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    

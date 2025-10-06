@@ -79,21 +79,18 @@ export default function RosterPage() {
             const admission = admissions.find(a => a.schoolYear === schoolYear);
             
             if (admission) {
-                // Find students enrolled by the specific teacher for this class
-                admission.students.forEach(studentAdmission => {
-                    const isEnrolledByTeacher = studentAdmission.enrollments.some(e => 
-                        e.programId === programId && 
-                        e.level === level &&
-                        e.teacherIds?.includes(currentTeacher.teacherId)
-                    );
-                    if (isEnrolledByTeacher) {
-                      studentIdsInClass.add(studentAdmission.studentId);
-                    }
-                });
-
-                // Also find students who are in a class definition assigned to this teacher
+                // Find students who are in a class definition assigned to this teacher
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
                 if (classDef && classDef.teacherIds?.includes(currentTeacher.teacherId)) {
+                     admission.students.forEach(studentAdmission => {
+                        if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
+                            studentIdsInClass.add(studentAdmission.studentId);
+                        }
+                    });
+                }
+
+                // Also check classes assigned directly to the teacher's profile
+                if (currentTeacher.assignedClasses?.some(c => c.schoolYear === schoolYear && c.programId === programId && c.level === level)) {
                      admission.students.forEach(studentAdmission => {
                         if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
                             studentIdsInClass.add(studentAdmission.studentId);
@@ -348,5 +345,3 @@ export default function RosterPage() {
     </div>
   );
 }
-
-    

@@ -41,14 +41,12 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { programs, getLevelsForProgram } from "@/lib/program-data";
-import { MultiSelectTeacher } from "./multi-select-teacher";
 import { cn } from "@/lib/utils";
 
 
 const enrollmentSchema = z.object({
     programId: z.string().min(1, "Program is required"),
     level: z.string().min(1, "Level is required"),
-    teacherIds: z.array(z.string()).optional(),
 });
 
 const admissionFormSchema = z.object({
@@ -63,7 +61,7 @@ interface AdmissionsListProps {
   admissions: Admission[];
   students: Student[];
   teachers: Teacher[];
-  onSave: (admission: Admission, isNewClass: boolean) => Promise<boolean>;
+  onSave: (admission: Admission) => Promise<boolean>;
 }
 
 export function AdmissionsList({
@@ -128,7 +126,7 @@ export function AdmissionsList({
             });
         }
         
-        const success = await onSave(newAdmission, !existingAdmission);
+        const success = await onSave(newAdmission);
         if (success) {
             form.reset({
                 ...values,
@@ -226,7 +224,7 @@ export function AdmissionsList({
                 <div className="space-y-4">
                     <h3 className="text-lg font-medium">Programs</h3>
                     {fields.map((field, index) => (
-                        <EnrollmentCard key={field.id} form={form} index={index} remove={remove} teachers={teachers} />
+                        <EnrollmentCard key={field.id} form={form} index={index} remove={remove} />
                     ))}
                     
                     <FormField
@@ -235,7 +233,7 @@ export function AdmissionsList({
                         render={() => (<FormMessage />)}
                     />
                     
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ programId: "", level: "", teacherIds: [] })}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ programId: "", level: "" })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Program
                     </Button>
                 </div>
@@ -253,7 +251,7 @@ export function AdmissionsList({
   );
 }
 
-function EnrollmentCard({ form, index, remove, teachers }: { form: any, index: number; remove: (index: number) => void; teachers: Teacher[] }) {
+function EnrollmentCard({ form, index, remove }: { form: any, index: number; remove: (index: number) => void; }) {
   const { control, watch, setValue } = form;
 
   const programId = watch(`enrollments.${index}.programId`);
@@ -302,21 +300,6 @@ function EnrollmentCard({ form, index, remove, teachers }: { form: any, index: n
           )}
         />
       </div>
-       <FormField
-        control={control}
-        name={`enrollments.${index}.teacherIds`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Assign Teacher(s)</FormLabel>
-            <MultiSelectTeacher
-              teachers={teachers}
-              selected={field.value || []}
-              onChange={field.onChange}
-            />
-            <FormMessage />
-          </FormItem>
-        )}
-      />
     </div>
   );
 }

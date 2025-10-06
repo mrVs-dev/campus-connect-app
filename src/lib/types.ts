@@ -22,7 +22,6 @@ export type PickupPerson = {
 export type Enrollment = {
   programId: string;
   level: string;
-  teacherIds?: string[];
 };
 
 export interface Student {
@@ -125,11 +124,17 @@ export type StudentAdmission = {
   enrollments: Enrollment[];
 };
 
+export type ClassDefinition = {
+    programId: string;
+    level: string;
+    teacherIds?: string[];
+}
+
 export interface Admission {
   admissionId: string; // e.g., '2025-2026'
   schoolYear: string;
   students: StudentAdmission[];
-  classes?: Enrollment[]; // To store empty class definitions
+  classes?: ClassDefinition[]; 
 }
 
 // --- Attendance ---
