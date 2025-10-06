@@ -128,7 +128,7 @@ function ClassDialog({ open, onOpenChange, schoolYear, teachers, onSave, existin
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Program</FormLabel>
-                      <Select onValueChange={(value) => { field.onChange(value); form.setValue('level', ''); }} value={field.value}>
+                      <Select onValueChange={(value) => { field.onChange(value); form.setValue('level', ''); }} value={field.value} disabled={!!existingClass}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger></FormControl>
                         <SelectContent>
                           {programs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -144,7 +144,7 @@ function ClassDialog({ open, onOpenChange, schoolYear, teachers, onSave, existin
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Level / Grade</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={!watchedProgramId}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={!watchedProgramId || !!existingClass}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a level" /></SelectTrigger></FormControl>
                         <SelectContent>
                           {levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}
@@ -277,7 +277,7 @@ export function AdmissionsList({
             newAdmission.classes = [];
         }
 
-        const existingClassIndex = newAdmission.classes.findIndex(c => c.programId === classToEdit?.programId && c.level === classToEdit?.level);
+        const existingClassIndex = newAdmission.classes.findIndex(c => c.programId === classDef.programId && c.level === classDef.level);
 
         if (existingClassIndex > -1) {
             newAdmission.classes[existingClassIndex] = classDef;
@@ -304,6 +304,60 @@ export function AdmissionsList({
     };
 
     const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
+
+    const groupedAdmissions = React.useMemo(() => {
+        return sortedAdmissions.map(admission => {
+            const programsMap: { [key: string]: { programName: string; classes: (ClassDefinition & { students: Student[] })[] } } = {};
+
+            // Initialize programs from defined classes
+            admission.classes?.forEach(classDef => {
+                if (!programsMap[classDef.programId]) {
+                    programsMap[classDef.programId] = {
+                        programName: programs.find(p => p.id === classDef.programId)?.name || 'Unknown Program',
+                        classes: []
+                    };
+                }
+            });
+
+            // Populate classes with students
+            admission.students.forEach(studentAdmission => {
+                const student = getStudentInfo(studentAdmission.studentId);
+                if (student) {
+                    studentAdmission.enrollments.forEach(enrollment => {
+                         if (!programsMap[enrollment.programId]) {
+                             programsMap[enrollment.programId] = {
+                                programName: programs.find(p => p.id === enrollment.programId)?.name || 'Unknown Program',
+                                classes: []
+                            };
+                        }
+                        
+                        let classInProgram = programsMap[enrollment.programId].classes.find(c => c.level === enrollment.level);
+                        if (!classInProgram) {
+                            const existingClassDef = admission.classes?.find(c => c.programId === enrollment.programId && c.level === enrollment.level);
+                            classInProgram = { ...(existingClassDef || { programId: enrollment.programId, level: enrollment.level }), students: [] };
+                            programsMap[enrollment.programId].classes.push(classInProgram);
+                        }
+                        classInProgram.students.push(student);
+                    });
+                }
+            });
+            // Ensure even classes without students are included
+             admission.classes?.forEach(classDef => {
+                if (!programsMap[classDef.programId]) {
+                    programsMap[classDef.programId] = {
+                        programName: programs.find(p => p.id === classDef.programId)?.name || 'Unknown Program',
+                        classes: []
+                    };
+                }
+                if (!programsMap[classDef.programId].classes.some(c => c.level === classDef.level)) {
+                    programsMap[classDef.programId].classes.push({ ...classDef, students: [] });
+                }
+            });
+
+
+            return { ...admission, programs: Object.values(programsMap) };
+        });
+    }, [sortedAdmissions, students]);
 
   return (
     <div className="space-y-8">
@@ -440,26 +494,24 @@ export function AdmissionsList({
             </CardHeader>
             <CardContent>
                 <Accordion type="single" collapsible className="w-full">
-                    {sortedAdmissions.map(admission => (
+                    {groupedAdmissions.map(admission => (
                         <AccordionItem key={admission.admissionId} value={admission.admissionId}>
                             <AccordionTrigger>{admission.schoolYear}</AccordionTrigger>
                             <AccordionContent>
                                <div className="space-y-6">
-                                  {/* Class Definitions Section */}
-                                   <div className="space-y-4">
-                                       <div className="flex justify-between items-center">
-                                           <h4 className="font-semibold text-md">Classes & Teacher Assignments</h4>
-                                           <Button variant="outline" size="sm" onClick={() => handleOpenClassDialog(admission.schoolYear)}>
-                                                <PlusCircle className="mr-2 h-4 w-4" /> New Class
-                                            </Button>
-                                       </div>
-                                       {admission.classes && admission.classes.length > 0 ? (
-                                           admission.classes.map((classDef, index) => {
-                                                const program = programs.find(p => p.id === classDef.programId);
-                                                return (
-                                                    <div key={index} className="p-3 border rounded-md bg-muted/50 flex justify-between items-center">
+                                   <div className="flex justify-end">
+                                      <Button variant="outline" size="sm" onClick={() => handleOpenClassDialog(admission.schoolYear)}>
+                                          <PlusCircle className="mr-2 h-4 w-4" /> New Class
+                                      </Button>
+                                   </div>
+                                    {admission.programs.map((program, progIndex) => (
+                                        <div key={progIndex} className="space-y-4 rounded-lg border p-4">
+                                            <h3 className="font-semibold text-lg">{program.programName}</h3>
+                                            {program.classes.map((classDef, classIndex) => (
+                                                <div key={classIndex} className="space-y-3">
+                                                    <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
                                                         <div>
-                                                            <p className="font-medium">{program?.name || 'Unknown'} - {classDef.level}</p>
+                                                            <p className="font-medium">{classDef.level}</p>
                                                             <p className="text-sm text-muted-foreground">
                                                                 {classDef.teacherIds && classDef.teacherIds.length > 0 
                                                                     ? `Teacher(s): ${classDef.teacherIds.map(getTeacherName).join(', ')}`
@@ -467,62 +519,39 @@ export function AdmissionsList({
                                                                 }
                                                             </p>
                                                         </div>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenClassDialog(admission.schoolYear, classDef)}>
+                                                         <Button variant="ghost" size="icon" onClick={() => handleOpenClassDialog(admission.schoolYear, classDef)}>
                                                             <PenSquare className="h-4 w-4" />
                                                         </Button>
                                                     </div>
-                                                )
-                                           })
-                                       ) : (
-                                           <p className="text-sm text-muted-foreground text-center py-4">No classes defined for this year.</p>
-                                       )}
-                                   </div>
-
-                                   <Separator />
-
-                                   {/* Student Admissions Section */}
-                                   <div className="space-y-4">
-                                      <h4 className="font-semibold text-md">Student Enrollments</h4>
-                                      {admission.students.map(studentAdmission => {
-                                          const student = getStudentInfo(studentAdmission.studentId);
-                                          if (!student) return null;
-                                          return (
-                                              <div key={student.studentId} className="p-4 border rounded-md">
-                                                   <div className="flex items-center gap-4">
-                                                      <Avatar>
-                                                          <AvatarImage src={student.avatarUrl} alt={student.firstName} />
-                                                          <AvatarFallback>
-                                                              {student.firstName?.[0]}{student.lastName?.[0]}
-                                                          </AvatarFallback>
-                                                      </Avatar>
-                                                      <div>
-                                                          <p className="font-semibold">{student.firstName} {student.lastName}</p>
-                                                          <p className="text-sm text-muted-foreground">{student.studentId}</p>
-                                                      </div>
-                                                   </div>
-                                                   <Separator className="my-3" />
-                                                   <div className="space-y-2">
-                                                      {studentAdmission.enrollments.map((enrollment, index) => {
-                                                          const program = programs.find(p => p.id === enrollment.programId);
-                                                          return (
-                                                              <div key={index} className="flex items-center gap-2 text-sm">
-                                                                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                                                                  <span className="font-medium">{program?.name || 'Unknown Program'}</span>
-                                                                  <span className="text-muted-foreground">- {enrollment.level}</span>
-                                                              </div>
-                                                          )
-                                                      })}
-                                                   </div>
-                                              </div>
-                                          )
-                                      })}
-                                   </div>
+                                                    <div className="pl-4 space-y-2">
+                                                        {classDef.students.map(student => (
+                                                            <div key={student.studentId} className="flex items-center gap-3">
+                                                                <Avatar className="h-8 w-8">
+                                                                    <AvatarImage src={student.avatarUrl} alt={student.firstName} />
+                                                                    <AvatarFallback>
+                                                                        {student.firstName?.[0]}{student.lastName?.[0]}
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+                                                                <div>
+                                                                    <p className="text-sm font-medium">{student.firstName} {student.lastName}</p>
+                                                                    <p className="text-xs text-muted-foreground">{student.studentId}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {classDef.students.length === 0 && <p className="text-xs text-muted-foreground pl-2">No students enrolled in this class.</p>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {program.classes.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">No classes defined for this program.</p>}
+                                        </div>
+                                    ))}
+                                    {admission.programs.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No programs with classes or students for this year.</p>}
                                </div>
                             </AccordionContent>
                         </AccordionItem>
                     ))}
                 </Accordion>
-                {sortedAdmissions.length === 0 && (
+                {groupedAdmissions.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
                         No admissions found.
                     </div>
