@@ -8,12 +8,13 @@ import { Button } from "../ui/button";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationBell } from "./notification-bell";
+import type { UserRole } from "@/lib/types";
 
-export function Header() {
+export function Header({ userRole }: { userRole: UserRole | null }) {
   const pathname = usePathname();
   const { user } = useAuth();
   
-  const isAdmin = user?.email === "vannak@api-school.com";
+  const isAdmin = userRole === "Admin";
   const isTeacherDashboard = pathname.startsWith('/teacher');
   const isStudentPortal = pathname.startsWith('/student') || pathname.startsWith('/guardian');
 
@@ -32,14 +33,14 @@ export function Header() {
             <Link href="/dashboard">View as Admin</Link>
           </Button>
         )}
-        {!isTeacherDashboard && !isStudentPortal && (
+        {!isTeacherDashboard && !isStudentPortal && isAdmin && (
           <Button asChild variant="outline" size="sm">
             <Link href="/teacher/dashboard">View as Teacher</Link>
           </Button>
         )}
       </div>
       {isStudentPortal && <NotificationBell />}
-      <UserNav />
+      <UserNav userRole={userRole} />
     </header>
   );
 }
