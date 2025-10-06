@@ -1,5 +1,4 @@
 
-
 import { 
   collection, 
   getDocs, 
@@ -113,21 +112,21 @@ export async function getUsers(): Promise<User[]> {
 const STARTING_STUDENT_ID = 1831;
 
 export async function peekNextStudentId(): Promise<string> {
-    if (!db || !db.app) throw new Error("Firestore is not initialized.");
-    const metadataRef = doc(db, 'metadata', 'studentCounter');
-    
-    try {
-        const metadataDoc = await getDoc(metadataRef);
-        let lastId = STARTING_STUDENT_ID;
-        if (metadataDoc.exists() && metadataDoc.data().lastId) {
-            lastId = metadataDoc.data().lastId;
-        }
-        return `STU${lastId + 1}`;
-    } catch (e) {
-        console.error("Could not peek next student ID: ", e);
-        // This is a safe fallback in case of read errors. The actual ID generation is transactional.
-        return `STU${STARTING_STUDENT_ID + 1}`;
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const metadataRef = doc(db, 'metadata', 'studentCounter');
+  
+  try {
+    const metadataDoc = await getDoc(metadataRef);
+    if (metadataDoc.exists() && metadataDoc.data().lastId) {
+      return `STU${metadataDoc.data().lastId + 1}`;
+    } else {
+      return `STU${STARTING_STUDENT_ID + 1}`;
     }
+  } catch (e) {
+    console.error("Could not peek next student ID, returning default start:", e);
+    // This is a safe fallback for display purposes if the doc doesn't exist yet.
+    return `STU${STARTING_STUDENT_ID + 1}`;
+  }
 }
 
 export const getNextStudentId = async (): Promise<string> => {
@@ -367,6 +366,44 @@ export async function saveAdmission(admissionData: Admission, isNewClass: boolea
     } else {
         await setDoc(admissionDocRef, cleanedData);
     }
+}
+
+export async function importAdmissions(importedData: { studentId: string; schoolYear: string; programId: string; level: string; }[]): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    
+    const admissionsByYear: Record<string, Admission> = {};
+
+    // Group imported data by school year
+    for (const row of importedData) {
+        if (!admissionsByYear[row.schoolYear]) {
+            admissionsByYear[row.schoolYear] = {
+                admissionId: row.schoolYear,
+                schoolYear: row.schoolYear,
+                students: [],
+                classes: [],
+            };
+        }
+        
+        let studentAdmission = admissionsByYear[row.schoolYear].students.find(s => s.studentId === row.studentId);
+        if (studentAdmission) {
+            studentAdmission.enrollments.push({ programId: row.programId, level: row.level });
+        } else {
+            admissionsByYear[row.schoolYear].students.push({
+                studentId: row.studentId,
+                enrollments: [{ programId: row.programId, level: row.level }],
+            });
+        }
+    }
+
+    const batch = writeBatch(db);
+
+    for (const schoolYear in admissionsByYear) {
+        const admissionDocRef = doc(db, 'admissions', schoolYear);
+        // We use merge: true to avoid overwriting existing class definitions for that year
+        batch.set(admissionDocRef, admissionsByYear[schoolYear], { merge: true });
+    }
+
+    await batch.commit();
 }
 
 

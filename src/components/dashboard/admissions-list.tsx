@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { PlusCircle, Trash2, Check, ChevronsUpDown, User, BookOpen, PenSquare } from "lucide-react";
+import { PlusCircle, Trash2, Check, ChevronsUpDown, BookOpen, PenSquare, Upload } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
@@ -59,6 +59,7 @@ import { programs, getLevelsForProgram } from "@/lib/program-data";
 import { cn } from "@/lib/utils";
 import { Separator } from "../ui/separator";
 import { MultiSelectTeacher } from "./multi-select-teacher";
+import { AdmissionImportDialog } from "./admission-import-dialog";
 
 
 const enrollmentSchema = z.object({
@@ -184,6 +185,7 @@ interface AdmissionsListProps {
   students: Student[];
   teachers: Teacher[];
   onSave: (admission: Admission, isNewClass: boolean) => Promise<boolean>;
+  onImport: (data: { studentId: string; schoolYear: string; programId: string; level: string; }[]) => void;
 }
 
 export function AdmissionsList({
@@ -191,11 +193,13 @@ export function AdmissionsList({
   students,
   teachers,
   onSave,
+  onImport,
 }: AdmissionsListProps) {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const activeStudents = React.useMemo(() => students.filter(s => s.status === 'Active'), [students]);
     
     const [isClassDialogOpen, setIsClassDialogOpen] = React.useState(false);
+    const [isImportOpen, setIsImportOpen] = React.useState(false);
     const [classToEdit, setClassToEdit] = React.useState<ClassDefinition | null>(null);
     const [activeSchoolYear, setActiveSchoolYear] = React.useState('');
 
@@ -305,10 +309,23 @@ export function AdmissionsList({
     <div className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>Student Admission</CardTitle>
-            <CardDescription>
-              Assign a student to one or more programs for a specific school year.
-            </CardDescription>
+             <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Student Admission</CardTitle>
+                    <CardDescription>
+                    Assign a student to one or more programs for a specific school year.
+                    </CardDescription>
+                </div>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={() => setIsImportOpen(true)}
+                >
+                    <Upload className="h-3.5 w-3.5" />
+                    Import
+                </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -521,6 +538,11 @@ export function AdmissionsList({
             onSave={handleClassSave}
             existingClass={classToEdit}
         />
+        <AdmissionImportDialog
+            open={isImportOpen}
+            onOpenChange={setIsImportOpen}
+            onImport={onImport}
+        />
     </div>
   );
 }
@@ -577,5 +599,3 @@ function EnrollmentCard({ form, index, remove }: { form: any, index: number; rem
     </div>
   );
 }
-
-    

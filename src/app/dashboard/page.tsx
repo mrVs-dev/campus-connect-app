@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -413,6 +413,25 @@ export default function DashboardPage() {
       return false;
     }
   };
+
+  const handleImportAdmissions = async (importedData: { studentId: string; schoolYear: string; programId: string; level: string; }[]) => {
+    try {
+        await importAdmissions(importedData);
+        const updatedAdmissions = await getAdmissions();
+        setAdmissions(updatedAdmissions);
+        toast({
+            title: "Import Successful",
+            description: `${importedData.length} admission records have been processed.`,
+        });
+    } catch (error: any) {
+        console.error("Error importing admissions:", error);
+        toast({
+            title: "Import Failed",
+            description: error.message || "There was an error importing the admission data.",
+            variant: "destructive",
+        });
+    }
+  };
   
   const handleMoveStudents = async (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => {
     try {
@@ -787,6 +806,7 @@ export default function DashboardPage() {
                 students={students}
                 teachers={teachers}
                 onSave={handleSaveAdmission}
+                onImport={handleImportAdmissions}
               />
             </TabsContent>
             
