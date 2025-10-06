@@ -259,6 +259,8 @@ export default function DashboardPage() {
             // They are a pending user. Only load user/teacher data for the approval list.
              setAllUsers(fetchedUsers as AuthUser[]);
              setTeachers(fetchedTeachers);
+             const teacherEmails = new Set(fetchedTeachers.map(t => t.email).filter(Boolean));
+             setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
         }
         // --- END OF RE-ARCHITECTED ROUTING LOGIC ---
 
@@ -849,3 +851,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
