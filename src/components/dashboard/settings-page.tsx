@@ -133,7 +133,7 @@ function PermissionSettings({ roles }: { roles: UserRole[] }) {
       setIsLoadingPermissions(true);
       const savedPermissions = await getPermissions();
       
-      const completePermissions = JSON.parse(JSON.stringify(initialPermissions));
+      const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
 
       // Ensure all modules, roles, and actions have a defined boolean value.
       APP_MODULES.forEach(module => {

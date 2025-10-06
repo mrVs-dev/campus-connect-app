@@ -16,6 +16,7 @@ export const APP_MODULES = [
 export type AppModule = (typeof APP_MODULES)[number];
 
 // This becomes the single source of truth for the default permission structure.
+// Any new role added to the system will use this as a base.
 export const initialPermissions = {
   Dashboard: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
