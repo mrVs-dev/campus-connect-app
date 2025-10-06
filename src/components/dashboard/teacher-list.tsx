@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -52,7 +51,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { format } from "date-fns";
 import { EditTeacherSheet } from "./edit-teacher-sheet";
-import { updateTeacher, getSubjects, getAdmissions } from "@/lib/firebase/firestore";
+import { updateTeacher, getSubjects, getAdmissions, getRoles } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { User as AuthUser } from "firebase/auth";
 
@@ -101,7 +100,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
   const [teachers, setTeachers] = React.useState(initialTeachers);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
-  const [roles, setRoles] = React.useState<UserRole[]>(['Admin', 'Receptionist', 'Head of Department', 'Teacher']);
+  const [roles, setRoles] = React.useState<UserRole[]>([]);
   const { toast } = useToast();
 
   const canEdit = userRole === 'Admin';
@@ -112,12 +111,14 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
   
   React.useEffect(() => {
     async function fetchSupportingData() {
-      const [subjectsData, admissionsData] = await Promise.all([
+      const [subjectsData, admissionsData, rolesData] = await Promise.all([
         getSubjects(),
-        getAdmissions()
+        getAdmissions(),
+        getRoles(),
       ]);
       setSubjects(subjectsData);
       setAdmissions(admissionsData);
+      setRoles(rolesData);
     }
     fetchSupportingData();
   }, []);
@@ -424,3 +425,5 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
     </div>
   );
 }
+
+    

@@ -164,6 +164,7 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsDataLoading(true);
       try {
+        // Fetch all data first, before making any routing decisions.
         const [
           fetchedUsers,
           fetchedTeachers,
@@ -194,30 +195,34 @@ export default function DashboardPage() {
         
         const loggedInUserEmail = user.email;
 
-        const isStudentLogin = studentsData.some(s => s.studentEmail === loggedInUserEmail);
-        const isGuardianLogin = studentsData.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
-        
-        const isAdminAsGuardian = loggedInUserEmail === ADMIN_EMAIL && isGuardianLogin;
+        // --- START OF RE-ARCHITECTED ROUTING LOGIC ---
 
+        // PRIORITY 1: Check for student/guardian roles first as they are definitive redirects.
+        const isStudentLogin = studentsData.some(s => s.studentEmail === loggedInUserEmail);
         if (isStudentLogin) {
             router.replace('/student/dashboard');
             return;
         }
+
+        const isGuardianLogin = studentsData.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
+        const isAdminAsGuardian = loggedInUserEmail === ADMIN_EMAIL && isGuardianLogin;
         if (isGuardianLogin && !isAdminAsGuardian) {
             router.replace('/guardian/dashboard');
             return;
         }
-        if(isAdminAsGuardian){
+         if(isAdminAsGuardian){
              router.replace('/guardian/dashboard');
             return;
         }
-        
+
+        // PRIORITY 2: If not a student/guardian, determine their staff role.
         let finalRole: UserRole | null = null;
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
+          // Check if the user exists in the teachers (staff) collection and has a role.
           const loggedInTeacher = fetchedTeachers.find(t => t.email === loggedInUserEmail);
-          if (loggedInTeacher && loggedInTeacher.role) { 
+          if (loggedInTeacher && loggedInTeacher.role) {
             finalRole = loggedInTeacher.role;
           }
         }
@@ -225,6 +230,7 @@ export default function DashboardPage() {
         setUserRole(finalRole);
         setPermissions(permissionsData);
         
+        // PRIORITY 3: If they have an assigned role, load all data and proceed.
         if (finalRole) {
            setAllUsers(fetchedUsers as AuthUser[]);
            setTeachers(fetchedTeachers);
@@ -241,15 +247,19 @@ export default function DashboardPage() {
            const teacherEmails = new Set(fetchedTeachers.map(t => t.email).filter(Boolean));
            setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
            
+           // Redirect teachers to their specific dashboard. Other roles stay here.
            if (finalRole === 'Teacher') {
                router.replace('/teacher/dashboard');
-               return;
+               return; // Stop execution
            }
 
         } else {
+            // If they reach here, they are not a student, guardian, or approved staff. 
+            // They are a pending user. Only load user/teacher data for the approval list.
              setAllUsers(fetchedUsers as AuthUser[]);
              setTeachers(fetchedTeachers);
         }
+        // --- END OF RE-ARCHITECTED ROUTING LOGIC ---
 
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -838,3 +848,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
