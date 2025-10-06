@@ -14,12 +14,11 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { FeesList } from "@/components/dashboard/fees-list";
 import { InvoicingList } from "@/components/dashboard/invoicing-list";
 import { InventoryList } from "@/components/dashboard/inventory-list";
@@ -154,7 +153,6 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsDataLoading(true);
       try {
-        // Fetch all data first, before make any routing decisions.
         const [
           fetchedUsers,
           fetchedTeachers,
@@ -243,7 +241,6 @@ export default function DashboardPage() {
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
-          // Check if the user exists in the teachers (staff) collection and has a role.
           const loggedInTeacher = fetchedTeachers.find(t => t.email === loggedInUserEmail);
           if (loggedInTeacher && loggedInTeacher.role) {
             finalRole = loggedInTeacher.role;
@@ -301,7 +298,7 @@ export default function DashboardPage() {
 
   }, [user, authLoading, router, toast]);
 
-  const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'status'>) => {
+  const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
     try {
       const newStudent = await addStudent(newStudentData);
       setStudents(prev => [...prev, newStudent]);
@@ -534,14 +531,25 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteTeacher = async (teacherId: string) => {
+  const handleDeleteTeacher = async (teacher: Teacher) => {
+    if (!user) return;
     try {
-      await deleteTeacher(teacherId);
-      setTeachers(prev => prev.filter(t => t.teacherId !== teacherId));
-      toast({
-        title: "Staff Deleted",
-        description: "The staff member has been removed.",
-      });
+        const userToDelete = allUsers.find(u => u.email === teacher.email);
+        await deleteTeacher(teacher.teacherId);
+        if (userToDelete) {
+            await deleteMainUser(userToDelete.uid);
+        }
+
+        setTeachers(prev => prev.filter(t => t.teacherId !== teacher.teacherId));
+        if (userToDelete) {
+            setAllUsers(prev => prev.filter(u => u.uid !== userToDelete.uid));
+            setPendingUsers(prev => prev.filter(u => u.uid !== userToDelete.uid));
+        }
+
+        toast({
+            title: "Staff Deleted",
+            description: `${teacher.firstName} ${teacher.lastName} has been removed.`,
+        });
     } catch (error) {
         console.error("Error deleting teacher:", error);
         toast({
@@ -748,10 +756,8 @@ export default function DashboardPage() {
   
   const visibleTabs = TABS_CONFIG.filter(tab => {
     if (!userRole || !permissions) return false;
-    // Admin sees all tabs.
     if (userRole === 'Admin') return true;
     
-    // For other roles, check read permission for the module.
     const modulePermissions = permissions[tab.module];
     return modulePermissions?.[userRole]?.Read;
   });
@@ -795,6 +801,7 @@ export default function DashboardPage() {
                 teachers={teachers}
                 pendingUsers={pendingUsers}
                 onAddTeacher={handleAddTeacher}
+                onDeleteTeacher={handleDeleteTeacher}
               />
             </TabsContent>
 
