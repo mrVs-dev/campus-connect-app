@@ -335,9 +335,9 @@ export function Overview({ students, admissions }: OverviewProps) {
                    {program.subDivisions && (
                     <div className="pt-4 space-y-1">
                         {Object.entries(program.subDivisions).map(([name, count]) => (
-                            <div key={name} className="flex justify-between items-center text-sm">
+                            <div key={name} className="flex items-center text-sm">
                                 <span className="text-muted-foreground">{name}</span>
-                                <span className="font-semibold">{count}</span>
+                                <span className="font-semibold ml-2">{count}</span>
                             </div>
                         ))}
                     </div>
