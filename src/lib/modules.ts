@@ -23,7 +23,7 @@ export const initialPermissions = {
     Receptionist: { Create: false, Read: true, Update: false, Delete: false },
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
-    'Office Manager': { Create: false, Read: false, Update: false, Delete: false },
+    'Office Manager': { Create: false, Read: true, Update: false, Delete: false },
   },
   Students: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
