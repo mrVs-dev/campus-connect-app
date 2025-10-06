@@ -1,4 +1,3 @@
-
 export const APP_MODULES = [
   'Dashboard',
   'Students',
