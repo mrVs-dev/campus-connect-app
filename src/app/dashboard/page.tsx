@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";

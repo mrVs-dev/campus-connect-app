@@ -704,7 +704,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
-      <Header />
+      <Header userRole={userRole}/>
       <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
          {visibleTabs.length > 0 ? (
           <Tabs defaultValue={visibleTabs[0]?.value} className="flex flex-col gap-4">
