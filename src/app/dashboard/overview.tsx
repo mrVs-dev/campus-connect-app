@@ -328,7 +328,7 @@ export function Overview({ students, admissions }: OverviewProps) {
           {enrollmentsByProgramAndLevel.length > 0 ? (
             enrollmentsByProgramAndLevel.map((program) => (
               <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
-                <div className="flex flex-col space-y-2">
+                <div className="flex flex-col">
                   <p className="font-semibold text-lg">{program.name}</p>
                   <p className="text-4xl font-bold">{program.total}</p>
                   <p className="text-sm text-muted-foreground">Total Admissions</p>
@@ -382,3 +382,5 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
+
+    
