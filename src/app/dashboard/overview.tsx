@@ -45,10 +45,6 @@ function DatePickerWithRange({
   onDateChange,
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
-  const handleDateSelect = (newDate: DateRange | undefined) => {
-    onDateChange(newDate);
-  };
-
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Popover>
@@ -76,13 +72,13 @@ function DatePickerWithRange({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
+        <PopoverContent className="w-auto p-0 bg-card" align="end">
           <Calendar
             initialFocus
             mode="range"
             defaultMonth={value?.from}
             selected={value}
-            onSelect={handleDateSelect}
+            onSelect={onDateChange}
             numberOfMonths={2}
           />
         </PopoverContent>
