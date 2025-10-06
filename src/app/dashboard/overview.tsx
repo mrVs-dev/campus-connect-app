@@ -129,10 +129,9 @@ export function Overview({ students, admissions }: OverviewProps) {
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
 
   React.useEffect(() => {
-    const now = new Date();
     setDateRange({
-      from: startOfMonth(now),
-      to: now
+      from: new Date("2025-07-21"),
+      to: new Date(),
     });
   }, []);
   
@@ -403,5 +402,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-    
