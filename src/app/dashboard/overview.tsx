@@ -327,13 +327,13 @@ export function Overview({ students, admissions }: OverviewProps) {
         <CardContent className="grid gap-6">
           {enrollmentsByProgramAndLevel.length > 0 ? (
             enrollmentsByProgramAndLevel.map((program) => (
-              <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start">
+              <div key={program.name} className="grid gap-4 md:grid-cols-3 items-start p-4 bg-muted/50 rounded-lg">
                 <div className="flex flex-col">
                   <p className="font-semibold text-lg">{program.name}</p>
                   <p className="text-4xl font-bold">{program.total}</p>
                   <p className="text-sm text-muted-foreground">Total Admissions</p>
                    {program.subDivisions && (
-                    <div className="pt-4">
+                    <div className="pt-4 space-y-1">
                         {Object.entries(program.subDivisions).map(([name, count]) => (
                             <div key={name} className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">{name}</span>
@@ -382,7 +382,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-    
-
-    
