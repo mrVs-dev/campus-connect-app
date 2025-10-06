@@ -514,6 +514,7 @@ export default function DashboardPage() {
         const [updatedTeachers, updatedUsers] = await Promise.all([getTeachers(), getUsers()]);
         setTeachers(updatedTeachers);
         setAllUsers(updatedUsers as AuthUser[]);
+        setPendingUsers(prev => prev.filter(u => u.email !== newTeacher.email));
 
         toast({
           title: "Staff Added",
@@ -522,11 +523,11 @@ export default function DashboardPage() {
         return newTeacher;
       }
       return null;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding teacher:", error);
       toast({
         title: "Failed to Add Staff",
-        description: "There was an error adding the new staff member. Please try again.",
+        description: error.message || "There was an error adding the new staff member. Please try again.",
         variant: "destructive",
       });
       return null;
