@@ -229,33 +229,36 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
 
   const handleDeleteTeacher = async () => {
     if (!canDelete || !teacherToDelete) return;
+
     const teacherIdToDelete = teacherToDelete.teacherId;
-    const userToDelete = initialPendingUsers.find(u => u.email === teacherToDelete.email);
+    const teacherEmailToDelete = teacherToDelete.email;
+    const userToDelete = initialPendingUsers.find(u => u.email === teacherEmailToDelete);
 
     try {
-        await deleteTeacher(teacherIdToDelete);
-        
-        // Also delete the main user record if it exists
-        if (userToDelete) {
-            await deleteMainUser(userToDelete.uid);
-            setPendingUsers(prev => prev.filter(u => u.uid !== userToDelete.uid));
-        }
+      await deleteTeacher(teacherIdToDelete);
+      if (userToDelete) {
+        await deleteMainUser(userToDelete.uid);
+      }
+      
+      // Update local state immediately and correctly
+      setTeachers(prev => prev.filter(t => t.teacherId !== teacherIdToDelete));
+      if (userToDelete) {
+          setPendingUsers(prev => prev.filter(u => u.uid !== userToDelete.uid));
+      }
 
-        setTeachers(prev => prev.filter(t => t.teacherId !== teacherIdToDelete));
-
-        toast({
-            title: "Staff Deleted",
-            description: `${teacherToDelete.firstName} ${teacherToDelete.lastName} has been removed.`,
-        });
+      toast({
+        title: "Staff Deleted",
+        description: `${teacherToDelete.firstName} ${teacherToDelete.lastName} has been removed.`,
+      });
     } catch (error) {
-        console.error("Error deleting teacher:", error);
-        toast({
-            title: "Deletion Failed",
-            description: "There was an error deleting the staff member.",
-            variant: "destructive",
-        });
+      console.error("Error deleting teacher:", error);
+      toast({
+        title: "Deletion Failed",
+        description: "There was an error deleting the staff member.",
+        variant: "destructive",
+      });
     } finally {
-        setTeacherToDelete(null);
+      setTeacherToDelete(null);
     }
   };
   
