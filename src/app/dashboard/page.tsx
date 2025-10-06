@@ -155,27 +155,20 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
 
-        const allStudents = await getStudents();
-        const isStudentLogin = allStudents.some(s => s.studentEmail === loggedInUserEmail);
-        if (isStudentLogin) {
+        // --- Step 1: User & Role Identification ---
+        const [allStudentsForCheck, allTeachers] = await Promise.all([getStudents(), getTeachers()]);
+        
+        // Redirect if student or guardian
+        if (allStudentsForCheck.some(s => s.studentEmail === loggedInUserEmail)) {
             router.replace('/student/dashboard');
             return;
         }
-
-        const isGuardianLogin = allStudents.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
-        const isAdminAsGuardian = loggedInUserEmail === ADMIN_EMAIL && isGuardianLogin;
-        if (isGuardianLogin && !isAdminAsGuardian) {
-            router.replace('/guardian/dashboard');
-            return;
-        }
-        if(isAdminAsGuardian){
+        if (allStudentsForCheck.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
             router.replace('/guardian/dashboard');
             return;
         }
 
         let finalRole: UserRole | null = null;
-        let allTeachers = await getTeachers(); 
-        
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
@@ -185,92 +178,99 @@ export default function DashboardPage() {
           }
         }
         
-        setUserRole(finalRole);
-        
-        if (finalRole) {
-           if (finalRole === 'Teacher') {
-               router.replace('/teacher/dashboard');
-               return;
-           }
-
-          const [
-            fetchedUsers,
-            admissionsData, 
-            assessmentsData, 
-            statusHistoryData, 
-            subjectsData, 
-            categoriesData,
-            feesData,
-            invoicesData,
-            inventoryData,
-            savedPermissions,
-            allRoles
-          ] = await Promise.all([
-            getUsers(),
-            getAdmissions(),
-            getAssessments(),
-            getStudentStatusHistory(),
-            getSubjects(),
-            getAssessmentCategories(),
-            getFees(),
-            getInvoices(),
-            getInventoryItems(),
-            getPermissions(),
-            getRoles(),
-          ]);
-
-          let currentRoles = [...allRoles];
-          const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
-          let madeChanges = false;
-          rolesToAdd.forEach(role => {
-              if (!currentRoles.some(r => r.toLowerCase() === role.toLowerCase())) {
-                  currentRoles.push(role);
-                  madeChanges = true;
-              }
-          });
-          if (madeChanges) {
-            await saveRoles(currentRoles);
-          }
-
-          const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-          APP_MODULES.forEach(module => {
-             if (!completePermissions[module]) completePermissions[module] = {};
-             currentRoles.forEach(role => {
-                 if (!completePermissions[module][role]) {
-                    completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-                 }
-                 const saved = savedPermissions[module]?.[role];
-                 if (saved) {
-                     completePermissions[module][role] = { ...completePermissions[module][role], ...saved };
-                 }
-             });
-          });
-          setPermissions(completePermissions);
-          
-          allTeachers = await getTeachers();
-
+        if (!finalRole) {
+          // If no role, they might be pending. Show pending screen.
+          const fetchedUsers = await getUsers();
           setAllUsers(fetchedUsers as AuthUser[]);
           setTeachers(allTeachers);
-          setStudents(allStudents);
-          setAdmissions(admissionsData);
-          setAssessments(assessmentsData);
-          setStatusHistory(statusHistoryData);
-          setSubjects(subjectsData);
-          setAssessmentCategories(categoriesData);
-          setFees(feesData);
-          setInvoices(invoicesData);
-          setInventory(inventoryData);
-          
           const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
           setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
-
-        } else {
-            const fetchedUsers = await getUsers();
-            setAllUsers(fetchedUsers as AuthUser[]);
-            setTeachers(allTeachers);
-            const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
-            setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
+          setUserRole(null);
+          setIsDataLoading(false);
+          return;
         }
+
+        setUserRole(finalRole);
+        
+        // --- Step 2: Role-Specific Actions & Data Fetching ---
+        if (finalRole === 'Teacher') {
+            router.replace('/teacher/dashboard');
+            return;
+        }
+
+        // Fetch all data for Admin, Office Manager, Finance Officer etc.
+        const [
+          fetchedUsers,
+          admissionsData, 
+          assessmentsData, 
+          statusHistoryData, 
+          subjectsData, 
+          categoriesData,
+          feesData,
+          invoicesData,
+          inventoryData,
+          savedPermissions,
+          allRoles
+        ] = await Promise.all([
+          getUsers(),
+          getAdmissions(),
+          getAssessments(),
+          getStudentStatusHistory(),
+          getSubjects(),
+          getAssessmentCategories(),
+          getFees(),
+          getInvoices(),
+          getInventoryItems(),
+          getPermissions(),
+          getRoles(),
+        ]);
+
+        // Ensure essential roles exist in the database
+        let currentRoles = [...allRoles];
+        const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer", "Receptionist", "Head of Department"];
+        let madeChanges = false;
+        rolesToAdd.forEach(role => {
+            if (!currentRoles.some(r => r.toLowerCase() === role.toLowerCase())) {
+                currentRoles.push(role);
+                madeChanges = true;
+            }
+        });
+        if (madeChanges) {
+          await saveRoles(currentRoles);
+        }
+
+        // Build the complete permissions object
+        const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+        APP_MODULES.forEach(module => {
+           if (!completePermissions[module]) completePermissions[module] = {};
+           currentRoles.forEach(role => {
+               if (!completePermissions[module][role]) {
+                  completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+               }
+               const saved = savedPermissions[module]?.[role];
+               if (saved) {
+                   completePermissions[module][role] = { ...completePermissions[module][role], ...saved };
+               }
+           });
+        });
+        setPermissions(completePermissions);
+        
+        // Set all fetched data to state
+        setAllUsers(fetchedUsers as AuthUser[]);
+        setTeachers(allTeachers);
+        setStudents(allStudentsForCheck);
+        setAdmissions(admissionsData);
+        setAssessments(assessmentsData);
+        setStatusHistory(statusHistoryData);
+        setSubjects(subjectsData);
+        setAssessmentCategories(categoriesData);
+        setFees(feesData);
+        setInvoices(invoicesData);
+        setInventory(inventoryData);
+        
+        // Determine pending users
+        const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
+        setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
 
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
