@@ -94,7 +94,8 @@ const getSortValue = (level: string): number => {
         'Toddler': 2,
         'Pre-K': 3,
         'Kindergarten': 4,
-        'Starters': 1
+        'Starters': 1,
+        'Starter': 1, // Handle typo
     };
 
     if (specialLevels[level] !== undefined) {

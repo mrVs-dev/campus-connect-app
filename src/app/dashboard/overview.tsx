@@ -188,7 +188,8 @@ export function Overview({ students, admissions }: OverviewProps) {
                 const programName = programs.find(p => p.id === enrollment.programId)?.name;
                 if (programName) {
                     programData[programName].total++;
-                    const levelName = enrollment.level;
+                    let levelName = enrollment.level;
+                    if (levelName === 'Starter') levelName = 'Starters'; // Consolidate typo
                     programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
                 }
             });
