@@ -156,19 +156,17 @@ export function Overview({ students, admissions }: OverviewProps) {
     }, {} as Record<string, number>);
   }, [enrollmentFilteredStudents]);
 
-  const pieData = [
-    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0 },
-    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0 },
-    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0 },
-  ].filter(d => d.value > 0);
-
-  const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--muted-foreground))"];
-
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
-    const programData: Record<string, { total: number; levels: Record<string, number> }> = {};
+    const programData: Record<string, { total: number; levels: Record<string, number>; subDivisions?: Record<string, number> }> = {};
 
     programs.forEach(p => {
         programData[p.name] = { total: 0, levels: {} };
+        if (p.subDivisions) {
+            programData[p.name].subDivisions = {};
+            p.subDivisions.forEach(sd => {
+                programData[p.name].subDivisions![sd.name] = 0;
+            });
+        }
     });
 
     const admissionsToConsider = admissionYearFilter === 'All'
@@ -178,12 +176,22 @@ export function Overview({ students, admissions }: OverviewProps) {
     admissionsToConsider.forEach(admission => {
       admission.students.forEach(studentAdmission => {
         studentAdmission.enrollments.forEach(enrollment => {
-            const programName = programs.find(p => p.id === enrollment.programId)?.name;
-            if (programName) {
+            const programInfo = programs.find(p => p.id === enrollment.programId);
+            if (programInfo) {
+                const programName = programInfo.name;
                 programData[programName].total++;
                 let levelName = enrollment.level;
                 if (levelName === 'Starter') levelName = 'Starters'; // Consolidate typo
                 programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
+
+                 if (programInfo.subDivisions) {
+                    for (const sub of programInfo.subDivisions) {
+                        if (sub.levels.includes(levelName)) {
+                            programData[programName].subDivisions![sub.name]++;
+                            break;
+                        }
+                    }
+                }
             }
         });
       });
@@ -197,6 +205,7 @@ export function Overview({ students, admissions }: OverviewProps) {
       }))
       .filter(p => p.total > 0);
   }, [admissions, admissionYearFilter]);
+
 
   const totalAdmissions = React.useMemo(() => {
     const admissionsToConsider = admissionYearFilter === 'All'
@@ -214,14 +223,6 @@ export function Overview({ students, admissions }: OverviewProps) {
     students: {
       label: "Students",
       color: "hsl(var(--primary))",
-    },
-     male: {
-      label: "Male",
-      color: "hsl(var(--primary))",
-    },
-    female: {
-      label: "Female",
-      color: "hsl(var(--accent))",
     },
   };
 
@@ -331,6 +332,16 @@ export function Overview({ students, admissions }: OverviewProps) {
                   <p className="font-semibold text-lg">{program.name}</p>
                   <p className="text-4xl font-bold">{program.total}</p>
                   <p className="text-sm text-muted-foreground">Total Admissions</p>
+                   {program.subDivisions && (
+                    <div className="pt-4 space-y-2">
+                        {Object.entries(program.subDivisions).map(([name, count]) => (
+                            <div key={name} className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">{name}</span>
+                                <span className="font-semibold">{count}</span>
+                            </div>
+                        ))}
+                    </div>
+                   )}
                 </div>
                 <div className="md:col-span-2">
                   <ChartContainer config={chartConfig} className="h-[200px] w-full">
