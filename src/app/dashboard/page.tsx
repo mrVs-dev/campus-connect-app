@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, Payment, InventoryItem } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, Payment, InventoryItem, Permissions } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/app/dashboard/overview";
@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -87,18 +87,18 @@ function PendingApproval() {
 }
 
 
-const TABS_CONFIG: { value: string, label: string, roles: UserRole[] }[] = [
-  { value: "dashboard", label: "Dashboard", roles: ['Admin', 'Receptionist', 'Head of Department'] },
-  { value: "students", label: "Students", roles: ['Admin', 'Receptionist', 'Head of Department', 'Teacher'] },
-  { value: "users", label: "Users", roles: ['Admin'] },
-  { value: "assessments", label: "Assessments", roles: ['Admin', 'Head of Department', 'Teacher'] },
-  { value: "fees", label: "Fees", roles: ['Admin', 'Receptionist'] },
-  { value: "invoicing", label: "Invoicing", roles: ['Admin', 'Receptionist'] },
-  { value: "inventory", label: "Inventory", roles: ['Admin', 'Receptionist'] },
-  { value: "admissions", label: "Admissions", roles: ['Admin', 'Receptionist'] },
-  { value: "enrollment", label: "Enrollment", roles: ['Admin', 'Receptionist'] },
-  { value: "statusHistory", label: "Status History", roles: ['Admin'] },
-  { value: "settings", label: "Settings", roles: ['Admin'] },
+const TABS_CONFIG = [
+  { value: "dashboard", label: "Dashboard", module: "Admissions" },
+  { value: "students", label: "Students", module: "Students" },
+  { value: "users", label: "Users", module: "Users" },
+  { value: "assessments", label: "Assessments", module: "Assessments" },
+  { value: "fees", label: "Fees", module: "Fees" },
+  { value: "invoicing", label: "Invoicing", module: "Invoicing" },
+  { value: "inventory", label: "Inventory", module: "Inventory" },
+  { value: "admissions", label: "Admissions", module: "Admissions" },
+  { value: "enrollment", label: "Enrollment", module: "Students" }, 
+  { value: "statusHistory", label: "Status History", module: "Students" },
+  { value: "settings", label: "Settings", module: "Settings" },
 ];
 
 export default function DashboardPage() {
@@ -118,6 +118,7 @@ export default function DashboardPage() {
   const [invoices, setInvoices] = React.useState<Invoice[]>([]);
   const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
   const [userRole, setUserRole] = React.useState<UserRole | null>(null);
+  const [permissions, setPermissions] = React.useState<Permissions | null>(null);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
 
@@ -174,7 +175,8 @@ export default function DashboardPage() {
           categoriesData,
           feesData,
           invoicesData,
-          inventoryData
+          inventoryData,
+          permissionsData,
         ] = await Promise.all([
           getUsers(),
           getTeachers(),
@@ -187,17 +189,14 @@ export default function DashboardPage() {
           getFees(),
           getInvoices(),
           getInventoryItems(),
+          getPermissions(),
         ]);
         
         const loggedInUserEmail = user.email;
 
-        // --- START OF NEW, PRIORITIZED ROUTING LOGIC ---
-
-        // PRIORITY 1: Check if the user is a student or guardian first.
         const isStudentLogin = studentsData.some(s => s.studentEmail === loggedInUserEmail);
         const isGuardianLogin = studentsData.some(s => s.guardians?.some(g => g.email === loggedInUserEmail));
         
-        // Special case for admin to view as guardian
         const isAdminAsGuardian = loggedInUserEmail === ADMIN_EMAIL && isGuardianLogin;
 
         if (isStudentLogin) {
@@ -208,27 +207,24 @@ export default function DashboardPage() {
             router.replace('/guardian/dashboard');
             return;
         }
-        // If admin is also a guardian, allow them to proceed to staff checks but handle later.
         if(isAdminAsGuardian){
              router.replace('/guardian/dashboard');
             return;
         }
         
-
-        // PRIORITY 2: If not a student/guardian, check if they are an approved staff member.
         let finalRole: UserRole | null = null;
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
           const loggedInTeacher = fetchedTeachers.find(t => t.email === loggedInUserEmail);
-          if (loggedInTeacher && loggedInTeacher.role) { // Check if role exists
+          if (loggedInTeacher && loggedInTeacher.role) { 
             finalRole = loggedInTeacher.role;
           }
         }
         
         setUserRole(finalRole);
+        setPermissions(permissionsData);
         
-        // PRIORITY 3: If they are a staff member, redirect or load data accordingly.
         if (finalRole) {
            setAllUsers(fetchedUsers as AuthUser[]);
            setTeachers(fetchedTeachers);
@@ -245,20 +241,15 @@ export default function DashboardPage() {
            const teacherEmails = new Set(fetchedTeachers.map(t => t.email).filter(Boolean));
            setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
            
-           // If they have the Teacher role, send them to the teacher dashboard.
-           // Other staff roles (Admin, Receptionist) will stay on the main dashboard.
            if (finalRole === 'Teacher') {
                router.replace('/teacher/dashboard');
-               return; // Stop execution
+               return;
            }
 
         } else {
-            // If they reach here, they are not a student, guardian, or approved staff.
-            // They are a pending user. No data is loaded, and the PendingApproval component will show.
              setAllUsers(fetchedUsers as AuthUser[]);
              setTeachers(fetchedTeachers);
         }
-        // --- END OF NEW ROUTING LOGIC ---
 
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -720,7 +711,15 @@ export default function DashboardPage() {
     return <PendingApproval />;
   }
   
-  const visibleTabs = TABS_CONFIG.filter(tab => tab.roles.includes(userRole));
+  const visibleTabs = TABS_CONFIG.filter(tab => {
+    if (!userRole || !permissions || !tab.module) return false;
+    // Admin sees all tabs.
+    if (userRole === 'Admin') return true;
+    
+    // For other roles, check read permission for the module.
+    const modulePermissions = permissions[tab.module as keyof Permissions];
+    return modulePermissions?.[userRole]?.Read;
+  });
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
@@ -839,3 +838,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
