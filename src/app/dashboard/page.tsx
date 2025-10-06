@@ -187,10 +187,18 @@ export default function DashboardPage() {
         ]);
         
         let currentRoles = [...allRoles];
-        if (!currentRoles.includes('Office Manager')) {
-          currentRoles.push('Office Manager');
+        const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
+        let madeChanges = false;
+        rolesToAdd.forEach(role => {
+            if (!currentRoles.includes(role)) {
+                currentRoles.push(role);
+                madeChanges = true;
+            }
+        });
+        if (madeChanges) {
           await saveRoles(currentRoles);
         }
+
 
         // --- Build a complete, reliable permissions object ---
         const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;

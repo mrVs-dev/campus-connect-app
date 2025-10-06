@@ -24,6 +24,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
     'Office Manager': { Create: false, Read: true, Update: false, Delete: false },
+    'Finance Officer': { Create: false, Read: true, Update: false, Delete: false },
   },
   Students: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -31,6 +32,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: true, Update: false, Delete: false },
     'Office Manager': { Create: true, Read: true, Update: true, Delete: false },
+    'Finance Officer': { Create: true, Read: true, Update: true, Delete: false },
   },
   Users: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -38,6 +40,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
     'Office Manager': { Create: false, Read: false, Update: false, Delete: false },
+    'Finance Officer': { Create: false, Read: false, Update: false, Delete: false },
   },
   Assessments: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -45,6 +48,7 @@ export const initialPermissions = {
     'Head of Department': { Create: true, Read: true, Update: true, Delete: true },
     Teacher: { Create: true, Read: true, Update: true, Delete: false },
     'Office Manager': { Create: false, Read: false, Update: false, Delete: false },
+    'Finance Officer': { Create: false, Read: false, Update: false, Delete: false },
   },
    Fees: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -52,6 +56,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
     'Office Manager': { Create: true, Read: true, Update: true, Delete: true },
+    'Finance Officer': { Create: true, Read: true, Update: true, Delete: true },
   },
   Invoicing: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -59,6 +64,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
     'Office Manager': { Create: true, Read: true, Update: true, Delete: true },
+    'Finance Officer': { Create: true, Read: true, Update: true, Delete: true },
   },
   Inventory: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -66,6 +72,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
     'Office Manager': { Create: false, Read: false, Update: false, Delete: false },
+    'Finance Officer': { Create: false, Read: false, Update: false, Delete: false },
   },
   Admissions: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -73,6 +80,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: true, Update: false, Delete: false },
     'Office Manager': { Create: false, Read: true, Update: false, Delete: false },
+    'Finance Officer': { Create: false, Read: true, Update: false, Delete: false },
   },
   Enrollment: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -80,6 +88,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
     'Office Manager': { Create: false, Read: false, Update: false, Delete: false },
+    'Finance Officer': { Create: false, Read: false, Update: false, Delete: false },
   },
   'Status History': {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -87,6 +96,7 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: true, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
     'Office Manager': { Create: false, Read: false, Update: false, Delete: false },
+    'Finance Officer': { Create: false, Read: false, Update: false, Delete: false },
   },
   Settings: {
     Admin: { Create: true, Read: true, Update: true, Delete: true },
@@ -94,5 +104,6 @@ export const initialPermissions = {
     'Head of Department': { Create: false, Read: false, Update: false, Delete: false },
     Teacher: { Create: false, Read: false, Update: false, Delete: false },
     'Office Manager': { Create: false, Read: false, Update: false, Delete: false },
+    'Finance Officer': { Create: false, Read: false, Update: false, Delete: false },
   },
 };
