@@ -143,6 +143,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
               firstName: firstName,
               lastName: lastName,
               email: userToApprove.email || "",
+              phone: userToApprove.phoneNumber || "",
               role: "Teacher",
           });
           setIsNewTeacherDialogOpen(true);
@@ -261,7 +262,13 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers,
             {canEdit && (
                 <Dialog open={isNewTeacherDialogOpen} onOpenChange={setIsNewTeacherDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1" onClick={() => form.reset()}>
+                    <Button size="sm" className="gap-1" onClick={() => form.reset({
+                        firstName: "",
+                        lastName: "",
+                        email: "",
+                        phone: "",
+                        role: "Teacher",
+                    })}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     New Staff
                     </Button>
