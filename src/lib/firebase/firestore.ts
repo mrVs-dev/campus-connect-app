@@ -389,12 +389,12 @@ export async function saveAdmission(admissionData: Admission, isNewClass: boolea
     const admissionDocRef = doc(db, 'admissions', cleanedData.schoolYear);
 
     try {
-        // Always overwrite the document to ensure removals are persisted.
-        // Merging is only safe for adding new, independent data like a new class definition.
+        // When adding a new class, we must merge to avoid overwriting the whole year.
+        // When editing a roster (not a new class), we overwrite the whole document.
         if (isNewClass) {
-             await setDoc(admissionDocRef, cleanedData, { merge: true });
+            await setDoc(admissionDocRef, cleanedData, { merge: true });
         } else {
-             await setDoc(admissionDocRef, cleanedData);
+            await setDoc(admissionDocRef, cleanedData);
         }
         return true;
     } catch(e) {
@@ -913,5 +913,6 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
+
 
 
