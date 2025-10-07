@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -27,8 +28,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getRoles, saveRoles, getPermissions, savePermissions } from "@/lib/firebase/firestore";
-import { APP_MODULES, initialPermissions, AppModule } from "@/lib/modules";
+import { savePermissions } from "@/lib/firebase/firestore";
+import { APP_MODULES } from "@/lib/modules";
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
@@ -65,7 +66,7 @@ function RoleSettings({ roles, onSaveRoles }: { roles: UserRole[]; onSaveRoles: 
     toast({ title: "Role Deleted", description: `The role "${roleToDelete}" has been removed.`});
   };
   
-  const protectedRoles = ['Admin', 'Receptionist', 'Head of Department', 'Teacher', 'Office Manager'];
+  const protectedRoles = ['Admin', 'Receptionist', 'Head of Department', 'Teacher', 'Office Manager', 'Finance Officer'];
 
   return (
     <Card>
@@ -119,9 +120,8 @@ const permissionSchema = z.object({
 type PermissionsFormValues = z.infer<typeof permissionSchema>;
 
 
-function PermissionSettings({ roles }: { roles: UserRole[] }) {
+function PermissionSettings({ roles, initialPermissions }: { roles: UserRole[], initialPermissions: Permissions | null }) {
   const [isSaving, setIsSaving] = React.useState(false);
-  const [isLoadingPermissions, setIsLoadingPermissions] = React.useState(true);
   const { toast } = useToast();
 
   const form = useForm<PermissionsFormValues>({
@@ -129,37 +129,10 @@ function PermissionSettings({ roles }: { roles: UserRole[] }) {
   });
 
   React.useEffect(() => {
-    async function loadPermissions() {
-      setIsLoadingPermissions(true);
-      const savedPermissions = await getPermissions();
-      
-      const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-
-      // Ensure all modules, roles, and actions have a defined boolean value.
-      APP_MODULES.forEach(module => {
-        if (!completePermissions[module]) {
-          completePermissions[module] = {};
-        }
-        roles.forEach(role => {
-          if (!completePermissions[module][role]) {
-            completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-          }
-          actions.forEach(action => {
-            const savedValue = savedPermissions[module as keyof typeof savedPermissions]?.[role]?.[action];
-            completePermissions[module][role][action] = typeof savedValue === 'boolean' 
-              ? savedValue 
-              : (completePermissions[module][role][action] || false);
-          });
-        });
-      });
-
-      form.reset({ permissions: completePermissions });
-      setIsLoadingPermissions(false);
+    if (initialPermissions && roles.length > 0) {
+      form.reset({ permissions: initialPermissions });
     }
-    if (roles.length > 0) {
-      loadPermissions();
-    }
-  }, [form, roles]);
+  }, [form, roles, initialPermissions]);
 
 
   const onSubmit = async (data: PermissionsFormValues) => {
@@ -172,7 +145,7 @@ function PermissionSettings({ roles }: { roles: UserRole[] }) {
     setIsSaving(false);
   };
   
-  if (isLoadingPermissions) {
+  if (!initialPermissions) {
     return (
       <Card>
         <CardHeader>
@@ -458,38 +431,31 @@ function CategorySettings({ initialCategories, onSave }: { initialCategories: As
 interface SettingsPageProps {
   subjects: Subject[];
   assessmentCategories: AssessmentCategory[];
+  allRoles: UserRole[];
+  initialPermissions: Permissions | null;
   onSaveSubjects: (subjects: Subject[]) => void;
   onSaveCategories: (categories: AssessmentCategory[]) => void;
+  onSaveRoles: (roles: UserRole[]) => Promise<void>;
 }
 
-export function SettingsPage({ subjects, assessmentCategories, onSaveSubjects, onSaveCategories }: SettingsPageProps) {
-  const [roles, setRoles] = React.useState<UserRole[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+export function SettingsPage({ 
+  subjects, 
+  assessmentCategories, 
+  onSaveSubjects, 
+  onSaveCategories,
+  allRoles,
+  onSaveRoles,
+  initialPermissions,
+}: SettingsPageProps) {
 
-  React.useEffect(() => {
-    async function loadRoles() {
-      setIsLoading(true);
-      const fetchedRoles = await getRoles();
-      setRoles(fetchedRoles);
-      setIsLoading(false);
-    }
-    loadRoles();
-  }, []);
-
-  const handleSaveRoles = async (newRoles: UserRole[]) => {
-    await saveRoles(newRoles);
-    const fetchedRoles = await getRoles(); // Re-fetch to ensure consistency
-    setRoles(fetchedRoles);
-  };
-  
-  if (isLoading) {
+  if (!allRoles.length) {
     return <div>Loading settings...</div>;
   }
 
   return (
     <div className="space-y-8">
-      <RoleSettings roles={roles} onSaveRoles={handleSaveRoles} />
-      <PermissionSettings roles={roles} />
+      <RoleSettings roles={allRoles} onSaveRoles={onSaveRoles} />
+      <PermissionSettings roles={allRoles} initialPermissions={initialPermissions} />
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
     </div>

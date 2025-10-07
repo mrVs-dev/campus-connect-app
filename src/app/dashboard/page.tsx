@@ -107,9 +107,12 @@ export default function DashboardPage() {
   const [fees, setFees] = React.useState<Fee[]>([]);
   const [invoices, setInvoices] = React.useState<Invoice[]>([]);
   const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
+  
+  const [allSystemRoles, setAllSystemRoles] = React.useState<UserRole[]>([]);
   const [userRoles, setUserRoles] = React.useState<UserRole[] | null>(null);
   const [activeRole, setActiveRole] = React.useState<UserRole | null>(null);
   const [permissions, setPermissions] = React.useState<Permissions | null>(null);
+
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
 
@@ -135,159 +138,166 @@ export default function DashboardPage() {
     });
 }, [students, admissions]);
   
+  const fetchData = React.useCallback(async () => {
+    if (!user) return;
+    setIsDataLoading(true);
+    try {
+      const loggedInUserEmail = user.email;
+
+      // --- Step 1: Role & Portal Identification ---
+      const [allStudentsForCheck, allTeachersForCheck, allDbUsers, allRolesFromDb, savedPermissions] = await Promise.all([
+        getStudents(), 
+        getTeachers(), 
+        getUsers(),
+        getRoles(),
+        getPermissions(),
+      ]);
+      setAllSystemRoles(allRolesFromDb);
+      
+      // Redirect if student or guardian
+      if (allStudentsForCheck.some(s => s.studentEmail === loggedInUserEmail)) {
+          router.replace('/student/dashboard');
+          return;
+      }
+      if (allStudentsForCheck.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
+          router.replace('/guardian/dashboard');
+          return;
+      }
+
+      let finalRoles: UserRole[] = [];
+      if (loggedInUserEmail === ADMIN_EMAIL) {
+        finalRoles = ['Admin'];
+      } else {
+        const loggedInStaffMember = allTeachersForCheck.find(t => t.email === loggedInUserEmail);
+        if (loggedInStaffMember && loggedInStaffMember.roles && loggedInStaffMember.roles.length > 0) {
+          finalRoles = loggedInStaffMember.roles;
+        }
+      }
+      
+      // If no roles, they are pending. Show pending screen.
+      if (finalRoles.length === 0) {
+        setAllUsers(allDbUsers as AuthUser[]);
+        setTeachers(allTeachersForCheck);
+        const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
+        setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
+        setUserRoles(null);
+        setActiveRole(null);
+        setIsDataLoading(false);
+        return;
+      }
+      
+      setUserRoles(finalRoles);
+      const preferredRoleOrder: UserRole[] = ['Admin', 'Office Manager', 'Head of Department', 'Receptionist', 'Finance Officer', 'Teacher'];
+      const sortedRoles = [...finalRoles].sort((a, b) => {
+          const indexA = preferredRoleOrder.indexOf(a);
+          const indexB = preferredRoleOrder.indexOf(b);
+          if (indexA === -1) return 1;
+          if (indexB === -1) return -1;
+          return indexA - indexB;
+      });
+      setActiveRole(sortedRoles[0]);
+      
+      // Teacher-specific view takes precedence if they ONLY have that role
+      if (finalRoles.length === 1 && finalRoles[0] === 'Teacher') {
+          router.replace('/teacher/dashboard');
+          return;
+      }
+      
+      // --- Step 3: Fetch Data & Permissions for Admin/Office Roles ---
+      
+      // Ensure essential roles exist and save if necessary
+      let currentRoles = [...allRolesFromDb];
+      const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
+      let madeRoleChanges = false;
+      rolesToAdd.forEach(role => {
+          if (!currentRoles.some(r => r.toLowerCase() === role.toLowerCase())) {
+              currentRoles.push(role);
+              madeRoleChanges = true;
+          }
+      });
+      if (madeRoleChanges) {
+        await saveRoles(currentRoles);
+        setAllSystemRoles(currentRoles); // Update state if changed
+      }
+
+      // Build the complete, merged permissions object
+      const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+      APP_MODULES.forEach(module => {
+         if (!completePermissions[module]) completePermissions[module] = {};
+         currentRoles.forEach(role => {
+             if (!completePermissions[module][role]) {
+                // If role doesn't exist in our default template, initialize it.
+                completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+             }
+             // Overwrite defaults with any saved permissions from Firestore
+             if (savedPermissions[module]?.[role]) {
+                 completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
+             }
+         });
+      });
+      setPermissions(completePermissions);
+      
+      const [
+        admissionsData, 
+        assessmentsData, 
+        statusHistoryData, 
+        subjectsData,
+        feesData,
+        invoicesData,
+        inventoryData,
+      ] = await Promise.all([
+        getAdmissions(),
+        getAssessments(),
+        getStudentStatusHistory(),
+        getSubjects(),
+        getFees(),
+        getInvoices(),
+        getInventoryItems(),
+      ]);
+
+      const allStudents = await getStudents();
+
+      setStudents(allStudents);
+      setAdmissions(admissionsData);
+      setAssessments(assessmentsData);
+      setTeachers(allTeachersForCheck);
+      setAllUsers(allDbUsers as AuthUser[]);
+      setStatusHistory(statusHistoryData);
+      setSubjects(subjectsData);
+      setAssessmentCategories(await getAssessmentCategories());
+      setFees(feesData);
+      setInvoices(invoicesData);
+      setInventory(inventoryData);
+    } catch (error: any) {
+      console.error("Error fetching data:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDataLoading(false);
+    }
+  }, [user, router, toast]);
+
   React.useEffect(() => {
     if (authLoading) return;
     if (!user) {
       router.replace('/login');
       return;
     }
-
     if (!isFirebaseConfigured) {
       setIsDataLoading(false);
       return;
     }
-
-    const fetchData = async () => {
-      setIsDataLoading(true);
-      try {
-        const loggedInUserEmail = user.email;
-
-        // --- Step 1: Role & Portal Identification ---
-        const [allStudentsForCheck, allTeachersForCheck, allDbUsers, allRolesFromDb, savedPermissions] = await Promise.all([
-          getStudents(), 
-          getTeachers(), 
-          getUsers(),
-          getRoles(),
-          getPermissions(),
-        ]);
-        
-        // Redirect if student or guardian
-        if (allStudentsForCheck.some(s => s.studentEmail === loggedInUserEmail)) {
-            router.replace('/student/dashboard');
-            return;
-        }
-        if (allStudentsForCheck.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
-            router.replace('/guardian/dashboard');
-            return;
-        }
-
-        let finalRoles: UserRole[] = [];
-        if (loggedInUserEmail === ADMIN_EMAIL) {
-          finalRoles = ['Admin'];
-        } else {
-          const loggedInStaffMember = allTeachersForCheck.find(t => t.email === loggedInUserEmail);
-          if (loggedInStaffMember && loggedInStaffMember.roles && loggedInStaffMember.roles.length > 0) {
-            finalRoles = loggedInStaffMember.roles;
-          }
-        }
-        
-        // If no roles, they are pending. Show pending screen.
-        if (finalRoles.length === 0) {
-          setAllUsers(allDbUsers as AuthUser[]);
-          setTeachers(allTeachersForCheck);
-          const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
-          setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
-          setUserRoles(null);
-          setActiveRole(null);
-          setIsDataLoading(false);
-          return;
-        }
-        
-        setUserRoles(finalRoles);
-        const preferredRoleOrder: UserRole[] = ['Admin', 'Office Manager', 'Head of Department', 'Receptionist', 'Finance Officer', 'Teacher'];
-        const sortedRoles = [...finalRoles].sort((a, b) => {
-            const indexA = preferredRoleOrder.indexOf(a);
-            const indexB = preferredRoleOrder.indexOf(b);
-            if (indexA === -1) return 1;
-            if (indexB === -1) return -1;
-            return indexA - indexB;
-        });
-        setActiveRole(sortedRoles[0]);
-        
-        // Teacher-specific view takes precedence if they ONLY have that role
-        if (finalRoles.length === 1 && finalRoles[0] === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-        }
-        
-        // --- Step 3: Fetch Data & Permissions for Admin/Office Roles ---
-        
-        // Ensure essential roles exist and save if necessary
-        let currentRoles = [...allRolesFromDb];
-        const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
-        let madeRoleChanges = false;
-        rolesToAdd.forEach(role => {
-            if (!currentRoles.some(r => r.toLowerCase() === role.toLowerCase())) {
-                currentRoles.push(role);
-                madeRoleChanges = true;
-            }
-        });
-        if (madeRoleChanges) {
-          await saveRoles(currentRoles);
-        }
-
-        // Build the complete, merged permissions object
-        const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-        APP_MODULES.forEach(module => {
-           if (!completePermissions[module]) completePermissions[module] = {};
-           currentRoles.forEach(role => {
-               if (!completePermissions[module][role]) {
-                  // If role doesn't exist in our default template, initialize it.
-                  completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-               }
-               // Overwrite defaults with any saved permissions from Firestore
-               if (savedPermissions[module]?.[role]) {
-                   completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
-               }
-           });
-        });
-        setPermissions(completePermissions);
-        
-        const [
-          admissionsData, 
-          assessmentsData, 
-          statusHistoryData, 
-          subjectsData,
-          feesData,
-          invoicesData,
-          inventoryData,
-        ] = await Promise.all([
-          getAdmissions(),
-          getAssessments(),
-          getStudentStatusHistory(),
-          getSubjects(),
-          getFees(),
-          getInvoices(),
-          getInventoryItems(),
-        ]);
-
-        const allStudents = await getStudents();
-
-        setStudents(allStudents);
-        setAdmissions(admissionsData);
-        setAssessments(assessmentsData);
-        setTeachers(allTeachersForCheck);
-        setAllUsers(allDbUsers as AuthUser[]);
-        setStatusHistory(statusHistoryData);
-        setSubjects(subjectsData);
-        setAssessmentCategories(await getAssessmentCategories());
-        setFees(feesData);
-        setInvoices(invoicesData);
-        setInventory(inventoryData);
-      } catch (error: any) {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to load data. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsDataLoading(false);
-      }
-    };
-
     fetchData();
-  }, [user, router, toast, authLoading]);
+  }, [user, authLoading, router, fetchData]);
+
+  const handleSaveRoles = async (newRoles: UserRole[]) => {
+    await saveRoles(newRoles);
+    await fetchData(); // Refetch all data to ensure consistency
+    toast({ title: "Roles updated", description: "The list of system roles has been saved." });
+  };
 
   const handleDeleteTeacher = async (teacher: Teacher) => {
     if (!user) return;
@@ -429,7 +439,10 @@ export default function DashboardPage() {
                     assessmentCategories={assessmentCategories}
                     onSaveSubjects={saveSubjects}
                     onSaveCategories={saveAssessmentCategories}
-                    />
+                    allRoles={allSystemRoles}
+                    onSaveRoles={handleSaveRoles}
+                    initialPermissions={permissions}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
