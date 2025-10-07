@@ -88,7 +88,7 @@ export interface Teacher {
   email: string;
   phone?: string;
   status: 'Active' | 'Inactive';
-  role: UserRole;
+  roles: UserRole[];
   avatarUrl?: string;
   joinedDate?: Date;
   assignedSubjects?: string[]; // subjectIds

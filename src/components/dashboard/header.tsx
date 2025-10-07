@@ -10,11 +10,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { NotificationBell } from "./notification-bell";
 import type { UserRole } from "@/lib/types";
 
-export function Header({ userRole }: { userRole: UserRole | null }) {
+export function Header({ userRole }: { userRole: UserRole | UserRole[] | null }) {
   const pathname = usePathname();
   const { user } = useAuth();
   
-  const isAdmin = userRole === "Admin";
+  const isAdmin = Array.isArray(userRole) ? userRole.includes('Admin') : userRole === 'Admin';
   const isTeacherDashboard = pathname.startsWith('/teacher');
   const isStudentPortal = pathname.startsWith('/student') || pathname.startsWith('/guardian');
 

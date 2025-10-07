@@ -71,13 +71,13 @@ const teacherFormSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
-  role: z.custom<UserRole>(val => typeof val === 'string' && val.length > 0, "Role is required"),
+  roles: z.array(z.string()).min(1, "At least one role is required."),
 });
 
 type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 
 interface TeacherListProps {
-  userRole: UserRole;
+  userRole: UserRole | UserRole[] | null;
   teachers: Teacher[];
   pendingUsers: AuthUser[];
   onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => Promise<Teacher | null>;
@@ -117,8 +117,10 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
   const [roles, setRoles] = React.useState<UserRole[]>([]);
   const { toast } = useToast();
 
-  const canEdit = userRole === 'Admin';
-  const canDelete = userRole === 'Admin';
+  const isAdmin = Array.isArray(userRole) ? userRole.includes('Admin') : userRole === 'Admin';
+  const canEdit = isAdmin;
+  const canDelete = isAdmin;
+
 
   React.useEffect(() => {
     setTeachers(initialTeachers);
@@ -146,7 +148,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
       lastName: "",
       email: "",
       phone: "",
-      role: "Teacher",
+      roles: ["Teacher"],
     },
   });
 
@@ -161,7 +163,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
               lastName: lastName,
               email: userToApprove.email || "",
               phone: userToApprove.phoneNumber || "",
-              role: "Teacher",
+              roles: ["Teacher"],
           });
           setIsNewTeacherDialogOpen(true);
       }
@@ -175,7 +177,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
             lastName: "",
             email: "",
             phone: "",
-            role: "Teacher",
+            roles: ["Teacher"],
           });
       }
   }, [isNewTeacherDialogOpen, form]);
@@ -188,7 +190,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
         return;
     }
 
-    const newTeacher = await onAddTeacher(values);
+    const newTeacher = await onAddTeacher(values as any);
     if(newTeacher){
         setTeachers(prev => [...prev, newTeacher]);
         setPendingUsers(prev => prev.filter(p => p.email !== newTeacher.email));
@@ -292,7 +294,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
                         lastName: "",
                         email: "",
                         phone: "",
-                        role: "Teacher",
+                        roles: ["Teacher"],
                     })}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     New Staff
@@ -342,11 +344,11 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
                         />
                         <FormField
                             control={form.control}
-                            name="role"
+                            name="roles"
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Role</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value || 'Teacher'}>
+                                <Select onValueChange={(value) => field.onChange([value])} value={field.value?.[0] || 'Teacher'}>
                                 <FormControl>
                                     <SelectTrigger>
                                     <SelectValue placeholder="Select a role" />
@@ -380,7 +382,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Roles</TableHead>
                 <TableHead>Joined Date</TableHead>
                 <TableHead>Status</TableHead>
                 {canEdit && <TableHead><span className="sr-only">Actions</span></TableHead>}
@@ -400,7 +402,11 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
                   </TableCell>
                   <TableCell>{teacher.email}</TableCell>
                    <TableCell>
-                    <Badge variant="outline">{teacher.role}</Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {teacher.roles?.map(role => (
+                        <Badge key={role} variant="outline">{role}</Badge>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {formatDateSafe(teacher.joinedDate)}

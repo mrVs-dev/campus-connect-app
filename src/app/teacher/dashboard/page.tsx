@@ -80,15 +80,15 @@ export default function TeacherDashboardPage() {
           }
           
           // Auto-assign 'Teacher' role if not present, but only if they are not another role type
-          if (!loggedInTeacher.role) {
-            loggedInTeacher.role = 'Teacher';
-            await updateTeacher(loggedInTeacher.teacherId, { role: 'Teacher'});
+          if (!loggedInTeacher.roles || loggedInTeacher.roles.length === 0) {
+            loggedInTeacher.roles = ['Teacher'];
+            await updateTeacher(loggedInTeacher.teacherId, { roles: ['Teacher']});
              // Re-fetch teachers to get the latest role
             teachers = await getTeachers();
             loggedInTeacher = teachers.find(t => t.email === user.email)!;
           }
 
-          if (loggedInTeacher.role !== 'Teacher') {
+          if (!loggedInTeacher.roles.includes('Teacher')) {
             router.replace('/dashboard');
             return;
           }

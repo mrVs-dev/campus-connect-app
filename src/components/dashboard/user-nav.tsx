@@ -22,7 +22,7 @@ import {
 import { useRouter } from "next/navigation";
 import type { UserRole } from "@/lib/types";
 
-export function UserNav({ userRole }: { userRole: UserRole | null }) {
+export function UserNav({ userRole }: { userRole: UserRole | UserRole[] | null }) {
   const { user } = useAuth();
   const router = useRouter();
 
@@ -40,6 +40,9 @@ export function UserNav({ userRole }: { userRole: UserRole | null }) {
   }
 
   const userInitial = user.displayName ? user.displayName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U');
+  
+  const displayRole = Array.isArray(userRole) ? userRole.join(', ') : userRole;
+
 
   return (
     <DropdownMenu>
@@ -61,7 +64,7 @@ export function UserNav({ userRole }: { userRole: UserRole | null }) {
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
             </p>
-             {userRole && <p className="text-xs leading-none text-muted-foreground pt-1 font-semibold">{userRole}</p>}
+             {userRole && <p className="text-xs leading-none text-muted-foreground pt-1 font-semibold">{displayRole}</p>}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
