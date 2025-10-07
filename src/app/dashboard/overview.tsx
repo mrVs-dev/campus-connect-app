@@ -177,6 +177,9 @@ export function Overview({ students, admissions }: OverviewProps) {
   }, [enrollmentFilteredStudents]);
 
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
+    if (!admissions) {
+      return [];
+    }
     const programData: Record<string, { total: number; levels: Record<string, number>; subDivisions?: Record<string, number> }> = {};
 
     programs.forEach(p => {
@@ -232,6 +235,8 @@ export function Overview({ students, admissions }: OverviewProps) {
       ? admissions
       : admissions.filter(a => a.schoolYear === admissionYearFilter);
       
+    if (!admissionsToConsider) return 0;
+      
     return admissionsToConsider.reduce((acc, admission) => {
         return acc + admission.students.reduce((studentAcc, studentAdmission) => {
             return studentAcc + studentAdmission.enrollments.length;
@@ -246,7 +251,7 @@ export function Overview({ students, admissions }: OverviewProps) {
     },
   };
 
-  const admissionYears = ['All', ...[...new Set(admissions.map(a => a.schoolYear))].sort((a, b) => b.localeCompare(a))];
+  const admissionYears = ['All', ...[...new Set(admissions?.map(a => a.schoolYear) || [])].sort((a, b) => b.localeCompare(a))];
 
   return (
     <div className="flex flex-col gap-4">
