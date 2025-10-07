@@ -116,7 +116,7 @@ export async function deleteMainUser(uid: string): Promise<void> {
 
 
 // --- App Metadata ---
-const STARTING_STUDENT_ID = 1831;
+const STARTING_STUDENT_ID = 1832;
 
 export async function peekNextStudentId(): Promise<string> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
