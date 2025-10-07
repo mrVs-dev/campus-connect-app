@@ -536,22 +536,40 @@ export async function getTeachers(): Promise<Teacher[]> {
 
 export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
-    const teachersCollection = collection(db, 'teachers');
-    const teacherForFirestore = {
-        ...teacherData,
-        status: 'Active' as const,
-        joinedDate: serverTimestamp(),
-    };
-
-    const docRef = await addDoc(teachersCollection, teacherForFirestore);
     
-    const newTeacher: Teacher = {
-        ...teacherData,
-        teacherId: docRef.id,
-        status: 'Active',
-        joinedDate: new Date(),
-    };
-    return newTeacher;
+    const teachersCollection = collection(db, 'teachers');
+    const q = query(teachersCollection, where("email", "==", teacherData.email));
+    const existingTeacherSnapshot = await getDocs(q);
+
+    if (!existingTeacherSnapshot.empty) {
+        // Teacher with this email already exists, update them instead.
+        const existingTeacherDoc = existingTeacherSnapshot.docs[0];
+        const teacherId = existingTeacherDoc.id;
+        await updateDoc(existingTeacherDoc.ref, {
+            ...teacherData,
+            status: 'Active',
+            joinedDate: serverTimestamp(), // Or keep existing date
+        });
+        return {
+            ...existingTeacherDoc.data(),
+            ...teacherData,
+            teacherId: teacherId,
+            status: 'Active',
+        } as Teacher;
+    } else {
+        // No existing teacher, create a new one.
+        const teacherForFirestore = {
+            ...teacherData,
+            status: 'Active' as const,
+            joinedDate: serverTimestamp(),
+        };
+        const docRef = await addDoc(teachersCollection, teacherForFirestore);
+        return {
+            ...teacherForFirestore,
+            teacherId: docRef.id,
+            joinedDate: new Date(), // Represent as a Date object on the client
+        } as Teacher;
+    }
 }
 
 
@@ -845,5 +863,7 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
   const settingsDocRef = doc(db, 'settings', 'permissions');
   await setDoc(settingsDocRef, { config: permissions });
 }
+
+    
 
     
