@@ -213,27 +213,30 @@ export function Overview({ students, admissions }: OverviewProps) {
     
     admissionsToConsider.forEach(admission => {
       admission.students.forEach(studentAdmission => {
-        studentAdmission.enrollments.forEach(enrollment => {
-            const programInfo = programs.find(p => p.id === enrollment.programId);
-            if (programInfo) {
-                const programName = programInfo.name;
-                programData[programName].total++;
-                let levelName = enrollment.level;
-                if (levelName.toLowerCase() === 'starter' || levelName.toLowerCase() === 'starters') {
-                    levelName = 'Starters';
-                }
-                programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
+        // Only count enrollments for students who exist in the main 'students' list
+        if (students.some(s => s.studentId === studentAdmission.studentId)) {
+            studentAdmission.enrollments.forEach(enrollment => {
+                const programInfo = programs.find(p => p.id === enrollment.programId);
+                if (programInfo) {
+                    const programName = programInfo.name;
+                    programData[programName].total++;
+                    let levelName = enrollment.level;
+                    if (levelName.toLowerCase() === 'starter' || levelName.toLowerCase() === 'starters') {
+                        levelName = 'Starters';
+                    }
+                    programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
 
-                 if (programInfo.subDivisions && programData[programName].subDivisions) {
-                    for (const sub of programInfo.subDivisions) {
-                        if (sub.levels.includes(enrollment.level)) {
-                            programData[programName].subDivisions![sub.name]++;
-                            break;
+                     if (programInfo.subDivisions && programData[programName].subDivisions) {
+                        for (const sub of programInfo.subDivisions) {
+                            if (sub.levels.includes(enrollment.level)) {
+                                programData[programName].subDivisions![sub.name]++;
+                                break;
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
       });
     });
     
@@ -244,22 +247,12 @@ export function Overview({ students, admissions }: OverviewProps) {
         levels: sortLevels(Object.entries(data.levels).map(([level, count]) => ({ level, students: count }))),
       }))
       .filter(p => p.total > 0);
-  }, [admissions, admissionYearFilter]);
+  }, [admissions, admissionYearFilter, students]);
 
 
   const totalAdmissions = React.useMemo(() => {
-    const admissionsToConsider = admissionYearFilter === 'All'
-      ? admissions
-      : admissions.filter(a => a.schoolYear === admissionYearFilter);
-      
-    if (!admissionsToConsider) return 0;
-      
-    return admissionsToConsider.reduce((acc, admission) => {
-        return acc + admission.students.reduce((studentAcc, studentAdmission) => {
-            return studentAcc + studentAdmission.enrollments.length;
-        }, 0);
-    }, 0);
-  }, [admissions, admissionYearFilter]);
+    return enrollmentsByProgramAndLevel.reduce((acc, program) => acc + program.total, 0);
+  }, [enrollmentsByProgramAndLevel]);
 
   const chartConfig = {
     students: {
