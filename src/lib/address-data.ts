@@ -18,7 +18,8 @@ export const communes: Commune[] = [
   { id: "171010", name: "Srangae", villages: ["Srangae", "Krabie Riel", "Pong Tuek"] },
   { id: "171011", name: "Ampil", villages: ["Ampil", "Krabie Riel", "Pong Tuek"] },
   { id: "171012", name: "Krabie Riel", villages: ["Krabie Riel", "Pong Tuek", "Chreav"] },
-  { id: "171013", name: "Tuek Vil", villages: ["Tuek Vil", "Trapeang Ses", "Rohal"] }
+  { id: "171013", name: "Tuek Vil", villages: ["Tuek Vil", "Trapeang Ses", "Rohal"] },
+  { id: "171014", name: "Pouk", villages: ["Pouk Chas", "Kok Choun", "Pouk Thmey", "Kompong Tayorng", "Kok Srok"] }
 ];
 
 export const getVillagesByCommune = (communeName: string): string[] => {
