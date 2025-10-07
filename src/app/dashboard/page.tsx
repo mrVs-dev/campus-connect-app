@@ -107,7 +107,8 @@ export default function DashboardPage() {
   const [fees, setFees] = React.useState<Fee[]>([]);
   const [invoices, setInvoices] = React.useState<Invoice[]>([]);
   const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
-  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
+  const [userRoles, setUserRoles] = React.useState<UserRole[] | null>(null);
+  const [activeRole, setActiveRole] = React.useState<UserRole | null>(null);
   const [permissions, setPermissions] = React.useState<Permissions | null>(null);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
@@ -170,31 +171,41 @@ export default function DashboardPage() {
             return;
         }
 
-        let finalRole: UserRole | null = null;
+        let finalRoles: UserRole[] = [];
         if (loggedInUserEmail === ADMIN_EMAIL) {
-          finalRole = 'Admin';
+          finalRoles = ['Admin'];
         } else {
           const loggedInStaffMember = allTeachersForCheck.find(t => t.email === loggedInUserEmail);
-          if (loggedInStaffMember && loggedInStaffMember.role) {
-            finalRole = loggedInStaffMember.role;
+          if (loggedInStaffMember && loggedInStaffMember.roles && loggedInStaffMember.roles.length > 0) {
+            finalRoles = loggedInStaffMember.roles;
           }
         }
         
-        // If no role, they are pending. Show pending screen.
-        if (!finalRole) {
+        // If no roles, they are pending. Show pending screen.
+        if (finalRoles.length === 0) {
           setAllUsers(allDbUsers as AuthUser[]);
           setTeachers(allTeachersForCheck);
           const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
           setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
-          setUserRole(null);
+          setUserRoles(null);
+          setActiveRole(null);
           setIsDataLoading(false);
           return;
         }
         
-        setUserRole(finalRole);
+        setUserRoles(finalRoles);
+        const preferredRoleOrder: UserRole[] = ['Admin', 'Office Manager', 'Head of Department', 'Receptionist', 'Finance Officer', 'Teacher'];
+        const sortedRoles = [...finalRoles].sort((a, b) => {
+            const indexA = preferredRoleOrder.indexOf(a);
+            const indexB = preferredRoleOrder.indexOf(b);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+        setActiveRole(sortedRoles[0]);
         
-        // --- Step 2: Teacher-specific Redirect ---
-        if (finalRole === 'Teacher') {
+        // Teacher-specific view takes precedence if they ONLY have that role
+        if (finalRoles.length === 1 && finalRoles[0] === 'Teacher') {
             router.replace('/teacher/dashboard');
             return;
         }
@@ -236,8 +247,7 @@ export default function DashboardPage() {
           admissionsData, 
           assessmentsData, 
           statusHistoryData, 
-          subjectsData, 
-          categoriesData,
+          subjectsData,
           feesData,
           invoicesData,
           inventoryData,
@@ -246,627 +256,160 @@ export default function DashboardPage() {
           getAssessments(),
           getStudentStatusHistory(),
           getSubjects(),
-          getAssessmentCategories(),
           getFees(),
           getInvoices(),
           getInventoryItems(),
         ]);
-        
-        // Set all fetched data to state
-        setAllUsers(allDbUsers as AuthUser[]);
-        setTeachers(allTeachersForCheck);
-        setStudents(allStudentsForCheck);
+
+        const allStudents = await getStudents();
+
+        setStudents(allStudents);
         setAdmissions(admissionsData);
         setAssessments(assessmentsData);
+        setTeachers(allTeachersForCheck);
+        setAllUsers(allDbUsers as AuthUser[]);
         setStatusHistory(statusHistoryData);
         setSubjects(subjectsData);
-        setAssessmentCategories(categoriesData);
+        setAssessmentCategories(await getAssessmentCategories());
         setFees(feesData);
         setInvoices(invoicesData);
         setInventory(inventoryData);
-        
-        // Determine pending users
-        const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
-        setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
-
-      } catch (error) {
-        console.error("Failed to fetch initial data:", error);
+      } catch (error: any) {
+        console.error("Error fetching data:", error);
         toast({
           title: "Error",
-          description: "Failed to load data. Please check your Firebase connection.",
+          description: error.message || "Failed to load data. Please try again.",
           variant: "destructive",
         });
       } finally {
         setIsDataLoading(false);
       }
     };
-    
+
     fetchData();
+  }, [user, router, toast, authLoading]);
 
-  }, [user, authLoading, router, toast]);
-
-  const handleEnrollStudent = async (newStudentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>) => {
-    try {
-      const newStudent = await addStudent(newStudentData);
-      setStudents(prev => [...prev, newStudent]);
-      toast({
-        title: "Enrollment Successful",
-        description: `${newStudent.firstName} has been added with ID ${newStudent.studentId}.`,
-      });
-      return true;
-    } catch (error) {
-        console.error("Error enrolling student:", error);
-        toast({
-          title: "Enrollment Failed",
-          description: "There was an error saving the new student. Please try again.",
-          variant: "destructive",
-        });
-        return false;
-    }
-  };
-
-  const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
-     try {
-        await updateStudent(studentId, updatedData);
-        setStudents(prevStudents =>
-            prevStudents.map(student =>
-                student.studentId === studentId ? { ...student, ...updatedData } : student
-            )
-        );
-         toast({
-            title: "Student Updated",
-            description: "Student information has been successfully updated.",
-        });
-    } catch (error) {
-        console.error("Error updating student:", error);
-        toast({
-            title: "Update Failed",
-            description: "There was an error updating the student. Please try again.",
-            variant: "destructive",
-        });
-    }
-  };
-
-  const handleUpdateStudentStatus = async (student: Student, newStatus: Student['status'], reason: string) => {
-    if (!user) return;
-    try {
-      await updateStudentStatus(student, newStatus, reason, user);
-      setStudents(prev => prev.map(s => s.studentId === student.studentId ? { ...s, status: newStatus } : s));
-      const newHistoryEntry = await getStudentStatusHistory(); // Refetch just history
-      setStatusHistory(newHistoryEntry);
-      toast({
-        title: "Status Updated",
-        description: `${student.firstName}'s status has been updated to ${newStatus}.`,
-      });
-    } catch (error) {
-      console.error("Error updating student status:", error);
-      toast({
-        title: "Status Update Failed",
-        description: "There was an error updating the student's status. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteStudent = async (studentId: string) => {
-    try {
-      await deleteStudent(studentId);
-      setStudents(prev => prev.filter(s => s.studentId !== studentId));
-      toast({
-        title: "Student Deleted",
-        description: "The student has been removed from the roster.",
-      });
-    } catch (error) {
-      console.error("Error deleting student:", error);
-      toast({
-        title: "Deletion Failed",
-        description: "There was an error deleting the student. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteSelectedStudents = async (studentIds: string[]) => {
-    try {
-      await deleteSelectedStudents(studentIds);
-      setStudents(prev => prev.filter(s => !studentIds.includes(s.studentId)));
-      toast({
-        title: "Students Deleted",
-        description: `${studentIds.length} students have been removed.`,
-      });
-    } catch (error) {
-      console.error("Error deleting selected students:", error);
-      toast({
-        title: "Deletion Failed",
-        description: "There was an error deleting the selected students. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleImportStudents = async (importedStudents: Partial<Student>[]) => {
-    try {
-      const newStudents = await importStudents(importedStudents);
-      setStudents(prev => [...prev, ...newStudents]);
-      toast({
-        title: "Import Successful",
-        description: `${newStudents.length} students have been added.`,
-      });
-    } catch (error) {
-      console.error("Error importing students:", error);
-      toast({
-        title: "Import Failed",
-        description: "There was an error importing the students. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveAdmission = async (admissionData: Admission, isNewClass: boolean = false) => {
-    try {
-      await saveAdmission(admissionData, isNewClass);
-      const updatedAdmissions = await getAdmissions();
-      setAdmissions(updatedAdmissions);
-      toast({
-        title: "Admissions Saved",
-        description: `Admission data for ${admissionData.schoolYear} has been saved.`,
-      });
-      return true;
-    } catch (error) {
-       console.error("Error saving admission:", error);
-       toast({
-        title: "Save Failed",
-        description: "There was an error saving the admission data. Please try again.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const handleImportAdmissions = async (importedData: { studentId: string; schoolYear: string; programId: string; level: string; }[]) => {
-    try {
-        await importAdmissions(importedData);
-        const updatedAdmissions = await getAdmissions();
-        setAdmissions(updatedAdmissions);
-        toast({
-            title: "Import Successful",
-            description: `${importedData.length} admission records have been processed.`,
-        });
-    } catch (error: any) {
-        console.error("Error importing admissions:", error);
-        toast({
-            title: "Import Failed",
-            description: error.message || "There was an error importing the admission data.",
-            variant: "destructive",
-        });
-    }
-  };
-  
-  const handleMoveStudents = async (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => {
-    try {
-      await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass);
-      const [updatedStudents, updatedAdmissions] = await Promise.all([getStudents(), getAdmissions()]);
-      setStudents(updatedStudents);
-      setAdmissions(updatedAdmissions);
-      toast({
-        title: "Students Moved",
-        description: `${studentIds.length} students have been moved successfully.`,
-      });
-    } catch (error) {
-      console.error("Error moving students:", error);
-      toast({
-        title: "Move Failed",
-        description: "There was an error moving the students. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => {
-    try {
-      const savedAssessment = await saveAssessment(assessmentData);
-      setAssessments(prev => {
-        const existingIndex = prev.findIndex(a => a.assessmentId === savedAssessment.assessmentId);
-        if (existingIndex > -1) {
-            const updatedAssessments = [...prev];
-            updatedAssessments[existingIndex] = savedAssessment;
-            return updatedAssessments;
-        } else {
-            return [...prev, savedAssessment];
-        }
-      });
-      toast({
-        title: "Assessment Saved",
-        description: `The assessment "${savedAssessment.topic}" has been saved.`,
-      });
-      return savedAssessment;
-    } catch (error) {
-      console.error("Error saving assessment:", error);
-      toast({
-        title: "Save Failed",
-        description: "There was an error saving the assessment. Please try again.",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  const handleAddTeacher = async (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => {
-    try {
-      const newTeacher = await addTeacher(teacherData);
-      if (newTeacher) {
-        const [updatedTeachers, updatedUsers] = await Promise.all([getTeachers(), getUsers()]);
-        setTeachers(updatedTeachers);
-        setAllUsers(updatedUsers as AuthUser[]);
-        setPendingUsers(prev => prev.filter(u => u.email !== newTeacher.email));
-
-        toast({
-          title: "Staff Added",
-          description: `${newTeacher.firstName} ${newTeacher.lastName} has been added and approved.`,
-        });
-        return newTeacher;
-      }
-      return null;
-    } catch (error: any) {
-      console.error("Error adding teacher:", error);
-      toast({
-        title: "Failed to Add Staff",
-        description: error.message || "There was an error adding the new staff member. Please try again.",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  const handleDeleteTeacher = async (teacher: Teacher) => {
-    if (!user) return;
-    try {
-        const userToDelete = allUsers.find(u => u.email === teacher.email);
-        await deleteTeacher(teacher.teacherId);
-        if (userToDelete) {
-            await deleteMainUser(userToDelete.uid);
-        }
-
-        setTeachers(prev => prev.filter(t => t.teacherId !== teacher.teacherId));
-        if (userToDelete) {
-            setAllUsers(prev => prev.filter(u => u.uid !== userToDelete.uid));
-            setPendingUsers(prev => prev.filter(u => u.uid !== userToDelete.uid));
-        }
-
-        toast({
-            title: "Staff Deleted",
-            description: `${teacher.firstName} ${teacher.lastName} has been removed.`,
-        });
-    } catch (error) {
-        console.error("Error deleting teacher:", error);
-        toast({
-            title: "Deletion Failed",
-            description: "Could not delete staff member.",
-            variant: "destructive",
-        });
-    }
-  };
-
-  const handleSaveSubjects = async (updatedSubjects: Subject[]) => {
-    try {
-      await saveSubjects(updatedSubjects);
-      setSubjects(updatedSubjects);
-      toast({
-        title: "Subjects Saved",
-        description: "The list of subjects has been updated.",
-      });
-    } catch (error) {
-      console.error("Error saving subjects:", error);
-      toast({
-        title: "Save Failed",
-        description: "Could not save subjects.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveAssessmentCategories = async (updatedCategories: AssessmentCategory[]) => {
-    try {
-      await saveAssessmentCategories(updatedCategories);
-      setAssessmentCategories(updatedCategories);
-      toast({
-        title: "Categories Saved",
-        description: "Assessment categories and weights have been updated.",
-      });
-    } catch (error) {
-      console.error("Error saving assessment categories:", error);
-      toast({
-        title: "Save Failed",
-        description: "Could not save assessment categories.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveFee = async (feeData: Omit<Fee, 'feeId'> | Fee) => {
-    try {
-      const savedFee = await saveFee(feeData);
-      setFees(prev => {
-        const existingIndex = prev.findIndex(f => f.feeId === savedFee.feeId);
-        if (existingIndex > -1) {
-            const updatedFees = [...prev];
-            updatedFees[existingIndex] = savedFee;
-            return updatedFees;
-        } else {
-            return [...prev, savedFee];
-        }
-      });
-      toast({
-        title: "Fee Saved",
-        description: `The fee "${savedFee.name}" has been saved.`,
-      });
-      return true;
-    } catch (error) {
-      console.error("Error saving fee:", error);
-      toast({
-        title: "Save Failed",
-        description: "There was an error saving the fee. Please try again.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const handleDeleteFee = async (feeId: string) => {
-    try {
-      await deleteFee(feeId);
-      setFees(prev => prev.filter(f => f.feeId !== feeId));
-      toast({
-        title: "Fee Deleted",
-        description: "The fee has been successfully removed.",
-      });
-    } catch (error) {
-      console.error("Error deleting fee:", error);
-      toast({
-        title: "Deletion Failed",
-        description: "There was an error deleting the fee. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'invoiceId'> | Invoice) => {
-    try {
-      const savedInvoice = await saveInvoice(invoiceData);
-      setInvoices(prev => {
-        const existingIndex = prev.findIndex(i => i.invoiceId === savedInvoice.invoiceId);
-        if (existingIndex > -1) {
-          const updatedInvoices = [...prev];
-          updatedInvoices[existingIndex] = savedInvoice;
-          return updatedInvoices;
-        } else {
-          return [...prev, savedInvoice];
-        }
-      });
-      toast({
-        title: "Invoice Saved",
-        description: `Invoice ${savedInvoice.invoiceId} has been saved.`,
-      });
-      return true;
-    } catch (error) {
-      console.error("Error saving invoice:", error);
-      toast({
-        title: "Save Failed",
-        description: "There was an error saving the invoice.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const handleDeleteInvoice = async (invoiceId: string) => {
-    try {
-      await deleteInvoice(invoiceId);
-      setInvoices(prev => prev.filter(i => i.invoiceId !== invoiceId));
-      toast({
-        title: "Invoice Deleted",
-        description: `Invoice ${invoiceId} has been deleted.`,
-      });
-    } catch (error) {
-      console.error("Error deleting invoice:", error);
-      toast({
-        title: "Deletion Failed",
-        description: "There was an error deleting the invoice.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveInventoryItem = async (itemData: Omit<InventoryItem, 'itemId'> | InventoryItem) => {
-    try {
-      const savedItem = await saveInventoryItem(itemData);
-      setInventory(prev => {
-        const existingIndex = prev.findIndex(i => i.itemId === savedItem.itemId);
-        if (existingIndex > -1) {
-          const updatedItems = [...prev];
-          updatedItems[existingIndex] = savedItem;
-          return updatedItems;
-        } else {
-          return [...prev, savedItem];
-        }
-      });
-      toast({
-        title: "Inventory Item Saved",
-        description: `Item "${savedItem.name}" has been saved.`,
-      });
-      return true;
-    } catch (error) {
-      console.error("Error saving inventory item:", error);
-      toast({
-        title: "Save Failed",
-        description: "There was an error saving the item.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const handleDeleteInventoryItem = async (itemId: string) => {
-    try {
-      await deleteInventoryItem(itemId);
-      setInventory(prev => prev.filter(item => item.itemId !== itemId));
-      toast({
-        title: "Item Deleted",
-        description: "The inventory item has been removed.",
-      });
-    } catch (error) {
-      console.error("Error deleting item:", error);
-      toast({
-        title: "Deletion Failed",
-        description: "Could not delete the inventory item.",
-        variant: "destructive",
-      });
-    }
-  };
-
+  if (authLoading || isDataLoading) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
+  }
 
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
 
-  if (authLoading || isDataLoading) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        Loading application data...
-      </div>
-    );
-  }
-
-  if (!userRole) {
+  if (!userRoles) {
     return <PendingApproval />;
   }
-  
-  const visibleTabs = TABS_CONFIG.filter(tab => {
-    if (!userRole || !permissions) return false;
-    if (userRole === 'Admin') return true;
-    
-    const modulePermissions = permissions[tab.module];
-    if (!modulePermissions || !modulePermissions[userRole]) return false;
-    return modulePermissions[userRole].Read;
-  });
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background">
-      <Header userRole={userRole} />
-      <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6 md:p-8">
-         {visibleTabs.length > 0 ? (
-          <Tabs defaultValue={visibleTabs[0]?.value} className="flex flex-col gap-4">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-11 self-start">
-              {visibleTabs.map(tab => (
-                <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
-              ))}
-            </TabsList>
-            
-            <TabsContent value="dashboard">
-              <Overview students={students} admissions={admissions} />
-            </TabsContent>
-
-            <TabsContent value="students">
-              <StudentList 
-                userRole={userRole}
-                students={studentsWithLatestEnrollments}
-                assessments={assessments}
-                admissions={admissions}
-                assessmentCategories={assessmentCategories}
-                subjects={subjects}
-                onUpdateStudent={handleUpdateStudent}
-                onUpdateStudentStatus={handleUpdateStudentStatus}
-                onImportStudents={handleImportStudents}
-                onDeleteStudent={handleDeleteStudent}
-                onDeleteSelectedStudents={handleDeleteSelectedStudents}
-                onMoveStudents={handleMoveStudents}
-              />
-            </TabsContent>
-            
-            <TabsContent value="users">
-              <TeacherList
-                userRole={userRole}
-                teachers={teachers}
-                pendingUsers={pendingUsers}
-                onAddTeacher={handleAddTeacher}
-                onDeleteTeacher={handleDeleteTeacher}
-              />
-            </TabsContent>
-
-            <TabsContent value="assessments">
-              <AssessmentList
-                userRole={userRole}
-                assessments={assessments}
-                students={students}
-                subjects={subjects}
-                assessmentCategories={assessmentCategories}
-                onSaveAssessment={handleSaveAssessment}
-              />
-            </TabsContent>
-
-            <TabsContent value="fees">
-              <FeesList
-                fees={fees}
-                onSaveFee={handleSaveFee}
-                onDeleteFee={handleDeleteFee}
-              />
-            </TabsContent>
-            
-            <TabsContent value="invoicing">
-              <InvoicingList
-                invoices={invoices}
-                students={students}
-                fees={fees}
-                onSaveInvoice={handleSaveInvoice}
-                onDeleteInvoice={handleDeleteInvoice}
-              />
-            </TabsContent>
-
-            <TabsContent value="inventory">
-              <InventoryList
-                inventoryItems={inventory}
-                onSaveItem={handleSaveInventoryItem}
-                onDeleteItem={handleDeleteInventoryItem}
-              />
-            </TabsContent>
-
-            <TabsContent value="admissions">
-              <AdmissionsList 
-                admissions={admissions}
-                students={students}
-                teachers={teachers}
-                onSave={handleSaveAdmission}
-                onImport={handleImportAdmissions}
-              />
-            </TabsContent>
-            
-            <TabsContent value="enrollment">
-              <EnrollmentForm onEnroll={handleEnrollStudent} />
-            </TabsContent>
-            
-            <TabsContent value="statusHistory">
-              <StatusHistoryList history={statusHistory} />
-            </TabsContent>
-
-            <TabsContent value="settings">
-              <SettingsPage 
-                subjects={subjects}
-                assessmentCategories={assessmentCategories}
-                onSaveSubjects={handleSaveSubjects}
-                onSaveCategories={handleSaveAssessmentCategories}
-              />
-            </TabsContent>
-
-          </Tabs>
-         ) : (
-            <div className="text-center text-muted-foreground py-8">
-              No tabs available for your role. Please contact an administrator if you believe this is an error.
+    <>
+      <Header allRoles={userRoles} activeRole={activeRole} setActiveRole={setActiveRole} />
+      <div className="hidden h-[calc(100vh-4rem)] border-t bg-background md:block">
+        <div className="container relative h-full max-w-7xl">
+          <main className="flex h-full flex-col overflow-y-auto pt-4 md:pt-8">
+            <div className="container flex flex-col gap-6 py-4">
+              <Tabs defaultValue="dashboard" className="w-full space-y-4">
+                <TabsList>
+                  {TABS_CONFIG.filter(tab => {
+                      if (userRoles.includes('Admin')) return true;
+                      if (!permissions?.[tab.module]) return false;
+                      return userRoles.some(role => permissions[tab.module][role]?.Read);
+                    }).map((tab) => (
+                      <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                </TabsList>
+                <TabsContent value="dashboard" className="space-y-4">
+                  <Overview students={studentsWithLatestEnrollments} teachers={teachers} />
+                </TabsContent>
+                <TabsContent value="students" className="space-y-4">
+                  <StudentList 
+                    students={studentsWithLatestEnrollments} 
+                    addStudent={addStudent}
+                    updateStudent={updateStudent}
+                    deleteStudent={deleteStudent}
+                    deleteAllStudents={deleteAllStudentsFromDB}
+                    importStudents={importStudents}
+                    deleteSelectedStudents={deleteSelectedStudents}
+                    moveStudentsToClass={moveStudentsToClass}
+                    />
+                </TabsContent>
+                <TabsContent value="users" className="space-y-4">
+                  <TeacherList 
+                      allUsers={allUsers}
+                      teachers={teachers}
+                      addTeacher={addTeacher}
+                      updateTeacher={updateTeacher}
+                      deleteTeacher={deleteTeacher}
+                      deleteMainUser={deleteMainUser}
+                      pendingUsers={pendingUsers}
+                    />
+                </TabsContent>
+                <TabsContent value="assessments" className="space-y-4">
+                  <AssessmentList 
+                    assessments={assessments}
+                    saveAssessment={saveAssessment}
+                    />
+                </TabsContent>
+                <TabsContent value="fees" className="space-y-4">
+                  <FeesList
+                    fees={fees}
+                    saveFee={saveFee}
+                    deleteFee={deleteFee}
+                    />
+                </TabsContent>
+                 <TabsContent value="invoicing" className="space-y-4">
+                  <InvoicingList
+                    invoices={invoices}
+                    saveInvoice={saveInvoice}
+                    deleteInvoice={deleteInvoice}
+                    />
+                </TabsContent>
+                 <TabsContent value="inventory" className="space-y-4">
+                  <InventoryList
+                    inventory={inventory}
+                    saveInventoryItem={saveInventoryItem}
+                    deleteInventoryItem={deleteInventoryItem}
+                    />
+                </TabsContent>
+                <TabsContent value="admissions" className="space-y-4">
+                  <AdmissionsList 
+                    admissions={admissions}
+                    students={students}
+                    saveAdmission={saveAdmission}
+                    importAdmissions={importAdmissions}
+                    />
+                </TabsContent>
+                <TabsContent value="enrollment" className="space-y-4">
+                  <EnrollmentForm students={students} admissions={admissions} />
+                </TabsContent>
+                <TabsContent value="statusHistory" className="space-y-4">
+                  <StatusHistoryList 
+                    statusHistory={statusHistory}
+                    students={students}
+                    updateStudentStatus={updateStudentStatus}
+                    />
+                </TabsContent>
+                <TabsContent value="settings" className="space-y-4">
+                  <SettingsPage 
+                    allUsers={allUsers}
+                    teachers={teachers}
+                    subjects={subjects}
+                    assessmentCategories={assessmentCategories}
+                    userRoles={userRoles}
+                    permissions={permissions}
+                    saveSubjects={saveSubjects}
+                    saveAssessmentCategories={saveAssessmentCategories}
+                    saveRoles={saveRoles}
+                    setPermissions={setPermissions}
+                    />
+                </TabsContent>
+              </Tabs>
             </div>
-         )}
-      </main>
-    </div>
+          </main>
+        </div>
+      </div>
+    </>
   );
 }
-
-    
-

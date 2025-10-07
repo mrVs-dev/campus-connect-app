@@ -10,13 +10,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { NotificationBell } from "./notification-bell";
 import type { UserRole } from "@/lib/types";
 
-export function Header({ userRole }: { userRole: UserRole | UserRole[] | null }) {
+export function Header({ allRoles, activeRole, setActiveRole }: { allRoles: UserRole[] | null; activeRole: UserRole | null; setActiveRole?: (role: UserRole) => void }) {
   const pathname = usePathname();
   const { user } = useAuth();
   
-  const isAdmin = Array.isArray(userRole) ? userRole.includes('Admin') : userRole === 'Admin';
+  const isAdmin = Array.isArray(allRoles) ? allRoles.includes('Admin') : false;
   const isTeacherDashboard = pathname.startsWith('/teacher');
   const isStudentPortal = pathname.startsWith('/student') || pathname.startsWith('/guardian');
+  const isGenericPortal = isTeacherDashboard || isStudentPortal;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -28,19 +29,14 @@ export function Header({ userRole }: { userRole: UserRole | UserRole[] | null })
         <span className="font-headline">CampusConnect</span>
       </Link>
       <div className="relative ml-auto flex-1 md:grow-0">
-        {isAdmin && isStudentPortal && (
+        {isAdmin && isGenericPortal && (
            <Button asChild variant="outline" size="sm">
             <Link href="/dashboard">View as Admin</Link>
           </Button>
         )}
-        {!isTeacherDashboard && !isStudentPortal && isAdmin && (
-          <Button asChild variant="outline" size="sm">
-            <Link href="/teacher/dashboard">View as Teacher</Link>
-          </Button>
-        )}
       </div>
       {isStudentPortal && <NotificationBell />}
-      <UserNav userRole={userRole} />
+      <UserNav allRoles={allRoles} activeRole={activeRole} setActiveRole={setActiveRole} />
     </header>
   );
 }
