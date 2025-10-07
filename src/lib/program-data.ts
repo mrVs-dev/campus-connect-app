@@ -1,5 +1,4 @@
 
-
 export type ProgramLevel = {
     name: string;
     levels: string[];
@@ -87,5 +86,3 @@ export const getLevelsForProgram = (programId: string): string[] => {
 
     return [];
 };
-
-    
