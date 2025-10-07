@@ -155,8 +155,12 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
 
-        // --- Step 1: User & Role Identification ---
-        const [allStudentsForCheck, allTeachers] = await Promise.all([getStudents(), getTeachers()]);
+        // --- Step 1: Role & Portal Identification ---
+        const [allStudentsForCheck, allTeachersForCheck, allDbUsers] = await Promise.all([
+          getStudents(), 
+          getTeachers(), 
+          getUsers()
+        ]);
         
         // Redirect if student or guardian
         if (allStudentsForCheck.some(s => s.studentEmail === loggedInUserEmail)) {
@@ -172,35 +176,33 @@ export default function DashboardPage() {
         if (loggedInUserEmail === ADMIN_EMAIL) {
           finalRole = 'Admin';
         } else {
-          const loggedInStaffMember = allTeachers.find(t => t.email === loggedInUserEmail);
+          const loggedInStaffMember = allTeachersForCheck.find(t => t.email === loggedInUserEmail);
           if (loggedInStaffMember && loggedInStaffMember.role) {
             finalRole = loggedInStaffMember.role;
           }
         }
         
+        // If no role, they are pending. Show pending screen.
         if (!finalRole) {
-          // If no role, they might be pending. Show pending screen.
-          const fetchedUsers = await getUsers();
-          setAllUsers(fetchedUsers as AuthUser[]);
-          setTeachers(allTeachers);
-          const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
-          setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
+          setAllUsers(allDbUsers as AuthUser[]);
+          setTeachers(allTeachersForCheck);
+          const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
+          setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
           setUserRole(null);
           setIsDataLoading(false);
           return;
         }
-
+        
         setUserRole(finalRole);
         
-        // --- Step 2: Role-Specific Actions & Data Fetching ---
+        // --- Step 2: Teacher-specific Redirect ---
         if (finalRole === 'Teacher') {
             router.replace('/teacher/dashboard');
             return;
         }
-
-        // Fetch all data for Admin, Office Manager, Finance Officer etc.
+        
+        // --- Step 3: Fetch Data & Permissions for Admin/Office Roles ---
         const [
-          fetchedUsers,
           admissionsData, 
           assessmentsData, 
           statusHistoryData, 
@@ -212,7 +214,6 @@ export default function DashboardPage() {
           savedPermissions,
           allRoles
         ] = await Promise.all([
-          getUsers(),
           getAdmissions(),
           getAssessments(),
           getStudentStatusHistory(),
@@ -225,21 +226,21 @@ export default function DashboardPage() {
           getRoles(),
         ]);
 
-        // Ensure essential roles exist in the database
+        // Ensure essential roles exist and save if necessary
         let currentRoles = [...allRoles];
-        const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer", "Receptionist", "Head of Department"];
-        let madeChanges = false;
+        const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
+        let madeRoleChanges = false;
         rolesToAdd.forEach(role => {
             if (!currentRoles.some(r => r.toLowerCase() === role.toLowerCase())) {
                 currentRoles.push(role);
-                madeChanges = true;
+                madeRoleChanges = true;
             }
         });
-        if (madeChanges) {
+        if (madeRoleChanges) {
           await saveRoles(currentRoles);
         }
 
-        // Build the complete permissions object
+        // Build the complete, merged permissions object
         const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
         APP_MODULES.forEach(module => {
            if (!completePermissions[module]) completePermissions[module] = {};
@@ -247,17 +248,17 @@ export default function DashboardPage() {
                if (!completePermissions[module][role]) {
                   completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
                }
-               const saved = savedPermissions[module]?.[role];
-               if (saved) {
-                   completePermissions[module][role] = { ...completePermissions[module][role], ...saved };
+               // Overwrite defaults with saved permissions from Firestore
+               if (savedPermissions[module]?.[role]) {
+                   completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
                }
            });
         });
         setPermissions(completePermissions);
         
         // Set all fetched data to state
-        setAllUsers(fetchedUsers as AuthUser[]);
-        setTeachers(allTeachers);
+        setAllUsers(allDbUsers as AuthUser[]);
+        setTeachers(allTeachersForCheck);
         setStudents(allStudentsForCheck);
         setAdmissions(admissionsData);
         setAssessments(assessmentsData);
@@ -269,8 +270,8 @@ export default function DashboardPage() {
         setInventory(inventoryData);
         
         // Determine pending users
-        const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
-        setPendingUsers(fetchedUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
+        const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
+        setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
 
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
@@ -870,3 +871,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
