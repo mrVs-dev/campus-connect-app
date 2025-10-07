@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -114,29 +115,24 @@ export default function DashboardPage() {
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
-      return students;
+        // If no admissions data, ensure students don't have stale enrollment data
+        return students.map(s => ({ ...s, enrollments: [] }));
     }
 
     const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
-    
-    const studentEnrollmentMap = new Map<string, Enrollment[]>();
-
-    sortedAdmissions.forEach(admission => {
-      admission.students.forEach(studentAdmission => {
-        if (!studentEnrollmentMap.has(studentAdmission.studentId)) {
-          studentEnrollmentMap.set(studentAdmission.studentId, studentAdmission.enrollments);
-        }
-      });
-    });
 
     return students.map(student => {
-      const latestEnrollments = studentEnrollmentMap.get(student.studentId);
-      if (latestEnrollments) {
-        return { ...student, enrollments: latestEnrollments };
-      }
-      return student;
+        for (const admission of sortedAdmissions) {
+            const studentAdmission = admission.students.find(sa => sa.studentId === student.studentId);
+            if (studentAdmission && studentAdmission.enrollments.length > 0) {
+                // Found the most recent year with enrollments, so use these and stop.
+                return { ...student, enrollments: studentAdmission.enrollments };
+            }
+        }
+        // If no enrollments were found for the student in any year, ensure their enrollments are cleared.
+        return { ...student, enrollments: [] };
     });
-  }, [students, admissions]);
+}, [students, admissions]);
   
   React.useEffect(() => {
     if (authLoading) return;
@@ -873,3 +869,4 @@ export default function DashboardPage() {
 }
 
     
+
