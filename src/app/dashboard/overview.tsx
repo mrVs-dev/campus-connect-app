@@ -132,8 +132,12 @@ export function Overview({ students, admissions }: OverviewProps) {
 
   React.useEffect(() => {
     const now = new Date();
+    const year = now.getFullYear();
+    // The user specifically requested July 21st of the current year.
+    // We create a date for July 21st. Note that month is 0-indexed, so 6 is July.
+    const fromDate = new Date(year, 6, 21);
     setDateRange({
-      from: startOfMonth(now),
+      from: fromDate,
       to: now
     });
   }, []);
