@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, Payment, InventoryItem, Permissions } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, InventoryItem, Permissions } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/app/dashboard/overview";
@@ -289,6 +289,33 @@ export default function DashboardPage() {
     fetchData();
   }, [user, router, toast, authLoading]);
 
+  const handleDeleteTeacher = async (teacher: Teacher) => {
+    if (!user) return;
+    try {
+        await deleteTeacher(teacher.teacherId);
+        // Also find the corresponding user in the 'users' collection and delete them.
+        const userToDelete = allUsers.find(u => u.email === teacher.email);
+        if (userToDelete) {
+            await deleteMainUser(userToDelete.uid);
+        }
+        
+        setTeachers(prev => prev.filter(t => t.teacherId !== teacher.teacherId));
+        setAllUsers(prev => prev.filter(u => u.email !== teacher.email));
+
+        toast({
+            title: "Staff Deleted",
+            description: `${teacher.firstName} ${teacher.lastName} has been removed.`,
+        });
+    } catch (error) {
+        console.error("Error deleting teacher:", error);
+        toast({
+            title: "Delete Failed",
+            description: "Could not remove the staff member.",
+            variant: "destructive",
+        });
+    }
+  };
+
   if (authLoading || isDataLoading) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
@@ -311,9 +338,9 @@ export default function DashboardPage() {
               <Tabs defaultValue="dashboard" className="w-full space-y-4">
                 <TabsList>
                   {TABS_CONFIG.filter(tab => {
-                      if (userRoles.includes('Admin')) return true;
+                      if (!activeRole) return false;
                       if (!permissions?.[tab.module]) return false;
-                      return userRoles.some(role => permissions[tab.module][role]?.Read);
+                      return permissions[tab.module][activeRole]?.Read;
                     }).map((tab) => (
                       <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
                         {tab.label}
@@ -321,88 +348,87 @@ export default function DashboardPage() {
                     ))}
                 </TabsList>
                 <TabsContent value="dashboard" className="space-y-4">
-                  <Overview students={studentsWithLatestEnrollments} teachers={teachers} />
+                  <Overview students={studentsWithLatestEnrollments} admissions={admissions} />
                 </TabsContent>
                 <TabsContent value="students" className="space-y-4">
                   <StudentList 
-                    students={studentsWithLatestEnrollments} 
-                    addStudent={addStudent}
-                    updateStudent={updateStudent}
-                    deleteStudent={deleteStudent}
-                    deleteAllStudents={deleteAllStudentsFromDB}
-                    importStudents={importStudents}
-                    deleteSelectedStudents={deleteSelectedStudents}
-                    moveStudentsToClass={moveStudentsToClass}
+                    userRole={activeRole}
+                    students={studentsWithLatestEnrollments}
+                    assessments={assessments}
+                    admissions={admissions}
+                    subjects={subjects}
+                    assessmentCategories={assessmentCategories}
+                    onUpdateStudent={updateStudent}
+                    onUpdateStudentStatus={(student, newStatus, reason) => user && updateStudentStatus(student, newStatus, reason, user)}
+                    onImportStudents={importStudents}
+                    onDeleteStudent={deleteStudent}
+                    onDeleteSelectedStudents={deleteSelectedStudents}
+                    onMoveStudents={(studentIds, schoolYear, fromClass, toClass) => moveStudentsToClass(studentIds, schoolYear, fromClass, toClass)}
                     />
                 </TabsContent>
                 <TabsContent value="users" className="space-y-4">
                   <TeacherList 
-                      allUsers={allUsers}
+                      userRole={activeRole}
                       teachers={teachers}
                       addTeacher={addTeacher}
-                      updateTeacher={updateTeacher}
-                      deleteTeacher={deleteTeacher}
-                      deleteMainUser={deleteMainUser}
+                      onDeleteTeacher={handleDeleteTeacher}
                       pendingUsers={pendingUsers}
                     />
                 </TabsContent>
                 <TabsContent value="assessments" className="space-y-4">
                   <AssessmentList 
+                    userRole={activeRole!}
                     assessments={assessments}
-                    saveAssessment={saveAssessment}
+                    students={students}
+                    subjects={subjects}
+                    assessmentCategories={assessmentCategories}
+                    onSaveAssessment={saveAssessment}
                     />
                 </TabsContent>
                 <TabsContent value="fees" className="space-y-4">
                   <FeesList
                     fees={fees}
-                    saveFee={saveFee}
-                    deleteFee={deleteFee}
+                    onSaveFee={saveFee}
+                    onDeleteFee={deleteFee}
                     />
                 </TabsContent>
                  <TabsContent value="invoicing" className="space-y-4">
                   <InvoicingList
                     invoices={invoices}
-                    saveInvoice={saveInvoice}
-                    deleteInvoice={deleteInvoice}
+                    students={students}
+                    fees={fees}
+                    onSaveInvoice={saveInvoice}
+                    onDeleteInvoice={deleteInvoice}
                     />
                 </TabsContent>
                  <TabsContent value="inventory" className="space-y-4">
                   <InventoryList
-                    inventory={inventory}
-                    saveInventoryItem={saveInventoryItem}
-                    deleteInventoryItem={deleteInventoryItem}
+                    inventoryItems={inventory}
+                    onSaveItem={saveInventoryItem}
+                    onDeleteItem={deleteInventoryItem}
                     />
                 </TabsContent>
                 <TabsContent value="admissions" className="space-y-4">
                   <AdmissionsList 
                     admissions={admissions}
                     students={students}
-                    saveAdmission={saveAdmission}
-                    importAdmissions={importAdmissions}
+                    teachers={teachers}
+                    onSave={saveAdmission}
+                    onImport={importAdmissions}
                     />
                 </TabsContent>
                 <TabsContent value="enrollment" className="space-y-4">
-                  <EnrollmentForm students={students} admissions={admissions} />
+                  <EnrollmentForm onEnroll={addStudent} />
                 </TabsContent>
                 <TabsContent value="statusHistory" className="space-y-4">
-                  <StatusHistoryList 
-                    statusHistory={statusHistory}
-                    students={students}
-                    updateStudentStatus={updateStudentStatus}
-                    />
+                  <StatusHistoryList history={statusHistory} />
                 </TabsContent>
                 <TabsContent value="settings" className="space-y-4">
                   <SettingsPage 
-                    allUsers={allUsers}
-                    teachers={teachers}
                     subjects={subjects}
                     assessmentCategories={assessmentCategories}
-                    userRoles={userRoles}
-                    permissions={permissions}
-                    saveSubjects={saveSubjects}
-                    saveAssessmentCategories={saveAssessmentCategories}
-                    saveRoles={saveRoles}
-                    setPermissions={setPermissions}
+                    onSaveSubjects={saveSubjects}
+                    onSaveCategories={saveAssessmentCategories}
                     />
                 </TabsContent>
               </Tabs>

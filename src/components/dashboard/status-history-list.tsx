@@ -26,7 +26,7 @@ import { Button } from "../ui/button";
 
 type SortableKey = 'studentName' | 'changeDate' | 'newStatus';
 
-export function StatusHistoryList({ history }: { history: StudentStatusHistory[] }) {
+export function StatusHistoryList({ history = [] }: { history: StudentStatusHistory[] }) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>(null);
 
