@@ -110,11 +110,23 @@ export default function DashboardPage() {
   
   const [allSystemRoles, setAllSystemRoles] = React.useState<UserRole[]>([]);
   const [userRoles, setUserRoles] = React.useState<UserRole[] | null>(null);
-  const [activeRole, setActiveRole] = React.useState<UserRole | null>(null);
   const [permissions, setPermissions] = React.useState<Permissions | null>(null);
 
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
+
+  const userPrimaryRole = React.useMemo(() => {
+    if (!userRoles) return null;
+    const preferredRoleOrder: UserRole[] = ['Admin', 'Office Manager', 'Head of Department', 'Receptionist', 'Finance Officer', 'Teacher'];
+    const sortedRoles = [...userRoles].sort((a, b) => {
+        const indexA = preferredRoleOrder.indexOf(a);
+        const indexB = preferredRoleOrder.indexOf(b);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
+    return sortedRoles[0];
+  }, [userRoles]);
 
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -144,7 +156,6 @@ export default function DashboardPage() {
     try {
       const loggedInUserEmail = user.email;
 
-      // --- Step 1: Role & Portal Identification ---
       const [allStudentsForCheck, allTeachersForCheck, allDbUsers, allRolesFromDb, savedPermissions] = await Promise.all([
         getStudents(), 
         getTeachers(), 
@@ -154,7 +165,6 @@ export default function DashboardPage() {
       ]);
       setAllSystemRoles(allRolesFromDb);
       
-      // Redirect if student or guardian
       if (allStudentsForCheck.some(s => s.studentEmail === loggedInUserEmail)) {
           router.replace('/student/dashboard');
           return;
@@ -174,38 +184,23 @@ export default function DashboardPage() {
         }
       }
       
-      // If no roles, they are pending. Show pending screen.
       if (finalRoles.length === 0) {
         setAllUsers(allDbUsers as AuthUser[]);
         setTeachers(allTeachersForCheck);
         const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
         setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
         setUserRoles(null);
-        setActiveRole(null);
         setIsDataLoading(false);
         return;
       }
       
       setUserRoles(finalRoles);
-      const preferredRoleOrder: UserRole[] = ['Admin', 'Office Manager', 'Head of Department', 'Receptionist', 'Finance Officer', 'Teacher'];
-      const sortedRoles = [...finalRoles].sort((a, b) => {
-          const indexA = preferredRoleOrder.indexOf(a);
-          const indexB = preferredRoleOrder.indexOf(b);
-          if (indexA === -1) return 1;
-          if (indexB === -1) return -1;
-          return indexA - indexB;
-      });
-      setActiveRole(sortedRoles[0]);
       
-      // Teacher-specific view takes precedence if they ONLY have that role
       if (finalRoles.length === 1 && finalRoles[0] === 'Teacher') {
           router.replace('/teacher/dashboard');
           return;
       }
       
-      // --- Step 3: Fetch Data & Permissions for Admin/Office Roles ---
-      
-      // Ensure essential roles exist and save if necessary
       let currentRoles = [...allRolesFromDb];
       const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
       let madeRoleChanges = false;
@@ -217,19 +212,16 @@ export default function DashboardPage() {
       });
       if (madeRoleChanges) {
         await saveRoles(currentRoles);
-        setAllSystemRoles(currentRoles); // Update state if changed
+        setAllSystemRoles(currentRoles);
       }
 
-      // Build the complete, merged permissions object
       const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
       APP_MODULES.forEach(module => {
          if (!completePermissions[module]) completePermissions[module] = {};
          currentRoles.forEach(role => {
              if (!completePermissions[module][role]) {
-                // If role doesn't exist in our default template, initialize it.
                 completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
              }
-             // Overwrite defaults with any saved permissions from Firestore
              if (savedPermissions[module]?.[role]) {
                  completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
              }
@@ -255,9 +247,7 @@ export default function DashboardPage() {
         getInventoryItems(),
       ]);
 
-      const allStudents = await getStudents();
-
-      setStudents(allStudents);
+      setStudents(allStudentsForCheck);
       setAdmissions(admissionsData);
       setAssessments(assessmentsData);
       setTeachers(allTeachersForCheck);
@@ -295,7 +285,7 @@ export default function DashboardPage() {
 
   const handleSaveRoles = async (newRoles: UserRole[]) => {
     await saveRoles(newRoles);
-    await fetchData(); // Refetch all data to ensure consistency
+    await fetchData(); 
     toast({ title: "Roles updated", description: "The list of system roles has been saved." });
   };
 
@@ -303,7 +293,6 @@ export default function DashboardPage() {
     if (!user) return;
     try {
         await deleteTeacher(teacher.teacherId);
-        // Also find the corresponding user in the 'users' collection and delete them.
         const userToDelete = allUsers.find(u => u.email === teacher.email);
         if (userToDelete) {
             await deleteMainUser(userToDelete.uid);
@@ -325,6 +314,14 @@ export default function DashboardPage() {
         });
     }
   };
+  
+  const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
+    if (!permissions || !userRoles) return false;
+    if (userRoles.includes('Admin')) return true;
+
+    // Return true if ANY of the user's roles have the required permission
+    return userRoles.some(role => permissions[module]?.[role]?.[action]);
+  };
 
   if (authLoading || isDataLoading) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
@@ -340,18 +337,14 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Header allRoles={userRoles} activeRole={activeRole} setActiveRole={setActiveRole} />
+      <Header userRole={userPrimaryRole} />
       <div className="hidden h-[calc(100vh-4rem)] border-t bg-background md:block">
         <div className="container relative h-full max-w-7xl">
           <main className="flex h-full flex-col overflow-y-auto pt-4 md:pt-8">
             <div className="container flex flex-col gap-6 py-4">
               <Tabs defaultValue="dashboard" className="w-full space-y-4">
                 <TabsList>
-                  {TABS_CONFIG.filter(tab => {
-                      if (!activeRole) return false;
-                      if (!permissions?.[tab.module]) return false;
-                      return permissions[tab.module][activeRole]?.Read;
-                    }).map((tab) => (
+                  {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
                       <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
                         {tab.label}
                       </TabsTrigger>
@@ -362,7 +355,7 @@ export default function DashboardPage() {
                 </TabsContent>
                 <TabsContent value="students" className="space-y-4">
                   <StudentList 
-                    userRole={activeRole}
+                    userRole={userPrimaryRole!}
                     students={studentsWithLatestEnrollments}
                     assessments={assessments}
                     admissions={admissions}
@@ -378,16 +371,16 @@ export default function DashboardPage() {
                 </TabsContent>
                 <TabsContent value="users" className="space-y-4">
                   <TeacherList 
-                      userRole={activeRole}
+                      userRole={userPrimaryRole}
                       teachers={teachers}
-                      addTeacher={addTeacher}
+                      onAddTeacher={addTeacher}
                       onDeleteTeacher={handleDeleteTeacher}
                       pendingUsers={pendingUsers}
                     />
                 </TabsContent>
                 <TabsContent value="assessments" className="space-y-4">
                   <AssessmentList 
-                    userRole={activeRole!}
+                    userRole={userPrimaryRole!}
                     assessments={assessments}
                     students={students}
                     subjects={subjects}

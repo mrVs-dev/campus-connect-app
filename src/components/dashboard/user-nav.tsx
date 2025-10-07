@@ -18,14 +18,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import type { UserRole } from "@/lib/types";
-import { ChevronsUpDown } from "lucide-react";
 
-export function UserNav({ allRoles, activeRole, setActiveRole }: { allRoles: UserRole[] | null; activeRole: UserRole | null; setActiveRole?: (role: UserRole) => void; }) {
+export function UserNav({ userRole }: { userRole: UserRole | null }) {
   const { user } = useAuth();
   const router = useRouter();
 
@@ -43,31 +40,9 @@ export function UserNav({ allRoles, activeRole, setActiveRole }: { allRoles: Use
   }
 
   const userInitial = user.displayName ? user.displayName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U');
-  
-  const hasMultipleRoles = allRoles && allRoles.length > 1;
 
   return (
     <div className="flex items-center gap-2">
-      {hasMultipleRoles && setActiveRole && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
-              <span>View: {activeRole}</span>
-              <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Switch View</DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={activeRole || ''} onValueChange={setActiveRole}>
-              {allRoles.map(role => (
-                <DropdownMenuRadioItem key={role} value={role}>
-                  {role}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -87,7 +62,7 @@ export function UserNav({ allRoles, activeRole, setActiveRole }: { allRoles: Use
               <p className="text-xs leading-none text-muted-foreground">
                 {user.email}
               </p>
-              {activeRole && <p className="text-xs leading-none text-muted-foreground pt-1 font-semibold">{activeRole}</p>}
+              {userRole && <p className="text-xs leading-none text-muted-foreground pt-1 font-semibold">{userRole}</p>}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
