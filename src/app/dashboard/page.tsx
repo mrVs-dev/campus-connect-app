@@ -830,7 +830,7 @@ export default function DashboardPage() {
               <InventoryList
                 inventoryItems={inventory}
                 onSaveItem={handleSaveInventoryItem}
-                onDeleteItem={handleDeleteItem}
+                onDeleteItem={handleDeleteInventoryItem}
               />
             </TabsContent>
 
