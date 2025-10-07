@@ -215,7 +215,9 @@ export function Overview({ students, admissions }: OverviewProps) {
                 const programName = programInfo.name;
                 programData[programName].total++;
                 let levelName = enrollment.level;
-                if (levelName.toLowerCase() === 'starter') levelName = 'Starters';
+                if (levelName.toLowerCase() === 'starter' || levelName.toLowerCase() === 'starters') {
+                    levelName = 'Starters';
+                }
                 programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
 
                  if (programInfo.subDivisions && programData[programName].subDivisions) {
