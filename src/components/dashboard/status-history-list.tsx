@@ -210,8 +210,7 @@ interface StatusHistoryListProps {
 
 export function StatusHistoryList({ history = [], students, onUpdateStatus, canChangeStatus }: StatusHistoryListProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>({ key: 'changeDate', direction: 'desc' });
 
   const filteredHistory = React.useMemo(() => {
     if (!searchQuery) {
@@ -327,5 +326,3 @@ export function StatusHistoryList({ history = [], students, onUpdateStatus, canC
     </>
   );
 }
-
-    
