@@ -192,7 +192,11 @@ export function AttendanceRoster({ students, classId, teacherId }: AttendanceRos
                                         <AvatarImage src={student.avatarUrl} alt="Avatar" className="object-cover" />
                                         <AvatarFallback>{student.firstName[0]}{student.lastName[0]}</AvatarFallback>
                                     </Avatar>
-                                    <div className="font-medium">{student.firstName} {student.lastName}</div>
+                                    <div>
+                                        <p className="font-semibold">{student.firstName} {student.lastName}</p>
+                                        <p className="text-sm text-muted-foreground">{student.khmerFirstName} {student.khmerLastName}</p>
+                                        <p className="text-xs text-muted-foreground">{student.sex}</p>
+                                    </div>
                                 </div>
                             </TableCell>
                             <TableCell>
@@ -236,3 +240,5 @@ export function AttendanceRoster({ students, classId, teacherId }: AttendanceRos
     </div>
   );
 }
+
+    

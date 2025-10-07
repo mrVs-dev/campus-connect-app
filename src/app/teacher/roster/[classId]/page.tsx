@@ -264,17 +264,19 @@ export default function RosterPage() {
                         {roster.map((student, index) => (
                         <TableRow key={student.studentId} className={index % 2 === 0 ? 'bg-white' : 'bg-muted/50'}>
                             <TableCell className="sticky left-0 z-10 font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>
-                            <div className="flex items-center gap-4">
-                                <Avatar className="h-9 w-9">
-                                <AvatarImage src={student.avatarUrl} alt={student.firstName} className="object-cover" />
-                                <AvatarFallback>
-                                    {(student.firstName || ' ')[0]}{(student.lastName || ' ')[0]}
-                                </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                {student.firstName} {student.lastName}
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="h-9 w-9">
+                                    <AvatarImage src={student.avatarUrl} alt={student.firstName} className="object-cover" />
+                                    <AvatarFallback>
+                                        {(student.firstName || ' ')[0]}{(student.lastName || ' ')[0]}
+                                    </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-semibold">{student.firstName} {student.lastName}</p>
+                                        <p className="text-sm text-muted-foreground">{student.khmerFirstName} {student.khmerLastName}</p>
+                                        <p className="text-xs text-muted-foreground">{student.sex}</p>
+                                    </div>
                                 </div>
-                            </div>
                             </TableCell>
                             <TableCell className="sticky left-[250px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.averageScore}</TableCell>
                             <TableCell className="sticky left-[350px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.letterGrade}</TableCell>
@@ -345,3 +347,5 @@ export default function RosterPage() {
     </div>
   );
 }
+
+    
