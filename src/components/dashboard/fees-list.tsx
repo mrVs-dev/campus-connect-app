@@ -59,7 +59,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
-const feeTypes: FeeType[] = ['Tuition', 'Registration', 'Books', 'Uniform', 'Transportation', 'Other'];
+const feeTypes: FeeType[] = ['Tuition', 'Registration', 'Material', 'Uniform', 'Transportation', 'Other'];
 const feeFrequencies: FeeFrequency[] = ['One-Time', 'Monthly', 'Termly', 'Semesterly', 'Yearly'];
 
 const feeFormSchema = z.object({
