@@ -227,7 +227,8 @@ function PermissionSettings({ roles, initialPermissions }: { roles: UserRole[], 
 // Subjects Schema and Form
 const subjectSchema = z.object({
   subjectId: z.string(),
-  subjectName: z.string().min(1, "Subject name is required."),
+  englishTitle: z.string().min(1, "English title is required."),
+  khmerTitle: z.string().min(1, "Khmer title is required."),
 });
 
 const subjectsFormSchema = z.object({
@@ -255,7 +256,7 @@ function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject
 
   const handleAddNew = () => {
     const newId = `SUB${Date.now()}`;
-    append({ subjectId: newId, subjectName: "" });
+    append({ subjectId: newId, englishTitle: "", khmerTitle: "" });
   };
   
   const onSubmit = async (data: SubjectsFormValues) => {
@@ -278,11 +279,23 @@ function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject
                 <div key={field.keyId} className="flex items-center gap-4">
                   <FormField
                     control={form.control}
-                    name={`subjects.${index}.subjectName`}
+                    name={`subjects.${index}.englishTitle`}
                     render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormControl>
-                          <Input placeholder="e.g., Mathematics" {...field} />
+                          <Input placeholder="English Title (e.g., Mathematics)" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={form.control}
+                    name={`subjects.${index}.khmerTitle`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input placeholder="Khmer Title (e.g., គណិតវិទ្យា)" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

@@ -830,10 +830,10 @@ export async function getSubjects(): Promise<Subject[]> {
   } else {
     // If no subjects in DB, return mock data
     return [
-        { subjectId: 'SUB001', subjectName: 'Mathematics' },
-        { subjectId: 'SUB002', subjectName: 'Physics' },
-        { subjectId: 'SUB003', subjectName: 'English Literature' },
-        { subjectId: 'SUB004', subjectName: 'History' },
+        { subjectId: 'SUB001', englishTitle: 'Mathematics', khmerTitle: 'គណិតវិទ្យា' },
+        { subjectId: 'SUB002', englishTitle: 'Physics', khmerTitle: 'រូបវិទ្យា' },
+        { subjectId: 'SUB003', englishTitle: 'English Literature', khmerTitle: 'អក្សរសាស្ត្រអង់គ្លេស' },
+        { subjectId: 'SUB004', englishTitle: 'History', khmerTitle: 'ប្រវត្តិវិទ្យា' },
     ];
   }
 }
@@ -909,6 +909,3 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
-
-
-

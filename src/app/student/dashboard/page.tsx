@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -130,7 +131,7 @@ export default function StudentDashboardPage() {
       });
 
       const overallScore = totalWeight > 0 ? Math.round(totalWeightedScore / totalWeight) : 0;
-      return { subjectName: subject.subjectName, overallScore };
+      return { subjectName: subject.englishTitle, overallScore };
     }).filter(Boolean) as { subjectName: string; overallScore: number }[];
   }, [student, assessments, subjects, assessmentCategories]);
 

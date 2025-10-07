@@ -98,7 +98,8 @@ export interface Teacher {
 
 export interface Subject {
   subjectId: string;
-  subjectName: string;
+  englishTitle: string;
+  khmerTitle: string;
 }
 
 export interface AssessmentCategory {

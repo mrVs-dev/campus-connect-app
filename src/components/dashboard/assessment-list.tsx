@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -53,7 +54,7 @@ export function AssessmentList({
   const canCreate = userRole === 'Admin' || userRole === 'Head of Department' || userRole === 'Teacher';
 
   const getSubjectName = (subjectId: string) => {
-    return subjects.find((s) => s.subjectId === subjectId)?.subjectName || "Unknown";
+    return subjects.find((s) => s.subjectId === subjectId)?.englishTitle || "Unknown";
   };
   
   const handleEdit = (assessment: Assessment) => {

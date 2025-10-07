@@ -117,7 +117,7 @@ function MultiSelectSubject({ subjects, selected, onChange }: { subjects: Subjec
           <div className="flex gap-1 flex-wrap">
             {selectedSubjects.length > 0 ? selectedSubjects.map(subject => (
               <Badge key={subject.subjectId} variant="secondary">
-                {subject.subjectName}
+                {subject.englishTitle}
                 <span
                   role="button"
                   tabIndex={0}
@@ -149,7 +149,7 @@ function MultiSelectSubject({ subjects, selected, onChange }: { subjects: Subjec
                   onSelect={() => handleSelect(subject.subjectId)}
                 >
                   <Checkbox className="mr-2" checked={selected.includes(subject.subjectId)} />
-                  {subject.subjectName}
+                  {subject.englishTitle}
                 </CommandItem>
               ))}
             </CommandGroup>

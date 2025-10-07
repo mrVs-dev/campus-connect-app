@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -144,7 +145,7 @@ export function StudentPerformanceSheet({
   const performanceBySubject = subjects.map(subject => {
     const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
     if (subjectAssessments.length === 0) {
-      return { subjectName: subject.subjectName, overallScore: 0 };
+      return { subjectName: subject.englishTitle, overallScore: 0 };
     }
     
     let totalWeightedScore = 0;
@@ -159,7 +160,7 @@ export function StudentPerformanceSheet({
     });
 
     const overallScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
-    return { subjectName: subject.subjectName, overallScore: Math.round(overallScore) };
+    return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
   });
 
   const validSubjects = performanceBySubject.filter(s => s.overallScore > 0);

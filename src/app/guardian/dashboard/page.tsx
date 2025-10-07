@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -65,7 +66,7 @@ function StudentDataView({ student, assessments, subjects, assessmentCategories,
       });
 
       const overallScore = totalWeight > 0 ? Math.round(totalWeightedScore / totalWeight) : 0;
-      return { subjectName: subject.subjectName, overallScore };
+      return { subjectName: subject.englishTitle, overallScore };
     }).filter(Boolean) as { subjectName: string; overallScore: number }[];
   }, [student, assessments, subjects, assessmentCategories]);
 

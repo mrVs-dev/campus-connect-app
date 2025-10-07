@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -136,7 +137,7 @@ export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssess
                       <SelectContent>
                         {subjects.map((subject) => (
                           <SelectItem key={subject.subjectId} value={subject.subjectId}>
-                            {subject.subjectName}
+                            {subject.englishTitle}
                           </SelectItem>
                         ))}
                       </SelectContent>
