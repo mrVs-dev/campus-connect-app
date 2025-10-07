@@ -127,12 +127,12 @@ export async function peekNextStudentId(): Promise<string> {
     if (metadataDoc.exists() && metadataDoc.data().lastId) {
       return `STU${metadataDoc.data().lastId + 1}`;
     } else {
-      return `STU${STARTING_STUDENT_ID + 1}`;
+      return `STU${STARTING_STUDENT_ID}`;
     }
   } catch (e) {
     console.error("Could not peek next student ID, returning default start:", e);
     // This is a safe fallback for display purposes if the doc doesn't exist yet.
-    return `STU${STARTING_STUDENT_ID + 1}`;
+    return `STU${STARTING_STUDENT_ID}`;
   }
 }
 
@@ -143,10 +143,16 @@ export const getNextStudentId = async (): Promise<string> => {
     try {
         const newIdNumber = await runTransaction(db, async (transaction) => {
             const metadataDoc = await transaction.get(metadataRef);
-            let currentId = STARTING_STUDENT_ID;
+            let currentId = 0;
             if (metadataDoc.exists() && metadataDoc.data().lastId) {
                 currentId = metadataDoc.data().lastId;
             }
+            
+            // If counter is uninitialized or has fallen behind, reset it
+            if (currentId < STARTING_STUDENT_ID -1) {
+                currentId = STARTING_STUDENT_ID -1;
+            }
+
             const newId = currentId + 1;
             transaction.set(metadataRef, { lastId: newId }, { merge: true });
             return newId;
@@ -867,3 +873,4 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
+
