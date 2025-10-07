@@ -241,7 +241,7 @@ function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject
   const [isSaving, setIsSaving] = React.useState(false);
   const form = useForm<SubjectsFormValues>({
     resolver: zodResolver(subjectsFormSchema),
-    defaultValues: { subjects: initialSubjects || [] },
+    defaultValues: { subjects: [] },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -251,7 +251,12 @@ function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject
   });
 
   React.useEffect(() => {
-    form.reset({ subjects: initialSubjects || [] });
+    const sanitizedSubjects = initialSubjects.map(s => ({
+      ...s,
+      englishTitle: s.englishTitle || "",
+      khmerTitle: s.khmerTitle || "",
+    }));
+    form.reset({ subjects: sanitizedSubjects || [] });
   }, [initialSubjects, form]);
 
   const handleAddNew = () => {
