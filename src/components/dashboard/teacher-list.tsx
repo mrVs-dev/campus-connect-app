@@ -208,7 +208,8 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
 
       await updateTeacher(teacherId, dataToSave);
       
-      const updatedTeacherData = { ...teacherToEdit, ...dataToSave } as Teacher
+      const originalTeacher = teachers.find(t => t.teacherId === teacherId);
+      const updatedTeacherData = { ...originalTeacher, ...dataToSave } as Teacher
       
       setTeachers(prev => 
         prev.map(t => t.teacherId === teacherId ? updatedTeacherData : t)
