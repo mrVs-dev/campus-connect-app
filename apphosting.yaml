@@ -17,3 +17,6 @@ runConfig:
     - secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
     - secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
     - secret: NEXT_PUBLIC_FIREBASE_APP_ID
+
+# The service account your App Hosting backend runs as.
+serviceAccount: 7466969346-compute@developer.gserviceaccount.com
