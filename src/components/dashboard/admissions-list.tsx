@@ -70,7 +70,7 @@ const enrollmentSchema = z.object({
 const admissionFormSchema = z.object({
   schoolYear: z.string().min(1, "School year is required"),
   studentId: z.string().min(1, "Student is required"),
-  enrollments: z.array(enrollmentSchema).min(1, "At least one program must be assigned."),
+  enrollments: z.array(enrollmentSchema),
 });
 
 type AdmissionFormValues = z.infer<typeof admissionFormSchema>;
