@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -148,7 +149,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
 
   React.useEffect(() => {
     fetchNextId();
-    form.setValue('enrollmentDate', new Date('2025-07-21'));
+    form.setValue('enrollmentDate', new Date());
   }, [fetchNextId, form]);
 
   const watchedCommune = form.watch("address.commune");
