@@ -32,6 +32,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -70,7 +71,7 @@ const enrollmentSchema = z.object({
 const admissionFormSchema = z.object({
   schoolYear: z.string().min(1, "School year is required"),
   studentId: z.string().min(1, "Student is required"),
-  enrollments: z.array(enrollmentSchema),
+  enrollments: z.array(enrollmentSchema).min(0),
 });
 
 type AdmissionFormValues = z.infer<typeof admissionFormSchema>;
@@ -180,6 +181,60 @@ function ClassDialog({ open, onOpenChange, schoolYear, teachers, onSave, existin
   )
 }
 
+const newSchoolYearSchema = z.object({
+  schoolYear: z.string().regex(/^\d{4}-\d{4}$/, "Year must be in YYYY-YYYY format."),
+});
+type NewSchoolYearFormValues = z.infer<typeof newSchoolYearSchema>;
+
+function NewSchoolYearDialog({ open, onOpenChange, onSave, existingYears }: { open: boolean, onOpenChange: (open: boolean) => void, onSave: (year: string) => void, existingYears: string[] }) {
+  const [isSaving, setIsSaving] = React.useState(false);
+  const form = useForm<NewSchoolYearFormValues>({
+    resolver: zodResolver(newSchoolYearSchema),
+  });
+
+  const handleSave = (values: NewSchoolYearFormValues) => {
+    if (existingYears.includes(values.schoolYear)) {
+      form.setError("schoolYear", { message: "This school year already exists."});
+      return;
+    }
+    setIsSaving(true);
+    onSave(values.schoolYear);
+    setIsSaving(false);
+    onOpenChange(false);
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create New School Year</DialogTitle>
+          <DialogDescription>Enter the new school year for admissions (e.g., 2025-2026).</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="schoolYear"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>School Year</FormLabel>
+                  <FormControl><Input placeholder="YYYY-YYYY" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <DialogFooter className="pt-4">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button type="submit" disabled={isSaving}>{isSaving ? "Creating..." : "Create Year"}</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+
 interface AdmissionsListProps {
   admissions: Admission[];
   students: Student[];
@@ -199,6 +254,7 @@ export function AdmissionsList({
     const activeStudents = React.useMemo(() => students.filter(s => s.status === 'Active'), [students]);
     
     const [isClassDialogOpen, setIsClassDialogOpen] = React.useState(false);
+    const [isNewYearOpen, setIsNewYearOpen] = React.useState(false);
     const [isImportOpen, setIsImportOpen] = React.useState(false);
     const [classToEdit, setClassToEdit] = React.useState<ClassDefinition | null>(null);
     const [activeSchoolYear, setActiveSchoolYear] = React.useState('');
@@ -286,6 +342,16 @@ export function AdmissionsList({
         }
         
         await onSave(newAdmission, true);
+    };
+
+    const handleNewSchoolYear = async (year: string) => {
+      const newAdmission: Admission = {
+        admissionId: year,
+        schoolYear: year,
+        students: [],
+        classes: [],
+      };
+      await onSave(newAdmission, true);
     };
 
     const handleOpenClassDialog = (schoolYear: string, classDef?: ClassDefinition) => {
@@ -487,10 +553,17 @@ export function AdmissionsList({
         
         <Card>
             <CardHeader>
-                <CardTitle>Existing Admissions</CardTitle>
-                <CardDescription>
-                    Review all student admissions and manage class assignments for each school year.
-                </CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Existing Admissions</CardTitle>
+                        <CardDescription>
+                            Review all student admissions and manage class assignments for each school year.
+                        </CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setIsNewYearOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> New School Year
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <Accordion type="single" collapsible className="w-full">
@@ -566,6 +639,12 @@ export function AdmissionsList({
             teachers={teachers}
             onSave={handleClassSave}
             existingClass={classToEdit}
+        />
+        <NewSchoolYearDialog
+          open={isNewYearOpen}
+          onOpenChange={setIsNewYearOpen}
+          onSave={handleNewSchoolYear}
+          existingYears={admissionYears}
         />
         <AdmissionImportDialog
             open={isImportOpen}
