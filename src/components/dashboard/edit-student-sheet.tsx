@@ -40,70 +40,6 @@ import { communes, getVillagesByCommune } from "@/lib/address-data";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css'
-import {
-  Dialog,
-  DialogContent as DialogContentComponent,
-  DialogDescription as DialogDescriptionComponent,
-  DialogFooter as DialogFooterComponent,
-  DialogHeader as DialogHeaderComponent,
-  DialogTitle as DialogTitleComponent,
-} from "@/components/ui/dialog";
-import { Textarea } from "../ui/textarea";
-
-
-const statusReasonSchema = z.object({
-  reason: z.string().min(1, "A reason is required for this status change."),
-});
-type StatusReasonFormValues = z.infer<typeof statusReasonSchema>;
-
-function StatusReasonDialog({ open, onOpenChange, onSubmit, studentName, newStatus }: { open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (reason: string) => void; studentName: string; newStatus: string }) {
-  const form = useForm<StatusReasonFormValues>({
-    resolver: zodResolver(statusReasonSchema),
-    defaultValues: { reason: "" },
-  });
-
-  const handleSubmit = (values: StatusReasonFormValues) => {
-    onSubmit(values.reason);
-    form.reset();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContentComponent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)}>
-            <DialogHeaderComponent>
-              <DialogTitleComponent>Reason for Status Change</DialogTitleComponent>
-              <DialogDescriptionComponent>
-                Please provide a reason for changing {studentName}'s status to "{newStatus}".
-              </DialogDescriptionComponent>
-            </DialogHeaderComponent>
-            <div className="py-4">
-              <FormField
-                control={form.control}
-                name="reason"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reason</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="e.g., Transferred to another school" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <DialogFooterComponent>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Confirm Change</Button>
-            </DialogFooterComponent>
-          </form>
-        </Form>
-      </DialogContentComponent>
-    </Dialog>
-  );
-}
-
 
 const formSchema = z.object({
   familyId: z.string().optional(),
@@ -119,7 +55,6 @@ const formSchema = z.object({
   nationality: z.string().optional(),
   nationalId: z.string().optional(),
   previousSchool: z.string().optional(),
-  status: z.enum(["Active", "Inactive", "Graduated"]),
   address: z.object({
     district: z.string().optional(),
     commune: z.string().optional(),
@@ -164,7 +99,6 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
-  const [statusChange, setStatusChange] = React.useState<{ newStatus: Student['status'] } | null>(null);
   const [cropTarget, setCropTarget] = React.useState<string | null>(null);
 
   const form = useForm<EditStudentFormValues>({
@@ -243,33 +177,11 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
     }
   };
 
-  const handleStatusChangeReasonSubmit = (reason: string) => {
-    if (student && statusChange) {
-      onUpdateStatus(student, statusChange.newStatus, reason);
-      setStatusChange(null);
-      onOpenChange(false);
-    }
-  };
-
-
   async function onSubmit(values: EditStudentFormValues) {
     if (!student) return;
 
-    // Check if status has changed
-    if (values.status !== student.status) {
-        if (values.status === 'Inactive' || values.status === 'Graduated') {
-            setStatusChange({ newStatus: values.status });
-            return; // Stop here and let the dialog handle the submission
-        } else {
-             // If changing back to active, call update status directly with a reason
-             onUpdateStatus(student, values.status, "Re-activated");
-        }
-    }
-    
     setIsSubmitting(true);
-    // Filter out status from the general update if it was handled separately or didn't change
-    const { status, ...restOfValues } = values;
-    onSave(student.studentId, restOfValues);
+    onSave(student.studentId, values);
     setIsSubmitting(false);
     onOpenChange(false);
   }
@@ -294,13 +206,6 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
         className="hidden"
         accept="image/*"
         onChange={handleFileChange}
-      />
-      <StatusReasonDialog
-        open={!!statusChange}
-        onOpenChange={() => setStatusChange(null)}
-        onSubmit={handleStatusChangeReasonSubmit}
-        studentName={`${student.firstName} ${student.lastName}`}
-        newStatus={statusChange?.newStatus || ''}
       />
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="sm:max-w-4xl w-full flex flex-col">
@@ -372,7 +277,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                               </FormItem>
                             )} />
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField control={form.control} name="sex" render={({ field }) => (
                               <FormItem>
                                   <FormLabel>Sex</FormLabel>
@@ -415,22 +320,6 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                                 </Popover>
                                 <FormMessage />
                               </FormItem>
-                            )} />
-                            <FormField control={form.control} name="status" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Status</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                        <SelectItem value="Active">Active</SelectItem>
-                                        <SelectItem value="Inactive">Inactive</SelectItem>
-                                        <SelectItem value="Graduated">Graduated</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
                             )} />
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -713,3 +602,5 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
     </>
   );
 }
+
+    

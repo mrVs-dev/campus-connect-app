@@ -274,6 +274,16 @@ export default function DashboardPage() {
     await fetchData(); 
     toast({ title: "Roles updated", description: "The list of system roles has been saved." });
   };
+  
+  const handleUpdateStudentStatus = async (student: Student, newStatus: Student['status'], reason: string) => {
+    if (!user) return;
+    await updateStudentStatus(student, newStatus, reason, user);
+    await fetchData();
+    toast({
+      title: "Status Updated",
+      description: `${student.firstName}'s status has been changed to ${newStatus}.`,
+    });
+  }
 
   const handleDeleteTeacher = async (teacher: Teacher) => {
     if (!user) return;
@@ -347,7 +357,7 @@ export default function DashboardPage() {
                     subjects={subjects}
                     assessmentCategories={assessmentCategories}
                     onUpdateStudent={updateStudent}
-                    onUpdateStudentStatus={(student, newStatus, reason) => user && updateStudentStatus(student, newStatus, reason, user)}
+                    onUpdateStudentStatus={handleUpdateStudentStatus}
                     onImportStudents={importStudents}
                     onDeleteStudent={deleteStudent}
                     onDeleteSelectedStudents={deleteSelectedStudents}
@@ -409,7 +419,12 @@ export default function DashboardPage() {
                   <EnrollmentForm onEnroll={addStudent as any} />
                 </TabsContent>
                 <TabsContent value="statusHistory" className="space-y-4">
-                  <StatusHistoryList history={statusHistory} />
+                  <StatusHistoryList
+                    history={statusHistory}
+                    students={students}
+                    onUpdateStatus={handleUpdateStudentStatus}
+                    canChangeStatus={hasPermission('Status History', 'Update')}
+                  />
                 </TabsContent>
                 <TabsContent value="settings" className="space-y-4">
                   <SettingsPage 
@@ -430,3 +445,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
