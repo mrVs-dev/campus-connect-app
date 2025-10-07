@@ -103,7 +103,8 @@ export interface Subject {
 }
 
 export interface AssessmentCategory {
-  name: string;
+  englishTitle: string;
+  khmerTitle: string;
   weight: number;
 }
 
@@ -113,7 +114,7 @@ export interface Assessment {
   subjectId: string;
   teacherId: string;
   topic: string;
-  category: string; // Now a string, not the enum
+  category: string; // The englishTitle of the AssessmentCategory
   totalMarks: number;
   scores: Record<string, number>; // { [studentId]: rawScore }
   creationDate?: Date;

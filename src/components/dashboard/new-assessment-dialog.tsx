@@ -160,8 +160,8 @@ export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssess
                        </FormControl>
                       <SelectContent>
                         {assessmentCategories.map((category) => (
-                          <SelectItem key={category.name} value={category.name}>
-                            {category.name} ({category.weight}%)
+                          <SelectItem key={category.englishTitle} value={category.englishTitle}>
+                            {category.englishTitle} ({category.weight}%)
                           </SelectItem>
                         ))}
                       </SelectContent>

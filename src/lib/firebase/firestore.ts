@@ -854,11 +854,11 @@ export async function getAssessmentCategories(): Promise<AssessmentCategory[]> {
   } else {
     // Default values if not set
     return [
-      { name: 'Classwork', weight: 25 },
-      { name: 'Participation', weight: 5 },
-      { name: 'Homework', weight: 5 },
-      { name: 'Unit Assessment', weight: 30 },
-      { name: 'End-Semester', weight: 35 },
+      { englishTitle: 'Classwork', khmerTitle: 'កិច្ចការក្នុងថ្នាក់', weight: 25 },
+      { englishTitle: 'Participation', khmerTitle: 'ការចូលរួម', weight: 5 },
+      { englishTitle: 'Homework', khmerTitle: 'កិច្ចការផ្ទះ', weight: 5 },
+      { englishTitle: 'Unit Assessment', khmerTitle: 'ការវាយតម្លៃประจำหน่วย', weight: 30 },
+      { englishTitle: 'End-Semester', khmerTitle: 'ប្រឡងឆមាស', weight: 35 },
     ];
   }
 }
@@ -909,3 +909,4 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
+

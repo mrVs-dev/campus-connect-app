@@ -6,7 +6,7 @@ export const calculateStudentAverage = (studentId: string, assessments: Assessme
     const studentAssessments = assessments.filter(a => a.scores && a.scores[studentId] !== undefined);
     if (studentAssessments.length === 0) return 0;
   
-    const categoryWeightMap = new Map(assessmentCategories.map(c => [c.name, c.weight / 100]));
+    const categoryWeightMap = new Map(assessmentCategories.map(c => [c.englishTitle, c.weight / 100]));
 
     const performanceBySubject = subjects.map(subject => {
       const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);

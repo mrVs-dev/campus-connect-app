@@ -324,7 +324,8 @@ function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject
 
 // Assessment Categories Schema and Form
 const categorySchema = z.object({
-  name: z.string().min(1, "Category name is required."),
+  englishTitle: z.string().min(1, "English title is required."),
+  khmerTitle: z.string().min(1, "Khmer title is required."),
   weight: z.coerce.number().min(0, "Weight must be positive.").max(100, "Weight cannot exceed 100."),
 });
 
@@ -335,7 +336,7 @@ const categoriesFormSchema = z.object({
     return totalWeight === 100;
 }, {
     message: "Total weight of all categories must be exactly 100%.",
-    path: ["categories"], // Shows error at the form level
+    path: ["categories"],
 });
 
 type CategoriesFormValues = z.infer<typeof categoriesFormSchema>;
@@ -391,11 +392,23 @@ function CategorySettings({ initialCategories, onSave }: { initialCategories: As
                 <div key={field.id} className="flex items-center gap-4">
                   <FormField
                     control={form.control}
-                    name={`categories.${index}.name`}
+                    name={`categories.${index}.englishTitle`}
                     render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormControl>
-                          <Input placeholder="e.g., Classwork" {...field} />
+                          <Input placeholder="English Title (e.g., Classwork)" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`categories.${index}.khmerTitle`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input placeholder="Khmer Title (e.g., កិច្ចការក្នុងថ្នាក់)" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -423,7 +436,7 @@ function CategorySettings({ initialCategories, onSave }: { initialCategories: As
               ))}
             </div>
             <div className="flex justify-between items-center pt-4">
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ name: '', weight: 0 })}>
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ englishTitle: '', khmerTitle: '', weight: 0 })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Category
                 </Button>
                 <div className="flex items-center gap-4">
