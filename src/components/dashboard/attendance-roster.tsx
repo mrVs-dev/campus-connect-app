@@ -190,7 +190,7 @@ export function AttendanceRoster({ students, classId, teacherId }: AttendanceRos
                                 <div className="flex items-center gap-3">
                                     <Avatar className="h-9 w-9">
                                         <AvatarImage src={student.avatarUrl} alt="Avatar" className="object-cover" />
-                                        <AvatarFallback>{student.firstName[0]}{student.lastName[0]}</AvatarFallback>
+                                        <AvatarFallback>{(student.firstName || ' ')[0]}{(student.lastName || ' ')[0]}</AvatarFallback>
                                     </Avatar>
                                     <div>
                                         <p className="font-semibold">{student.firstName} {student.lastName}</p>
