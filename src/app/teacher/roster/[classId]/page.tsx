@@ -81,7 +81,7 @@ export default function RosterPage() {
             if (admission) {
                 // Find students who are in a class definition assigned to this teacher
                 const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
-                if (classDef && classDef.teacherIds?.includes(currentTeacher.teacherId)) {
+                if (classDef) {
                      admission.students.forEach(studentAdmission => {
                         if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
                             studentIdsInClass.add(studentAdmission.studentId);
@@ -211,9 +211,9 @@ export default function RosterPage() {
   return (
     <div className="space-y-6">
        <div className="mb-6">
-        <Button variant="outline" size="sm" onClick={() => router.push('/teacher/dashboard')}>
+        <Button variant="outline" size="sm" onClick={() => router.push('/teacher/roster')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
+            Back to All Rosters
         </Button>
       </div>
 

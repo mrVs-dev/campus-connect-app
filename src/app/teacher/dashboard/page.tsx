@@ -13,6 +13,7 @@ import { BarChart, UserCheck, TrendingUp, ArrowRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { calculateStudentAverage } from "@/lib/grades";
+import { Button } from "@/components/ui/button";
 
 interface AssignedClass {
   classId: string;
@@ -274,7 +275,12 @@ export default function TeacherDashboardPage() {
 
       <div className="grid gap-6">
           <div>
-            <h2 className="text-2xl font-bold mb-4">My Classes</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">My Class Rosters</h2>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/teacher/roster">View All Class Rosters</Link>
+              </Button>
+            </div>
             {assignedClasses.length > 0 ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {assignedClasses.map(cls => (
