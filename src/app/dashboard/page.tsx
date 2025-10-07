@@ -156,10 +156,12 @@ export default function DashboardPage() {
         const loggedInUserEmail = user.email;
 
         // --- Step 1: Role & Portal Identification ---
-        const [allStudentsForCheck, allTeachersForCheck, allDbUsers] = await Promise.all([
+        const [allStudentsForCheck, allTeachersForCheck, allDbUsers, allRolesFromDb, savedPermissions] = await Promise.all([
           getStudents(), 
           getTeachers(), 
-          getUsers()
+          getUsers(),
+          getRoles(),
+          getPermissions(),
         ]);
         
         // Redirect if student or guardian
@@ -202,32 +204,9 @@ export default function DashboardPage() {
         }
         
         // --- Step 3: Fetch Data & Permissions for Admin/Office Roles ---
-        const [
-          admissionsData, 
-          assessmentsData, 
-          statusHistoryData, 
-          subjectsData, 
-          categoriesData,
-          feesData,
-          invoicesData,
-          inventoryData,
-          savedPermissions,
-          allRoles
-        ] = await Promise.all([
-          getAdmissions(),
-          getAssessments(),
-          getStudentStatusHistory(),
-          getSubjects(),
-          getAssessmentCategories(),
-          getFees(),
-          getInvoices(),
-          getInventoryItems(),
-          getPermissions(),
-          getRoles(),
-        ]);
-
+        
         // Ensure essential roles exist and save if necessary
-        let currentRoles = [...allRoles];
+        let currentRoles = [...allRolesFromDb];
         const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
         let madeRoleChanges = false;
         rolesToAdd.forEach(role => {
@@ -246,15 +225,36 @@ export default function DashboardPage() {
            if (!completePermissions[module]) completePermissions[module] = {};
            currentRoles.forEach(role => {
                if (!completePermissions[module][role]) {
+                  // If role doesn't exist in our default template, initialize it.
                   completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
                }
-               // Overwrite defaults with saved permissions from Firestore
+               // Overwrite defaults with any saved permissions from Firestore
                if (savedPermissions[module]?.[role]) {
                    completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
                }
            });
         });
         setPermissions(completePermissions);
+        
+        const [
+          admissionsData, 
+          assessmentsData, 
+          statusHistoryData, 
+          subjectsData, 
+          categoriesData,
+          feesData,
+          invoicesData,
+          inventoryData,
+        ] = await Promise.all([
+          getAdmissions(),
+          getAssessments(),
+          getStudentStatusHistory(),
+          getSubjects(),
+          getAssessmentCategories(),
+          getFees(),
+          getInvoices(),
+          getInventoryItems(),
+        ]);
         
         // Set all fetched data to state
         setAllUsers(allDbUsers as AuthUser[]);
@@ -830,7 +830,7 @@ export default function DashboardPage() {
               <InventoryList
                 inventoryItems={inventory}
                 onSaveItem={handleSaveInventoryItem}
-                onDeleteItem={handleDeleteInventoryItem}
+                onDeleteItem={handleDeleteItem}
               />
             </TabsContent>
 
