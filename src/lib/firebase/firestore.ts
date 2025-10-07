@@ -281,7 +281,7 @@ export async function updateStudentStatus(
     const studentDocRef = doc(db, 'students', student.studentId);
     const historyDocRef = doc(collection(db, 'student_status_history'));
     
-    const studentUpdateData: Partial<Student> = {
+    let studentUpdateData: Partial<Student> = {
         status: newStatus
     };
 
@@ -292,6 +292,10 @@ export async function updateStudentStatus(
         studentUpdateData.deactivationDate = new Date();
         studentUpdateData.deactivationReason = reason;
     }
+
+    const cleanedStudentUpdateData = Object.fromEntries(
+        Object.entries(studentUpdateData).filter(([_, v]) => v !== undefined)
+    );
 
     const historyEntry = {
         studentId: student.studentId,
@@ -307,7 +311,7 @@ export async function updateStudentStatus(
         changeDate: serverTimestamp()
     };
     
-    batch.update(studentDocRef, convertDatesToTimestamps(studentUpdateData));
+    batch.update(studentDocRef, convertDatesToTimestamps(cleanedStudentUpdateData));
     batch.set(historyDocRef, historyEntry);
 
     await batch.commit();
@@ -913,6 +917,7 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
+
 
 
 
