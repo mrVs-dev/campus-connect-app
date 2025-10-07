@@ -374,53 +374,67 @@ export function AdmissionsList({
     const groupedAdmissions = React.useMemo(() => {
         return sortedAdmissions.map(admission => {
             const programsMap: { [key: string]: { programName: string; classes: (ClassDefinition & { students: Student[] })[] } } = {};
-
-            // Initialize programs from defined classes
-            admission.classes?.forEach(classDef => {
-                if (!programsMap[classDef.programId]) {
-                    programsMap[classDef.programId] = {
-                        programName: programs.find(p => p.id === classDef.programId)?.name || 'Unknown Program',
+    
+            const processEnrollment = (student: Student, enrollment: Enrollment) => {
+                const programId = enrollment.programId;
+                let levelName = enrollment.level;
+    
+                if (levelName.toLowerCase() === 'starter') {
+                    levelName = 'Starters';
+                }
+    
+                if (!programsMap[programId]) {
+                    programsMap[programId] = {
+                        programName: programs.find(p => p.id === programId)?.name || 'Unknown Program',
                         classes: []
                     };
                 }
-            });
-
+    
+                let classInProgram = programsMap[programId].classes.find(c => c.level === levelName);
+    
+                if (!classInProgram) {
+                    const existingClassDef = admission.classes?.find(c => c.programId === programId && c.level === levelName);
+                    classInProgram = {
+                        ...(existingClassDef || { programId: programId, level: levelName }),
+                        students: []
+                    };
+                    programsMap[programId].classes.push(classInProgram);
+                }
+    
+                if (!classInProgram.students.some(s => s.studentId === student.studentId)) {
+                    classInProgram.students.push(student);
+                }
+            };
+    
             // Populate classes with students
             admission.students.forEach(studentAdmission => {
                 const student = getStudentInfo(studentAdmission.studentId);
                 if (student) {
                     studentAdmission.enrollments.forEach(enrollment => {
-                         if (!programsMap[enrollment.programId]) {
-                             programsMap[enrollment.programId] = {
-                                programName: programs.find(p => p.id === enrollment.programId)?.name || 'Unknown Program',
-                                classes: []
-                            };
-                        }
-                        
-                        let classInProgram = programsMap[enrollment.programId].classes.find(c => c.level === enrollment.level);
-                        if (!classInProgram) {
-                            const existingClassDef = admission.classes?.find(c => c.programId === enrollment.programId && c.level === enrollment.level);
-                            classInProgram = { ...(existingClassDef || { programId: enrollment.programId, level: enrollment.level }), students: [] };
-                            programsMap[enrollment.programId].classes.push(classInProgram);
-                        }
-                        classInProgram.students.push(student);
+                        processEnrollment(student, enrollment);
                     });
                 }
             });
-            // Ensure even classes without students are included
-             admission.classes?.forEach(classDef => {
-                if (!programsMap[classDef.programId]) {
-                    programsMap[classDef.programId] = {
-                        programName: programs.find(p => p.id === classDef.programId)?.name || 'Unknown Program',
+    
+            // Ensure even classes without students are included and levels are standardized
+            admission.classes?.forEach(classDef => {
+                let levelName = classDef.level;
+                if (levelName.toLowerCase() === 'starter') {
+                    levelName = 'Starters';
+                }
+                const finalClassDef = { ...classDef, level: levelName };
+    
+                if (!programsMap[finalClassDef.programId]) {
+                    programsMap[finalClassDef.programId] = {
+                        programName: programs.find(p => p.id === finalClassDef.programId)?.name || 'Unknown Program',
                         classes: []
                     };
                 }
-                if (!programsMap[classDef.programId].classes.some(c => c.level === classDef.level)) {
-                    programsMap[classDef.programId].classes.push({ ...classDef, students: [] });
+                if (!programsMap[finalClassDef.programId].classes.some(c => c.level === finalClassDef.level)) {
+                    programsMap[finalClassDef.programId].classes.push({ ...finalClassDef, students: [] });
                 }
             });
-
-
+    
             return { ...admission, programs: Object.values(programsMap) };
         });
     }, [sortedAdmissions, students]);
@@ -707,3 +721,5 @@ function EnrollmentCard({ form, index, remove }: { form: any, index: number; rem
     </div>
   );
 }
+
+    
