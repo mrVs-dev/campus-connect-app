@@ -7,7 +7,7 @@ export type Commune = {
 
 export const communes: Commune[] = [
   { id: "171001", name: "Sla Kram", villages: ["Sla Kram", "Dol Po", "Damnak", "Trapeang Seh", "Taphul", "Boeng Dounhpa", "Thlok Andong", "Chongkaosou"] },
-  { id: "171002", name: "Svay Dangkum", villages: ["Svay Dangkum", "Krous", "Ta Vearn", "Taphul", "Krom", "Vihear Chen", "Svay", "Prey", "Pou", "Banteaychey", "Sangkat"] },
+  { id: "171002", name: "Svay Dangkum", villages: ["Svay Dangkum", "Krous", "Ta Vearn", "Taphul", "Krom", "Vihear Chen", "Svay", "Prey", "Pou", "Banteaychey", "Sangkat", "Steung Thmey"] },
   { id: "171003", name: "Kouk Chak", villages: ["Kouk Chak", "Kouk Tnaot", "Trapeang Ses", "Thmei", "Srangae"] },
   { id: "171004", name: "Sala Kamreuk", villages: ["Sala Kamreuk", "Wat Bo", "Chongkaosou", "Wat Damnak", "Krom"] },
   { id: "171005", name: "Nokor Thum", villages: ["Nokor Krau", "Nokor Knong", "Trapeang Ses", "Rohal"] },
