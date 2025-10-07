@@ -241,7 +241,7 @@ function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject
   const [isSaving, setIsSaving] = React.useState(false);
   const form = useForm<SubjectsFormValues>({
     resolver: zodResolver(subjectsFormSchema),
-    defaultValues: { subjects: initialSubjects },
+    defaultValues: { subjects: initialSubjects || [] },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -251,7 +251,7 @@ function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject
   });
 
   React.useEffect(() => {
-    form.reset({ subjects: initialSubjects });
+    form.reset({ subjects: initialSubjects || [] });
   }, [initialSubjects, form]);
 
   const handleAddNew = () => {
