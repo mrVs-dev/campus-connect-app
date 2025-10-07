@@ -254,7 +254,15 @@ export async function importStudents(studentsData: Partial<Student>[]): Promise<
 export async function updateStudent(studentId: string, dataToUpdate: Partial<Student>): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentDoc = doc(db, 'students', studentId);
-    const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
+    
+    const cleanedData = Object.entries(dataToUpdate).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        (acc as any)[key] = value;
+      }
+      return acc;
+    }, {} as Partial<Student>);
+    
+    const dataWithTimestamps = convertDatesToTimestamps(cleanedData);
     await updateDoc(studentDoc, dataWithTimestamps);
 }
 
@@ -373,18 +381,22 @@ export async function getAdmissions(): Promise<Admission[]> {
     });
 }
 
-export async function saveAdmission(admissionData: Admission, isNewClass: boolean = false): Promise<void> {
+export async function saveAdmission(admissionData: Admission, isNewClass: boolean = false): Promise<boolean> {
     if (!db) throw new Error("Firestore is not initialized");
     const admissionDocRef = doc(db, 'admissions', admissionData.schoolYear);
 
     const cleanedData = JSON.parse(JSON.stringify(admissionData));
 
-    // When adding a new class, we must merge to avoid overwriting the whole year.
-    // When editing a roster (not a new class), we overwrite the whole document.
-    if (isNewClass) {
-        await setDoc(admissionDocRef, cleanedData, { merge: true });
-    } else {
-        await setDoc(admissionDocRef, cleanedData);
+    try {
+        if (isNewClass) {
+            await setDoc(admissionDocRef, cleanedData, { merge: true });
+        } else {
+            await setDoc(admissionDocRef, cleanedData);
+        }
+        return true;
+    } catch(e) {
+        console.error("Error saving admission: ", e);
+        return false;
     }
 }
 
@@ -502,32 +514,37 @@ export async function getAssessments(): Promise<Assessment[]> {
     });
 }
 
-export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment): Promise<Assessment> {
+export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment): Promise<Assessment | null> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
-    if ('assessmentId' in assessmentData) {
-        // Update existing assessment
-        const assessmentDoc = doc(db, 'assessments', assessmentData.assessmentId);
-        await setDoc(assessmentDoc, assessmentData, { merge: true });
-        return assessmentData;
-    } else {
-        // Create new assessment
-        const assessmentsCollection = collection(db, 'assessments');
-        const dataToSave = {
-            ...assessmentData,
-            teacherId: "T001", // Placeholder teacher ID
-            creationDate: serverTimestamp(),
-        };
-        const newDocRef = await addDoc(assessmentsCollection, dataToSave);
-        const docSnapshot = await getDoc(newDocRef);
-        const newAssessmentData = docSnapshot.data();
+    try {
+        if ('assessmentId' in assessmentData) {
+            // Update existing assessment
+            const assessmentDoc = doc(db, 'assessments', assessmentData.assessmentId);
+            await setDoc(assessmentDoc, assessmentData, { merge: true });
+            return assessmentData;
+        } else {
+            // Create new assessment
+            const assessmentsCollection = collection(db, 'assessments');
+            const dataToSave = {
+                ...assessmentData,
+                teacherId: "T001", // Placeholder teacher ID
+                creationDate: serverTimestamp(),
+            };
+            const newDocRef = await addDoc(assessmentsCollection, dataToSave);
+            const docSnapshot = await getDoc(newDocRef);
+            const newAssessmentData = docSnapshot.data();
 
-        const newAssessment: Assessment = {
-            ...convertTimestampsToDates(newAssessmentData),
-            assessmentId: newDocRef.id,
-        } as Assessment;
-        
-        return newAssessment;
+            const newAssessment: Assessment = {
+                ...convertTimestampsToDates(newAssessmentData),
+                assessmentId: newDocRef.id,
+            } as Assessment;
+            
+            return newAssessment;
+        }
+    } catch (e) {
+        console.error("Error saving assessment: ", e);
+        return null;
     }
 }
 
@@ -547,41 +564,50 @@ export async function getTeachers(): Promise<Teacher[]> {
     });
 }
 
-export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher> {
+export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher | null> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
-    const teachersCollection = collection(db, 'teachers');
-    const q = query(teachersCollection, where("email", "==", teacherData.email));
-    const existingTeacherSnapshot = await getDocs(q);
+    try {
+        const teachersCollection = collection(db, 'teachers');
+        const q = query(teachersCollection, where("email", "==", teacherData.email));
+        const existingTeacherSnapshot = await getDocs(q);
 
-    if (!existingTeacherSnapshot.empty) {
-        // Teacher with this email already exists, update them instead.
-        const existingTeacherDoc = existingTeacherSnapshot.docs[0];
-        const teacherId = existingTeacherDoc.id;
-        await updateDoc(existingTeacherDoc.ref, {
-            ...teacherData,
-            status: 'Active',
-            joinedDate: serverTimestamp(), // Or keep existing date
-        });
-        return {
-            ...existingTeacherDoc.data(),
-            ...teacherData,
-            teacherId: teacherId,
-            status: 'Active',
-        } as Teacher;
-    } else {
-        // No existing teacher, create a new one.
-        const teacherForFirestore = {
-            ...teacherData,
-            status: 'Active' as const,
-            joinedDate: serverTimestamp(),
-        };
-        const docRef = await addDoc(teachersCollection, teacherForFirestore);
-        return {
-            ...teacherForFirestore,
-            teacherId: docRef.id,
-            joinedDate: new Date(), // Represent as a Date object on the client
-        } as Teacher;
+        if (!existingTeacherSnapshot.empty) {
+            // Teacher with this email already exists, update them instead.
+            const existingTeacherDoc = existingTeacherSnapshot.docs[0];
+            const teacherId = existingTeacherDoc.id;
+            
+            const dataToUpdate = {
+                ...teacherData,
+                status: 'Active' as const,
+            }
+
+            const cleanedData = Object.fromEntries(Object.entries(dataToUpdate).filter(([_, v]) => v !== undefined));
+
+            await updateDoc(existingTeacherDoc.ref, cleanedData);
+            
+            return {
+                ...existingTeacherDoc.data(),
+                ...cleanedData,
+                teacherId: teacherId,
+            } as Teacher;
+        } else {
+            // No existing teacher, create a new one.
+            const teacherForFirestore = {
+                ...teacherData,
+                status: 'Active' as const,
+                joinedDate: serverTimestamp(),
+            };
+            const docRef = await addDoc(teachersCollection, teacherForFirestore);
+            const newDoc = await getDoc(docRef);
+            return {
+                ...newDoc.data(),
+                teacherId: docRef.id,
+            } as Teacher;
+        }
+    } catch(e) {
+        console.error("Error adding/updating teacher: ", e);
+        return null;
     }
 }
 
@@ -589,7 +615,10 @@ export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'statu
 export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Teacher>): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const teacherDoc = doc(db, 'teachers', teacherId);
-    const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
+
+    const cleanedData = Object.fromEntries(Object.entries(dataToUpdate).filter(([_, v]) => v !== undefined));
+
+    const dataWithTimestamps = convertDatesToTimestamps(cleanedData);
     await updateDoc(teacherDoc, dataWithTimestamps);
 }
 
@@ -686,22 +715,20 @@ export async function getFees(): Promise<Fee[]> {
     }));
 }
 
-export async function saveFee(feeData: Omit<Fee, 'feeId'> | Fee): Promise<Fee> {
+export async function saveFee(feeData: Omit<Fee, 'feeId'> | Fee): Promise<boolean> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
-    
-    if ('feeId' in feeData) {
-        // Update existing fee
-        const feeDoc = doc(db, 'fees', feeData.feeId);
-        await setDoc(feeDoc, feeData, { merge: true });
-        return feeData;
-    } else {
-        // Create new fee
-        const feesCollection = collection(db, 'fees');
-        const newDocRef = await addDoc(feesCollection, feeData);
-        return {
-            ...feeData,
-            feeId: newDocRef.id,
-        };
+    try {
+        if ('feeId' in feeData) {
+            const feeDoc = doc(db, 'fees', feeData.feeId);
+            await setDoc(feeDoc, feeData, { merge: true });
+        } else {
+            const feesCollection = collection(db, 'fees');
+            await addDoc(feesCollection, feeData);
+        }
+        return true;
+    } catch(e) {
+        console.error("Error saving fee: ", e);
+        return false;
     }
 }
 
@@ -727,22 +754,23 @@ export async function getInvoices(): Promise<Invoice[]> {
     });
 }
 
-export async function saveInvoice(invoiceData: Omit<Invoice, 'invoiceId'> | Invoice): Promise<Invoice> {
+export async function saveInvoice(invoiceData: Omit<Invoice, 'invoiceId'> | Invoice): Promise<boolean> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
     const dataWithTimestamps = convertDatesToTimestamps(invoiceData);
 
-    if ('invoiceId' in invoiceData) {
-        const invoiceDoc = doc(db, 'invoices', invoiceData.invoiceId);
-        await setDoc(invoiceDoc, dataWithTimestamps, { merge: true });
-        return invoiceData;
-    } else {
-        const invoicesCollection = collection(db, 'invoices');
-        const newDocRef = await addDoc(invoicesCollection, dataWithTimestamps);
-        return {
-            ...invoiceData,
-            invoiceId: newDocRef.id,
-        };
+    try {
+        if ('invoiceId' in invoiceData) {
+            const invoiceDoc = doc(db, 'invoices', invoiceData.invoiceId);
+            await setDoc(invoiceDoc, dataWithTimestamps, { merge: true });
+        } else {
+            const invoicesCollection = collection(db, 'invoices');
+            await addDoc(invoicesCollection, dataWithTimestamps);
+        }
+        return true;
+    } catch(e) {
+        console.error("Error saving invoice: ", e);
+        return false;
     }
 }
 
@@ -764,22 +792,23 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
     }));
 }
 
-export async function saveInventoryItem(itemData: Omit<InventoryItem, 'itemId'> | InventoryItem): Promise<InventoryItem> {
+export async function saveInventoryItem(itemData: Omit<InventoryItem, 'itemId'> | InventoryItem): Promise<boolean> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
-    if ('itemId' in itemData) {
-        // Update existing item
-        const itemDoc = doc(db, 'inventory', itemData.itemId);
-        await setDoc(itemDoc, itemData, { merge: true });
-        return itemData;
-    } else {
-        // Create new item
-        const inventoryCollection = collection(db, 'inventory');
-        const newDocRef = await addDoc(inventoryCollection, itemData);
-        return {
-            ...itemData,
-            itemId: newDocRef.id,
-        };
+    const dataWithTimestamps = convertDatesToTimestamps(itemData);
+
+    try {
+        if ('itemId' in itemData) {
+            const itemDoc = doc(db, 'inventory', itemData.itemId);
+            await setDoc(itemDoc, dataWithTimestamps, { merge: true });
+        } else {
+            const inventoryCollection = collection(db, 'inventory');
+            await addDoc(inventoryCollection, dataWithTimestamps);
+        }
+        return true;
+    } catch(e) {
+        console.error("Error saving inventory item: ", e);
+        return false;
     }
 }
 
@@ -880,5 +909,6 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
+
 
 
