@@ -192,8 +192,15 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
         status: "Active",
         enrollmentDate: studentData.enrollmentDate ? Timestamp.fromDate(studentData.enrollmentDate) : serverTimestamp()
     };
+
+    const cleanedData = Object.entries(studentForFirestore).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        (acc as any)[key] = value;
+      }
+      return acc;
+    }, {} as Partial<Student>);
     
-    const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
+    const dataWithTimestamps = convertDatesToTimestamps(cleanedData);
     await setDoc(studentDocRef, dataWithTimestamps);
     
     const newStudent: Student = {
@@ -873,4 +880,5 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
+
 
