@@ -151,7 +151,7 @@ export interface AttendanceRecord {
 }
 
 // --- Fees & Invoicing ---
-export type FeeType = 'Tuition' | 'Registration' | 'Material' | 'Uniform' | 'Transportation' | 'Other';
+export type FeeType = 'Tuition' | 'Registration' | 'Material' | 'Admin' | 'Exams' | 'Other';
 export type FeeFrequency = 'One-Time' | 'Monthly' | 'Termly' | 'Semesterly' | 'Yearly';
 
 export interface Fee {
