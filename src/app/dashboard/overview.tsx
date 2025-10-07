@@ -44,6 +44,10 @@ function DatePickerWithRange({
   onDateChange,
 }: React.HTMLAttributes<HTMLDivElement> & { value: DateRange | undefined, onDateChange: (range: DateRange | undefined) => void }) {
   
+  const handleDateSelect = (newDate: DateRange | undefined) => {
+    onDateChange(newDate);
+  };
+
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Popover>
@@ -71,13 +75,13 @@ function DatePickerWithRange({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 bg-card" align="end">
+        <PopoverContent className="w-auto p-0" align="end">
           <Calendar
             initialFocus
             mode="range"
             defaultMonth={value?.from}
             selected={value}
-            onSelect={onDateChange}
+            onSelect={handleDateSelect}
             numberOfMonths={2}
           />
         </PopoverContent>
@@ -129,9 +133,10 @@ export function Overview({ students, admissions }: OverviewProps) {
   const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
 
   React.useEffect(() => {
+    const now = new Date();
     setDateRange({
-      from: new Date("2025-07-21"),
-      to: new Date(),
+      from: startOfMonth(now),
+      to: now
     });
   }, []);
   
@@ -175,6 +180,14 @@ export function Overview({ students, admissions }: OverviewProps) {
       return acc;
     }, {} as Record<string, number>);
   }, [enrollmentFilteredStudents]);
+
+  const pieData = [
+    { name: 'Male', value: enrollmentGenderDistribution['Male'] || 0 },
+    { name: 'Female', value: enrollmentGenderDistribution['Female'] || 0 },
+    { name: 'Other', value: enrollmentGenderDistribution['Other'] || 0 },
+  ].filter(d => d.value > 0);
+
+  const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--muted-foreground))"];
 
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
     if (!admissions) {
@@ -249,6 +262,14 @@ export function Overview({ students, admissions }: OverviewProps) {
       label: "Students",
       color: "hsl(var(--primary))",
     },
+     male: {
+      label: "Male",
+      color: "hsl(var(--primary))",
+    },
+    female: {
+      label: "Female",
+      color: "hsl(var(--accent))",
+    },
   };
 
   const admissionYears = ['All', ...[...new Set(admissions?.map(a => a.schoolYear) || [])].sort((a, b) => b.localeCompare(a))];
@@ -314,19 +335,24 @@ export function Overview({ students, admissions }: OverviewProps) {
               </div>
           </CardHeader>
           <CardContent>
-             <div className="flex flex-col space-y-2">
-                <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
-                <p className="text-xs text-muted-foreground">New students in period</p>
-                 <div className="flex items-center gap-4 text-sm pt-2">
-                    <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-primary" />
-                        <span>{enrollmentGenderDistribution['Male'] || 0} Male</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-accent" />
-                        <span>{enrollmentGenderDistribution['Female'] || 0} Female</span>
-                    </div>
-                </div>
+            <div className="grid grid-cols-2 items-center gap-4">
+              <div className="flex flex-col space-y-2">
+                  <p className="text-3xl font-bold">{enrollmentFilteredStudents.length}</p>
+                  <p className="text-xs text-muted-foreground">New students in period</p>
+              </div>
+              <ChartContainer config={chartConfig} className="h-[100px] w-full">
+                  <PieChart accessibilityLayer>
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel />}
+                    />
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} fill="#8884d8">
+                      {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+              </ChartContainer>
             </div>
           </CardContent>
         </Card>
