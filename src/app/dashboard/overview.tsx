@@ -107,17 +107,15 @@ interface OverviewProps {
 }
 
 const getSortValue = (level: string): number => {
+    const lowerLevel = level.toLowerCase();
     const specialLevels: { [key: string]: number } = {
-        'DayCare': 1, 'Toddler': 2, 'Pre-K': 3, 'Kindergarten': 4,
-        'Starters': 1, 'Starter': 1, // Handle typo
+        'daycare': 1, 'toddler': 2, 'pre-k': 3, 'kindergarten': 4,
+        'starters': 1, 'starter': 1,
     };
-    if (specialLevels[level] !== undefined) return specialLevels[level];
+    if (specialLevels[lowerLevel] !== undefined) return specialLevels[lowerLevel];
     
-    const gradeMatch = level.match(/Grade (\d+)/);
+    const gradeMatch = lowerLevel.match(/(?:grade|level) (\d+)/);
     if (gradeMatch) return 100 + parseInt(gradeMatch[1], 10);
-    
-    const levelMatch = level.match(/Level (\d+)/);
-    if (levelMatch) return 100 + parseInt(levelMatch[1], 10);
 
     return 999;
 };
@@ -217,12 +215,12 @@ export function Overview({ students, admissions }: OverviewProps) {
                 const programName = programInfo.name;
                 programData[programName].total++;
                 let levelName = enrollment.level;
-                if (levelName === 'Starter') levelName = 'Starters'; // Consolidate typo
+                if (levelName.toLowerCase() === 'starter') levelName = 'Starters';
                 programData[programName].levels[levelName] = (programData[programName].levels[levelName] || 0) + 1;
 
                  if (programInfo.subDivisions && programData[programName].subDivisions) {
                     for (const sub of programInfo.subDivisions) {
-                        if (sub.levels.includes(enrollment.level)) { // Use original level for matching
+                        if (sub.levels.includes(enrollment.level)) {
                             programData[programName].subDivisions![sub.name]++;
                             break;
                         }
