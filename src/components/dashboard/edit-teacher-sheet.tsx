@@ -58,7 +58,7 @@ const formSchema = z.object({
   email: z.string().email("Invalid email format"),
   phone: z.string().optional(),
   status: z.enum(["Active", "Inactive"]),
-  roles: z.array(z.string()).min(1, "At least one role is required."),
+  role: z.string().min(1, "A role is required."),
   joinedDate: z.date().optional(),
   avatarUrl: z.string().optional(),
   assignedSubjects: z.array(z.string()).optional(),
@@ -160,68 +160,6 @@ function MultiSelectSubject({ subjects, selected, onChange }: { subjects: Subjec
   );
 }
 
-function MultiSelectRole({ allRoles, selected, onChange }: { allRoles: UserRole[], selected: string[], onChange: (selected: string[]) => void }) {
-  const [open, setOpen] = React.useState(false);
-
-  const handleSelect = (role: UserRole) => {
-    const newSelected = selected.includes(role)
-      ? selected.filter(id => id !== role)
-      : [...selected, role];
-    onChange(newSelected);
-  };
-  
-  const selectedRoles = allRoles.filter(r => selected.includes(r));
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between h-auto">
-          <div className="flex gap-1 flex-wrap">
-            {selectedRoles.length > 0 ? selectedRoles.map(role => (
-              <Badge key={role} variant="secondary">
-                {role}
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleSelect(role);
-                    }
-                  }}
-                  onClick={(e) => { e.stopPropagation(); handleSelect(role); }}
-                >
-                  <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                </span>
-              </Badge>
-            )) : "Select roles..."}
-          </div>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command>
-          <CommandInput placeholder="Search roles..." />
-          <CommandList>
-            <CommandEmpty>No roles found.</CommandEmpty>
-            <CommandGroup>
-              {allRoles.map(role => (
-                <CommandItem
-                  key={role}
-                  onSelect={() => handleSelect(role)}
-                >
-                  <Checkbox className="mr-2" checked={selected.includes(role)} />
-                  {role}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects, admissions }: EditTeacherSheetProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -251,7 +189,7 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
     if (teacher) {
       form.reset({
         ...teacher,
-        roles: teacher.roles || [],
+        role: teacher.role || 'Teacher',
         joinedDate: toDate(teacher.joinedDate),
         assignedSubjects: teacher.assignedSubjects || [],
         assignedClasses: teacher.assignedClasses || [],
@@ -396,15 +334,16 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
                                     </div>
                                      <FormField
                                         control={form.control}
-                                        name="roles"
+                                        name="role"
                                         render={({ field }) => (
                                           <FormItem>
-                                            <FormLabel>Roles</FormLabel>
-                                            <MultiSelectRole
-                                                allRoles={roles}
-                                                selected={field.value || []}
-                                                onChange={field.onChange}
-                                            />
+                                            <FormLabel>Role</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {roles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                             <FormMessage />
                                           </FormItem>
                                         )}

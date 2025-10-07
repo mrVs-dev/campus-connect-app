@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -81,15 +82,15 @@ export default function TeacherDashboardPage() {
           }
           
           // Auto-assign 'Teacher' role if not present, but only if they are not another role type
-          if (!loggedInTeacher.roles || loggedInTeacher.roles.length === 0) {
-            loggedInTeacher.roles = ['Teacher'];
-            await updateTeacher(loggedInTeacher.teacherId, { roles: ['Teacher']});
+          if (!loggedInTeacher.role) {
+            loggedInTeacher.role = 'Teacher';
+            await updateTeacher(loggedInTeacher.teacherId, { role: 'Teacher' });
              // Re-fetch teachers to get the latest role
             teachers = await getTeachers();
             loggedInTeacher = teachers.find(t => t.email === user.email)!;
           }
 
-          if (!loggedInTeacher.roles.includes('Teacher')) {
+          if (loggedInTeacher.role !== 'Teacher') {
             router.replace('/dashboard');
             return;
           }

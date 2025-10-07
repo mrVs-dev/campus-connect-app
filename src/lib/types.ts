@@ -1,4 +1,5 @@
 
+
 export type UserRole = string;
 
 export type Guardian = {
@@ -88,7 +89,7 @@ export interface Teacher {
   email: string;
   phone?: string;
   status: 'Active' | 'Inactive';
-  roles: UserRole[];
+  role: UserRole;
   avatarUrl?: string;
   joinedDate?: Date;
   assignedSubjects?: string[]; // subjectIds

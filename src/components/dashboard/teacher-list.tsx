@@ -71,13 +71,13 @@ const teacherFormSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
-  roles: z.array(z.string()).min(1, "At least one role is required."),
+  role: z.string().min(1, "A role is required."),
 });
 
 type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 
 interface TeacherListProps {
-  userRole: UserRole | UserRole[] | null;
+  userRole: UserRole | null;
   teachers: Teacher[];
   pendingUsers: AuthUser[];
   onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => Promise<Teacher | null>;
@@ -117,7 +117,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
   const [roles, setRoles] = React.useState<UserRole[]>([]);
   const { toast } = useToast();
 
-  const isAdmin = Array.isArray(userRole) ? userRole.includes('Admin') : userRole === 'Admin';
+  const isAdmin = userRole === 'Admin';
   const canEdit = isAdmin;
   const canDelete = isAdmin;
 
@@ -148,7 +148,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
       lastName: "",
       email: "",
       phone: "",
-      roles: ["Teacher"],
+      role: "Teacher",
     },
   });
 
@@ -163,7 +163,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
               lastName: lastName,
               email: userToApprove.email || "",
               phone: userToApprove.phoneNumber || "",
-              roles: ["Teacher"],
+              role: "Teacher",
           });
           setIsNewTeacherDialogOpen(true);
       }
@@ -177,7 +177,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
             lastName: "",
             email: "",
             phone: "",
-            roles: ["Teacher"],
+            role: "Teacher",
           });
       }
   }, [isNewTeacherDialogOpen, form]);
@@ -202,15 +202,18 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
     if (!canEdit) return;
     try {
-      const dataToSave = Object.fromEntries(
-        Object.entries(updatedData).filter(([, value]) => value !== undefined)
-      );
-
-      await updateTeacher(teacherId, dataToSave);
+      // Create a deep copy to ensure React detects the change
+      const newTeachers = [...teachers];
+      const teacherIndex = newTeachers.findIndex(t => t.teacherId === teacherId);
+      if (teacherIndex === -1) return;
       
-      setTeachers(prevTeachers => 
-        prevTeachers.map(t => t.teacherId === teacherId ? { ...t, ...dataToSave } : t)
-      );
+      // Merge the updated data into a new object
+      const updatedTeacher = { ...newTeachers[teacherIndex], ...updatedData };
+      newTeachers[teacherIndex] = updatedTeacher;
+
+      await updateTeacher(teacherId, updatedData);
+      
+      setTeachers(newTeachers);
       
       toast({
         title: "Teacher Updated",
@@ -293,7 +296,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
                         lastName: "",
                         email: "",
                         phone: "",
-                        roles: ["Teacher"],
+                        role: "Teacher",
                     })}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     New Staff
@@ -343,11 +346,11 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
                         />
                         <FormField
                             control={form.control}
-                            name="roles"
+                            name="role"
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Role</FormLabel>
-                                <Select onValueChange={(value) => field.onChange([value])} value={field.value?.[0] || 'Teacher'}>
+                                <Select onValueChange={field.onChange} value={field.value || 'Teacher'}>
                                 <FormControl>
                                     <SelectTrigger>
                                     <SelectValue placeholder="Select a role" />
@@ -381,7 +384,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Roles</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Joined Date</TableHead>
                 <TableHead>Status</TableHead>
                 {canEdit && <TableHead><span className="sr-only">Actions</span></TableHead>}
@@ -401,11 +404,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
                   </TableCell>
                   <TableCell>{teacher.email}</TableCell>
                    <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {teacher.roles?.map(role => (
-                        <Badge key={role} variant="outline">{role}</Badge>
-                      ))}
-                    </div>
+                    <Badge variant="outline">{teacher.role}</Badge>
                   </TableCell>
                   <TableCell>
                     {formatDateSafe(teacher.joinedDate)}

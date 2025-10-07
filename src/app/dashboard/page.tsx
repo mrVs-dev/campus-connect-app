@@ -109,25 +109,11 @@ export default function DashboardPage() {
   const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
   
   const [allSystemRoles, setAllSystemRoles] = React.useState<UserRole[]>([]);
-  const [userRoles, setUserRoles] = React.useState<UserRole[] | null>(null);
+  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
   const [permissions, setPermissions] = React.useState<Permissions | null>(null);
 
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
-
-  const userPrimaryRole = React.useMemo(() => {
-    if (!userRoles) return null;
-    const preferredRoleOrder: UserRole[] = ['Admin', 'Office Manager', 'Head of Department', 'Receptionist', 'Finance Officer', 'Teacher'];
-    const sortedRoles = [...userRoles].sort((a, b) => {
-        const indexA = preferredRoleOrder.indexOf(a);
-        const indexB = preferredRoleOrder.indexOf(b);
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        return indexA - indexB;
-    });
-    return sortedRoles[0];
-  }, [userRoles]);
-
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -174,29 +160,29 @@ export default function DashboardPage() {
           return;
       }
 
-      let finalRoles: UserRole[] = [];
+      let finalRole: UserRole | null = null;
       if (loggedInUserEmail === ADMIN_EMAIL) {
-        finalRoles = ['Admin'];
+        finalRole = 'Admin';
       } else {
         const loggedInStaffMember = allTeachersForCheck.find(t => t.email === loggedInUserEmail);
-        if (loggedInStaffMember && loggedInStaffMember.roles && loggedInStaffMember.roles.length > 0) {
-          finalRoles = loggedInStaffMember.roles;
+        if (loggedInStaffMember && loggedInStaffMember.role) {
+          finalRole = loggedInStaffMember.role;
         }
       }
       
-      if (finalRoles.length === 0) {
+      if (!finalRole) {
         setAllUsers(allDbUsers as AuthUser[]);
         setTeachers(allTeachersForCheck);
         const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
         setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
-        setUserRoles(null);
+        setUserRole(null);
         setIsDataLoading(false);
         return;
       }
       
-      setUserRoles(finalRoles);
+      setUserRole(finalRole);
       
-      if (finalRoles.length === 1 && finalRoles[0] === 'Teacher') {
+      if (finalRole === 'Teacher') {
           router.replace('/teacher/dashboard');
           return;
       }
@@ -316,11 +302,10 @@ export default function DashboardPage() {
   };
   
   const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
-    if (!permissions || !userRoles) return false;
-    if (userRoles.includes('Admin')) return true;
+    if (!permissions || !userRole) return false;
+    if (userRole === 'Admin') return true;
 
-    // Return true if ANY of the user's roles have the required permission
-    return userRoles.some(role => permissions[module]?.[role]?.[action]);
+    return permissions[module]?.[userRole]?.[action] ?? false;
   };
 
   if (authLoading || isDataLoading) {
@@ -331,13 +316,13 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
 
-  if (!userRoles) {
+  if (!userRole) {
     return <PendingApproval />;
   }
 
   return (
     <>
-      <Header userRole={userPrimaryRole} />
+      <Header userRole={userRole} />
       <div className="hidden h-[calc(100vh-4rem)] border-t bg-background md:block">
         <div className="container relative h-full max-w-7xl">
           <main className="flex h-full flex-col overflow-y-auto pt-4 md:pt-8">
@@ -351,11 +336,11 @@ export default function DashboardPage() {
                     ))}
                 </TabsList>
                 <TabsContent value="dashboard" className="space-y-4">
-                  <Overview students={studentsWithLatestEnrollments} admissions={admissions} />
+                  <Overview students={studentsWithLatestEnrollments} admissions={admissions || []} />
                 </TabsContent>
                 <TabsContent value="students" className="space-y-4">
                   <StudentList 
-                    userRole={userPrimaryRole!}
+                    userRole={userRole}
                     students={studentsWithLatestEnrollments}
                     assessments={assessments}
                     admissions={admissions}
@@ -371,7 +356,7 @@ export default function DashboardPage() {
                 </TabsContent>
                 <TabsContent value="users" className="space-y-4">
                   <TeacherList 
-                      userRole={userPrimaryRole}
+                      userRole={userRole}
                       teachers={teachers}
                       onAddTeacher={addTeacher}
                       onDeleteTeacher={handleDeleteTeacher}
@@ -380,7 +365,7 @@ export default function DashboardPage() {
                 </TabsContent>
                 <TabsContent value="assessments" className="space-y-4">
                   <AssessmentList 
-                    userRole={userPrimaryRole!}
+                    userRole={userRole}
                     assessments={assessments}
                     students={students}
                     subjects={subjects}
@@ -421,7 +406,7 @@ export default function DashboardPage() {
                     />
                 </TabsContent>
                 <TabsContent value="enrollment" className="space-y-4">
-                  <EnrollmentForm onEnroll={addStudent} />
+                  <EnrollmentForm onEnroll={addStudent as any} />
                 </TabsContent>
                 <TabsContent value="statusHistory" className="space-y-4">
                   <StatusHistoryList history={statusHistory} />
