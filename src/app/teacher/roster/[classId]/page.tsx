@@ -237,9 +237,9 @@ export default function RosterPage() {
                     <Table>
                     <TableHeader>
                         <TableRow>
-                        <TableHead className="sticky left-0 bg-background z-10 w-[250px] min-w-[250px]">Student</TableHead>
-                        <TableHead className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Overall (%)</TableHead>
-                        <TableHead className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Grade</TableHead>
+                        <TableHead className="sticky left-0 bg-background z-10 w-[300px] min-w-[300px]">Student</TableHead>
+                        <TableHead className="sticky left-[300px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Overall (%)</TableHead>
+                        <TableHead className="sticky left-[400px] bg-background z-10 text-center font-semibold text-primary w-[100px] min-w-[100px]">Grade</TableHead>
                         {classAssessments.map(assessment => (
                             <TableHead 
                             key={assessment.assessmentId} 
@@ -278,8 +278,8 @@ export default function RosterPage() {
                                     </div>
                                 </div>
                             </TableCell>
-                            <TableCell className="sticky left-[250px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.averageScore}</TableCell>
-                            <TableCell className="sticky left-[350px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.letterGrade}</TableCell>
+                            <TableCell className="sticky left-[300px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.averageScore}</TableCell>
+                            <TableCell className="sticky left-[400px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.letterGrade}</TableCell>
                             {classAssessments.map(assessment => (
                             <TableCell key={assessment.assessmentId} className="text-center">
                                 {assessment.scores[student.studentId] ?? "—"}
@@ -293,8 +293,8 @@ export default function RosterPage() {
                         <TableFooter>
                         <TableRow>
                             <TableCell className="sticky left-0 bg-background z-10 font-semibold text-right">Class Average</TableCell>
-                            <TableCell className="sticky left-[250px] bg-background z-10 text-center font-semibold text-primary">{classAverages.overall}%</TableCell>
-                            <TableCell className="sticky left-[350px] bg-background z-10 text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
+                            <TableCell className="sticky left-[300px] bg-background z-10 text-center font-semibold text-primary">{classAverages.overall}%</TableCell>
+                            <TableCell className="sticky left-[400px] bg-background z-10 text-center font-semibold text-primary">{classAverages.letterGrade}</TableCell>
                             {classAssessments.map(assessment => {
                             const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
                             return (
