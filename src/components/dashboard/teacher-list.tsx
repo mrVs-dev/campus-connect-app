@@ -208,12 +208,10 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
 
       await updateTeacher(teacherId, dataToSave);
       
-      const originalTeacher = teachers.find(t => t.teacherId === teacherId);
-      const updatedTeacherData = { ...originalTeacher, ...dataToSave } as Teacher
-      
-      setTeachers(prev => 
-        prev.map(t => t.teacherId === teacherId ? updatedTeacherData : t)
+      setTeachers(prevTeachers => 
+        prevTeachers.map(t => t.teacherId === teacherId ? { ...t, ...dataToSave } : t)
       );
+      
       toast({
         title: "Teacher Updated",
         description: "Teacher profile has been successfully updated.",
@@ -470,3 +468,5 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
     </div>
   );
 }
+
+    
