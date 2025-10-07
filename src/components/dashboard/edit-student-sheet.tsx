@@ -261,13 +261,13 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
             setStatusChange({ newStatus: values.status });
             return; // Stop here and let the dialog handle the submission
         } else {
-             // If changing back to active
+             // If changing back to active, call update status directly with a reason
              onUpdateStatus(student, values.status, "Re-activated");
         }
     }
     
     setIsSubmitting(true);
-    // Filter out status from the general update if it was handled separately
+    // Filter out status from the general update if it was handled separately or didn't change
     const { status, ...restOfValues } = values;
     onSave(student.studentId, restOfValues);
     setIsSubmitting(false);
