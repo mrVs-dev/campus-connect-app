@@ -383,15 +383,18 @@ export async function getAdmissions(): Promise<Admission[]> {
 
 export async function saveAdmission(admissionData: Admission, isNewClass: boolean = false): Promise<boolean> {
     if (!db) throw new Error("Firestore is not initialized");
-    const admissionDocRef = doc(db, 'admissions', admissionData.schoolYear);
-
+    
+    // Create a deep copy to avoid modifying the original object from the component state
     const cleanedData = JSON.parse(JSON.stringify(admissionData));
+    const admissionDocRef = doc(db, 'admissions', cleanedData.schoolYear);
 
     try {
+        // Always overwrite the document to ensure removals are persisted.
+        // Merging is only safe for adding new, independent data like a new class definition.
         if (isNewClass) {
-            await setDoc(admissionDocRef, cleanedData, { merge: true });
+             await setDoc(admissionDocRef, cleanedData, { merge: true });
         } else {
-            await setDoc(admissionDocRef, cleanedData);
+             await setDoc(admissionDocRef, cleanedData);
         }
         return true;
     } catch(e) {
@@ -399,6 +402,7 @@ export async function saveAdmission(admissionData: Admission, isNewClass: boolea
         return false;
     }
 }
+
 
 export async function importAdmissions(importedData: { studentId: string; schoolYear: string; programId: string; level: string; }[]): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
@@ -909,4 +913,5 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
+
 
