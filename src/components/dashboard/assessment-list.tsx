@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import * as React from "react";
-import type { Assessment, Student, Subject, AssessmentCategory, UserRole } from "@/lib/types";
-import { PlusCircle, MoreHorizontal, Edit } from "lucide-react";
+import type { Assessment, Student, Subject, AssessmentCategory, UserRole, Admission, Enrollment } from "@/lib/types";
+import { PlusCircle, MoreHorizontal, Edit, BookCopy, Layers2, Hash } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,28 +14,33 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
 import { Badge } from "@/components/ui/badge";
 import { NewAssessmentDialog } from "./new-assessment-dialog";
 import { GradeEntrySheet } from "./grade-entry-sheet";
+import { programs } from "@/lib/program-data";
+
+interface ClassWithAssessments {
+  classId: string;
+  schoolYear: string;
+  programName: string;
+  level: string;
+  assessments: Assessment[];
+  assessmentsBySubject: { subjectName: string; count: number }[];
+  assessmentsByCategory: { categoryName: string; count: number }[];
+}
 
 export function AssessmentList({
   assessments,
   students,
   subjects,
   assessmentCategories,
+  admissions,
   onSaveAssessment,
   userRole,
 }: {
@@ -44,6 +48,7 @@ export function AssessmentList({
   students: Student[];
   subjects: Subject[];
   assessmentCategories: AssessmentCategory[];
+  admissions: Admission[];
   onSaveAssessment: (assessment: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => Promise<Assessment | null>;
   userRole: UserRole;
 }) {
@@ -69,6 +74,61 @@ export function AssessmentList({
     }
     setIsNewAssessmentOpen(isOpen);
   };
+  
+  const assessmentsByClass = React.useMemo(() => {
+    const classMap = new Map<string, { schoolYear: string, programId: string, level: string, studentIds: Set<string> }>();
+
+    // 1. Identify all unique classes from admissions data
+    admissions.forEach(admission => {
+      admission.students.forEach(studentAdmission => {
+        studentAdmission.enrollments.forEach(enrollment => {
+          const classKey = `${admission.schoolYear}_${enrollment.programId}_${enrollment.level}`;
+          if (!classMap.has(classKey)) {
+            classMap.set(classKey, {
+              schoolYear: admission.schoolYear,
+              programId: enrollment.programId,
+              level: enrollment.level,
+              studentIds: new Set(),
+            });
+          }
+          classMap.get(classKey)!.studentIds.add(studentAdmission.studentId);
+        });
+      });
+    });
+
+    // 2. Group assessments by class
+    const result: ClassWithAssessments[] = [];
+    classMap.forEach((classInfo, classId) => {
+      const assessmentsForClass = assessments.filter(assessment => {
+        // An assessment belongs to a class if at least one student in that class has a score for it.
+        return Array.from(classInfo.studentIds).some(studentId => assessment.scores.hasOwnProperty(studentId));
+      });
+
+      if (assessmentsForClass.length > 0) {
+        const subjectCounts: Record<string, number> = {};
+        const categoryCounts: Record<string, number> = {};
+
+        assessmentsForClass.forEach(a => {
+          const subjectName = getSubjectName(a.subjectId);
+          subjectCounts[subjectName] = (subjectCounts[subjectName] || 0) + 1;
+          categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
+        });
+
+        result.push({
+          classId: classId,
+          schoolYear: classInfo.schoolYear,
+          programName: programs.find(p => p.id === classInfo.programId)?.name || 'Unknown Program',
+          level: classInfo.level,
+          assessments: assessmentsForClass,
+          assessmentsBySubject: Object.entries(subjectCounts).map(([subjectName, count]) => ({ subjectName, count })),
+          assessmentsByCategory: Object.entries(categoryCounts).map(([categoryName, count]) => ({ categoryName, count })),
+        });
+      }
+    });
+
+    return result.sort((a,b) => b.schoolYear.localeCompare(a.schoolYear) || a.programName.localeCompare(b.programName) || a.level.localeCompare(b.level));
+  }, [admissions, assessments, subjects]);
+
 
   return (
     <>
@@ -76,9 +136,9 @@ export function AssessmentList({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Assessments</CardTitle>
+              <CardTitle>Assessments Overview</CardTitle>
               <CardDescription>
-                Manage and grade student assessments.
+                A summary of all assessments created, grouped by class.
               </CardDescription>
             </div>
             {canCreate && (
@@ -92,56 +152,44 @@ export function AssessmentList({
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Topic</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Total Marks</TableHead>
-                {canCreate && (
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assessments.map((assessment) => (
-                <TableRow key={assessment.assessmentId}>
-                  <TableCell className="font-medium">
-                    {assessment.topic}
-                  </TableCell>
-                  <TableCell>{getSubjectName(assessment.subjectId)}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{assessment.category}</Badge>
-                  </TableCell>
-                  <TableCell>{assessment.totalMarks}</TableCell>
-                  {canCreate && (
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => setAssessmentToGrade(assessment)}>
-                            Enter Grades
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleEdit(assessment)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Details
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
+          {assessmentsByClass.length > 0 ? (
+            <Accordion type="single" collapsible className="w-full">
+              {assessmentsByClass.map(classData => (
+                <AccordionItem value={classData.classId} key={classData.classId}>
+                   <AccordionTrigger>
+                      <div className="flex flex-col items-start text-left">
+                        <span className="font-semibold text-base">{classData.programName} - {classData.level}</span>
+                        <span className="text-sm text-muted-foreground font-normal">{classData.schoolYear} • {classData.assessments.length} Assessment(s)</span>
+                      </div>
+                   </AccordionTrigger>
+                   <AccordionContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/50 rounded-lg">
+                        <div className="space-y-3">
+                          <h4 className="font-semibold flex items-center gap-2"><BookCopy className="h-4 w-4" /> By Subject</h4>
+                           <div className="flex flex-wrap gap-2">
+                            {classData.assessmentsBySubject.map(sub => (
+                              <Badge key={sub.subjectName} variant="secondary">{sub.subjectName} ({sub.count})</Badge>
+                            ))}
+                          </div>
+                        </div>
+                         <div className="space-y-3">
+                          <h4 className="font-semibold flex items-center gap-2"><Layers2 className="h-4 w-4" /> By Category</h4>
+                          <div className="flex flex-wrap gap-2">
+                             {classData.assessmentsByCategory.map(cat => (
+                              <Badge key={cat.categoryName} variant="outline">{cat.categoryName} ({cat.count})</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                   </AccordionContent>
+                </AccordionItem>
               ))}
-            </TableBody>
-          </Table>
+            </Accordion>
+          ) : (
+             <div className="text-center py-10 text-muted-foreground">
+                No assessments found.
+              </div>
+          )}
         </CardContent>
       </Card>
       {canCreate && (

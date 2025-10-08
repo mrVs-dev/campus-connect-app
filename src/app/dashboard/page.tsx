@@ -439,6 +439,7 @@ export default function DashboardPage() {
                     students={students}
                     subjects={subjects}
                     assessmentCategories={assessmentCategories}
+                    admissions={admissions}
                     onSaveAssessment={saveAssessment}
                     />
                 </TabsContent>
