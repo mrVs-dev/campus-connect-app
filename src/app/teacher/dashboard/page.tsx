@@ -83,7 +83,10 @@ export default function TeacherDashboardPage() {
 
       setLoggedInTeacher(currentTeacher);
       
-      const assessmentsForTeacher = allAssessments.filter(a => a.teacherId === currentTeacher?.teacherId);
+      const teacherSubjectIds = currentTeacher.assignedSubjects || [];
+      const assessmentsForTeacher = allAssessments.filter(a => 
+          a.teacherId === currentTeacher?.teacherId || teacherSubjectIds.includes(a.subjectId)
+      );
       setTeacherAssessments(assessmentsForTeacher);
 
       setSubjects(subjectsData);
@@ -309,3 +312,5 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
+    
