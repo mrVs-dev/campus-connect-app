@@ -296,21 +296,7 @@ export default function TeacherDashboardPage() {
               </div>
             )}
           </div>
-          
-          <div>
-             <h2 className="text-2xl font-bold mb-4">My Assessments</h2>
-             <AssessmentList
-                userRole="Teacher"
-                assessments={teacherAssessments}
-                students={assignedClasses.flatMap(c => c.students)}
-                subjects={teacherSubjects}
-                assessmentCategories={assessmentCategories}
-                onSaveAssessment={handleSaveAssessment}
-            />
-          </div>
       </div>
     </div>
   );
 }
-
-    
