@@ -3,7 +3,8 @@
 import type { Assessment, Subject, AssessmentCategory, LetterGrade } from './types';
 
 export const calculateStudentAverage = (studentId: string, assessments: Assessment[], subjects: Subject[], assessmentCategories: AssessmentCategory[]): number => {
-    const studentAssessments = assessments.filter(a => a.scores && a.scores[studentId] !== undefined);
+    // A score is only valid if it's a number (including 0). undefined/null are ignored.
+    const studentAssessments = assessments.filter(a => a.scores && typeof a.scores[studentId] === 'number');
     if (studentAssessments.length === 0) return 0;
   
     const categoryWeightMap = new Map(assessmentCategories.map(c => [c.englishTitle, c.weight / 100]));
@@ -11,7 +12,7 @@ export const calculateStudentAverage = (studentId: string, assessments: Assessme
     const performanceBySubject = subjects.map(subject => {
       const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
       if (subjectAssessments.length === 0) {
-        return { subjectName: subject.englishTitle, overallScore: 0 };
+        return { subjectName: subject.englishTitle, overallScore: null }; // Return null if no scores for this subject
       }
       
       let totalWeightedScore = 0;
@@ -20,19 +21,25 @@ export const calculateStudentAverage = (studentId: string, assessments: Assessme
       subjectAssessments.forEach(assessment => {
         const weight = categoryWeightMap.get(assessment.category) || 0;
         const score = assessment.scores[studentId];
-        const percentage = (score / assessment.totalMarks) * 100;
-        totalWeightedScore += percentage * weight;
-        totalWeight += weight;
+
+        // This check is now redundant due to the top-level filter, but it's safe to keep.
+        // It ensures we only calculate for assessments where the student has a numerical score.
+        if (typeof score === 'number') {
+            const percentage = (score / assessment.totalMarks) * 100;
+            totalWeightedScore += percentage * weight;
+            totalWeight += weight;
+        }
       });
   
       const overallScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
       return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
     });
   
-    const validSubjects = performanceBySubject.filter(s => s.overallScore > 0);
+    // Only average the subjects where the student had at least one valid score.
+    const validSubjects = performanceBySubject.filter(s => s.overallScore !== null);
     if (validSubjects.length === 0) return 0;
 
-    const overallAverage = validSubjects.reduce((acc, curr) => acc + curr.overallScore, 0) / validSubjects.length;
+    const overallAverage = validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length;
     return Math.round(overallAverage);
 };
 
@@ -47,3 +54,4 @@ export const getLetterGrade = (score: number, gradeScale: LetterGrade[]): string
     
     return 'F';
 };
+

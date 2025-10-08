@@ -53,6 +53,7 @@ export function GradeEntrySheet({
   const handleScoreChange = (studentId: string, value: string) => {
     if (!assessment) return;
 
+    // If the input is blank, we want to remove the score for this student.
     if (value === "") {
       const newScores = { ...scores };
       delete newScores[studentId];
@@ -61,6 +62,8 @@ export function GradeEntrySheet({
     }
 
     const score = parseInt(value, 10);
+
+    // If the input is a valid number
     if (!isNaN(score)) {
       if (score > assessment.totalMarks) {
         toast({
@@ -70,22 +73,26 @@ export function GradeEntrySheet({
         });
         return;
       }
-      setScores(prev => ({ ...prev, [studentId]: score }));
-    } else if (value !== "") {
-        // Handle cases where input is not a valid number but not empty (e.g., "abc")
-        // We can either ignore it, or clear the field, or show a toast.
-        // For now, let's just keep the old value by not updating state.
+       if (score < 0) {
+        toast({
+          title: "Invalid Score",
+          description: "Score cannot be negative.",
+          variant: "destructive",
+        });
         return;
+      }
+      setScores(prev => ({ ...prev, [studentId]: score }));
     }
+    // If the input is not a number (e.g., "abc") but not blank, we do nothing to prevent bad data.
   };
 
   const handleSave = async () => {
     if (!assessment) return;
     setIsSaving(true);
     
-    // Filter out undefined scores before saving
+    // Create a new scores object with only defined, numerical scores.
     const validScores = Object.entries(scores).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
+      if (typeof value === 'number' && !isNaN(value)) {
         acc[key] = value;
       }
       return acc;
@@ -105,7 +112,7 @@ export function GradeEntrySheet({
         <SheetHeader>
           <SheetTitle>Enter Grades: {assessment.topic}</SheetTitle>
           <SheetDescription>
-            Input scores for each student. The maximum score is {assessment.totalMarks}.
+            Input scores for each student. The maximum score is {assessment.totalMarks}. Leave blank to excuse.
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-hidden">
@@ -132,11 +139,13 @@ export function GradeEntrySheet({
                     <TableCell className="text-right">
                       <Input
                         type="number"
-                        value={scores[student.studentId] ?? ""}
+                        // Display the score if it's a number (including 0), otherwise display an empty string.
+                        value={typeof scores[student.studentId] === 'number' ? scores[student.studentId] : ""}
                         onChange={(e) => handleScoreChange(student.studentId, e.target.value)}
                         max={assessment.totalMarks}
                         min={0}
                         className="w-24 ml-auto"
+                        placeholder="—"
                       />
                     </TableCell>
                   </TableRow>

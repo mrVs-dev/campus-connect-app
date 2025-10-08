@@ -280,7 +280,7 @@ export default function RosterPage() {
                                 className="text-center cursor-pointer hover:bg-accent/50"
                                 onClick={() => setAssessmentToGrade(assessment)}
                             >
-                                {assessment.scores[student.studentId] ?? "—"}
+                                {typeof assessment.scores[student.studentId] === 'number' ? assessment.scores[student.studentId] : "—"}
                             </TableCell>
                             ))}
                             <TableCell></TableCell>
@@ -345,5 +345,4 @@ export default function RosterPage() {
     </div>
   );
 }
-
     
