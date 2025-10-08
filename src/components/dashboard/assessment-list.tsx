@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -60,6 +59,7 @@ export function AssessmentList({
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
   const [assessmentToGrade, setAssessmentToGrade] = React.useState<Assessment | null>(null);
   const [assessmentToEdit, setAssessmentToEdit] = React.useState<Assessment | null>(null);
+  const [classForNewAssessment, setClassForNewAssessment] = React.useState<string | undefined>(undefined);
 
   const canCreate = userRole === 'Admin' || userRole === 'Head of Department' || userRole === 'Teacher';
 
@@ -81,6 +81,7 @@ export function AssessmentList({
   const handleOpenNewDialog = (isOpen: boolean) => {
     if (!isOpen) {
       setAssessmentToEdit(null);
+      setClassForNewAssessment(undefined);
     }
     setIsNewAssessmentOpen(isOpen);
   };
@@ -88,55 +89,48 @@ export function AssessmentList({
  const assessmentsByClass = React.useMemo(() => {
     const classMap = new Map<string, { schoolYear: string, programId: string, level: string, studentIds: Set<string> }>();
 
-    // Step 1: Build a comprehensive map of all unique classes and the students in them.
     admissions.forEach(admission => {
-        // First, add classes defined in the admission year, even if they have no students yet.
         admission.classes?.forEach(classDef => {
             const classKey = `${admission.schoolYear}_${classDef.programId}_${classDef.level}`;
             if (!classMap.has(classKey)) {
-                classMap.set(classKey, {
-                    schoolYear: admission.schoolYear,
-                    programId: classDef.programId,
-                    level: classDef.level,
-                    studentIds: new Set(),
-                });
+                classMap.set(classKey, { schoolYear: admission.schoolYear, programId: classDef.programId, level: classDef.level, studentIds: new Set() });
             }
         });
-        
-        // Next, add students to their respective classes based on their enrollments.
-        // This also creates class entries if they weren't explicitly defined.
         admission.students.forEach(studentAdmission => {
             studentAdmission.enrollments.forEach(enrollment => {
                 const classKey = `${admission.schoolYear}_${enrollment.programId}_${enrollment.level}`;
                  if (!classMap.has(classKey)) {
-                    classMap.set(classKey, {
-                        schoolYear: admission.schoolYear,
-                        programId: enrollment.programId,
-                        level: enrollment.level,
-                        studentIds: new Set(),
-                    });
+                    classMap.set(classKey, { schoolYear: admission.schoolYear, programId: enrollment.programId, level: enrollment.level, studentIds: new Set() });
                 }
                 classMap.get(classKey)!.studentIds.add(studentAdmission.studentId);
             });
         });
     });
-
+    
     const result: ClassWithAssessments[] = [];
     
-    // Step 2: Iterate through each defined class to find its valid assessments.
     classMap.forEach((classInfo, classId) => {
-      // An assessment is relevant if its classId matches the current class.
-      const assessmentsForClass = assessments.filter(assessment => assessment.classId === classId);
+      // --- HYBRID LOGIC ---
+      // 1. Get assessments explicitly linked via classId (new data)
+      const explicitAssessments = assessments.filter(a => a.classId === classId);
       
+      // 2. Get assessments linked implicitly via student scores (old data)
+      const implicitAssessments = assessments.filter(a => 
+        !a.classId && // Only consider assessments without a classId
+        Object.keys(a.scores).some(studentId => classInfo.studentIds.has(studentId))
+      );
+
+      // Combine and deduplicate
+      const combined = new Map<string, Assessment>();
+      [...explicitAssessments, ...implicitAssessments].forEach(a => combined.set(a.assessmentId, a));
+      const assessmentsForClass = Array.from(combined.values());
+
       if (assessmentsForClass.length > 0) {
         const assessmentsBySubject: Record<string, { subjectName: string; assessments: Assessment[] }> = {};
         
         assessmentsForClass.forEach(assessment => {
             if (!assessmentsBySubject[assessment.subjectId]) {
-                assessmentsBySubject[assessment.subjectId] = {
-                    subjectName: getSubjectName(assessment.subjectId),
-                    assessments: []
-                };
+                assessmentsBySubject[assessment.subjectId] = { subjectName: getSubjectName(assessment.subjectId), assessments: [] };
             }
             assessmentsBySubject[assessment.subjectId].assessments.push(assessment);
         });
@@ -249,6 +243,7 @@ export function AssessmentList({
           existingAssessment={assessmentToEdit}
           subjects={subjects}
           assessmentCategories={assessmentCategories}
+          classId={classForNewAssessment}
         />
       )}
       {canCreate && (
