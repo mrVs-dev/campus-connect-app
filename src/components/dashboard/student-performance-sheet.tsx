@@ -147,7 +147,7 @@ export function StudentPerformanceSheet({
   const performanceBySubject = subjects.map(subject => {
     const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
     if (subjectAssessments.length === 0) {
-      return { subjectName: subject.englishTitle, overallScore: 0 };
+      return { subjectName: subject.englishTitle, overallScore: null };
     }
     
     let totalWeightedScore = 0;
@@ -165,12 +165,11 @@ export function StudentPerformanceSheet({
     return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
   });
 
-  const validSubjects = performanceBySubject.filter(s => s.overallScore > 0);
-  const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + curr.overallScore, 0) / validSubjects.length : 0;
-
+  const validSubjects = performanceBySubject.filter(s => s.overallScore !== null);
+  const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length : 0;
 
   const studentGrades = performanceBySubject.reduce((acc, subject) => {
-    if (subject.overallScore > 0) {
+    if (subject.overallScore !== null && subject.overallScore > 0) {
         acc[subject.subjectName] = subject.overallScore;
     }
     return acc;
@@ -240,7 +239,7 @@ export function StudentPerformanceSheet({
 
             <h3 className="text-lg font-semibold mb-4">Performance by Subject</h3>
             <div className="space-y-4">
-                {performanceBySubject.map((perf, index) => perf.overallScore > 0 && (
+                {performanceBySubject.map((perf, index) => perf.overallScore !== null && (
                 <div key={index}>
                     <div className="flex justify-between items-center mb-1">
                     <p className="font-medium">{perf.subjectName}</p>
