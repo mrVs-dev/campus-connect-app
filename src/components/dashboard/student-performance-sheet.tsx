@@ -105,8 +105,8 @@ export function StudentPerformanceSheet({
 }: StudentPerformanceSheetProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
-  const { toast } = useToast();
   const [studentGrades, setStudentGrades] = React.useState<Record<string, number> | null>(null);
+  const { toast } = useToast();
 
   const performanceBySubject = React.useMemo(() => {
     if (!student) return [];
@@ -140,21 +140,21 @@ export function StudentPerformanceSheet({
       return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
     });
   }, [student, assessments, subjects, assessmentCategories]);
-
+  
   const validSubjects = performanceBySubject.filter(s => s.overallScore !== null);
   const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length : 0;
-  
+
   React.useEffect(() => {
     if (student) {
-        const grades = performanceBySubject.reduce((acc, subject) => {
-            if (subject.overallScore !== null) {
-                acc[subject.subjectName] = subject.overallScore;
-            }
-            return acc;
-        }, {} as Record<string, number>);
-        setStudentGrades(grades);
+      const grades: Record<string, number> = {};
+      performanceBySubject.forEach(subject => {
+        if (subject.overallScore !== null) {
+          grades[subject.subjectName] = subject.overallScore;
+        }
+      });
+      setStudentGrades(grades);
     } else {
-        setStudentGrades(null);
+      setStudentGrades(null);
     }
   }, [student, performanceBySubject]);
 
@@ -241,9 +241,9 @@ export function StudentPerformanceSheet({
                     <CardTitle className="text-base">AI Progress Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {studentGrades && (
-                      <AiSummary studentId={student.studentId} grades={studentGrades} />
-                    )}
+                  {studentGrades && (
+                    <AiSummary studentId={student.studentId} grades={studentGrades} />
+                  )}
                 </CardContent>
             </Card>
 
