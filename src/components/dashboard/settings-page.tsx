@@ -239,6 +239,7 @@ type SubjectsFormValues = z.infer<typeof subjectsFormSchema>;
 
 function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject[]; onSave: (subjects: Subject[]) => void }) {
   const [isSaving, setIsSaving] = React.useState(false);
+  const { toast } = useToast();
   const form = useForm<SubjectsFormValues>({
     resolver: zodResolver(subjectsFormSchema),
     defaultValues: { subjects: [] },
@@ -268,6 +269,10 @@ function SubjectSettings({ initialSubjects, onSave }: { initialSubjects: Subject
     setIsSaving(true);
     await onSave(data.subjects);
     setIsSaving(false);
+    toast({
+      title: "Subjects Saved",
+      description: "The list of subjects has been updated.",
+    });
   };
   
   return (
@@ -370,6 +375,10 @@ function CategorySettings({ initialCategories, onSave }: { initialCategories: As
     setIsSaving(true);
     await onSave(data.categories);
     setIsSaving(false);
+    toast({
+      title: "Categories Saved",
+      description: "The assessment categories and weights have been updated.",
+    });
   };
   
   const handleFormError = () => {
