@@ -1,3 +1,4 @@
+
 "use server";
 
 import { summarizeStudentProgress } from "@/ai/flows/summarize-student-progress";
@@ -8,22 +9,12 @@ export async function getStudentSummary(
   input: SummarizeStudentProgressInput
 ) {
   try {
-    // Final safeguard: Ensure no zero-value grades are passed to the AI.
-    const validGrades: Record<string, number> = {};
-    for (const subject in input.grades) {
-        if (Object.prototype.hasOwnProperty.call(input.grades, subject)) {
-            const grade = input.grades[subject];
-            if (typeof grade === 'number' && grade > 0) {
-                validGrades[subject] = grade;
-            }
-        }
-    }
-
-    if (Object.keys(validGrades).length === 0) {
+    // The grades are pre-filtered in the component; no need for extra filtering here.
+    if (Object.keys(input.grades).length === 0) {
         return { summary: "No performance data available to generate a summary.", error: null };
     }
 
-    const { summary } = await summarizeStudentProgress({ ...input, grades: validGrades });
+    const { summary } = await summarizeStudentProgress(input);
     return { summary, error: null };
   } catch (error) {
     console.error("Error generating student summary:", error);
