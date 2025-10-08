@@ -193,8 +193,8 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
         enrollmentDate: studentData.enrollmentDate ? Timestamp.fromDate(studentData.enrollmentDate) : serverTimestamp()
     };
     
-    // Explicitly include familyId even if it's an empty string
-    if (studentData.familyId !== undefined) {
+    // Explicitly include familyId even if it's an empty string or null
+    if ('familyId' in studentData) {
       studentForFirestore.familyId = studentData.familyId;
     }
 
@@ -253,19 +253,8 @@ export async function importStudents(studentsData: Partial<Student>[]): Promise<
 export async function updateStudent(studentId: string, dataToUpdate: Partial<Student>): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentDoc = doc(db, 'students', studentId);
-
-    // Create a copy so we don't modify the original object from the form
-    const updateDataCopy = { ...dataToUpdate };
-
-    // Delete keys with `undefined` values, as Firestore doesn't allow them.
-    // Allow `null` and empty strings `''` to be saved.
-    (Object.keys(updateDataCopy) as Array<keyof typeof updateDataCopy>).forEach(key => {
-        if (updateDataCopy[key] === undefined) {
-            delete updateDataCopy[key];
-        }
-    });
     
-    const dataWithTimestamps = convertDatesToTimestamps(updateDataCopy);
+    const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
     await updateDoc(studentDoc, dataWithTimestamps);
 }
 
