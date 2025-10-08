@@ -128,7 +128,7 @@ const sortLevels = (levels: { level: string }[]): { level: string }[] => {
 export function Overview({ students, admissions }: OverviewProps) {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [statusFilter, setStatusFilter] = React.useState<Student['status'] | 'All'>('Active');
-  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('All');
+  const [admissionYearFilter, setAdmissionYearFilter] = React.useState<string>('2025-2026');
 
   React.useEffect(() => {
     const now = new Date();
@@ -261,7 +261,14 @@ export function Overview({ students, admissions }: OverviewProps) {
     },
   };
 
-  const admissionYears = ['All', ...[...new Set(admissions?.map(a => a.schoolYear) || [])].sort((a, b) => b.localeCompare(a))];
+  const admissionYears = React.useMemo(() => {
+    const years = new Set(admissions?.map(a => a.schoolYear) || []);
+    if (!years.has('2025-2026')) {
+        years.add('2025-2026');
+    }
+    return ['All', ...Array.from(years).sort((a, b) => b.localeCompare(a))];
+}, [admissions]);
+
 
   return (
     <div className="flex flex-col gap-4">
