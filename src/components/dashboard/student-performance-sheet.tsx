@@ -174,7 +174,7 @@ export function StudentPerformanceSheet({
   const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length : 0;
 
   const studentGrades = performanceBySubject.reduce((acc, subject) => {
-    if (subject.overallScore) { // Ensures score is not null and not 0
+    if (typeof subject.overallScore === 'number') {
         acc[subject.subjectName] = subject.overallScore;
     }
     return acc;
@@ -334,3 +334,4 @@ export function StudentPerformanceSheet({
     </Sheet>
   );
 }
+
