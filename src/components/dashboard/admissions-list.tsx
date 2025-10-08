@@ -687,7 +687,7 @@ function EnrollmentCard({ form, index, remove }: { form: any, index: number; rem
           render={({ field }) => (
             <FormItem>
               <FormLabel>Program</FormLabel>
-              <Select onValueChange={(value) => { field.onChange(value); setValue(`enrollments.${index}.level`, '') }} value={field.value}>
+              <Select onValueChange={(value) => { field.onChange(value); setValue(`enrollments.${index}.level`, '') }} value={field.value || ""}>
                 <FormControl>
                   <SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger>
                 </FormControl>
@@ -721,5 +721,3 @@ function EnrollmentCard({ form, index, remove }: { form: any, index: number; rem
     </div>
   );
 }
-
-    
