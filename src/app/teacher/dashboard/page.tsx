@@ -11,7 +11,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { programs } from "@/lib/program-data";
 import { BarChart, UserCheck, TrendingUp, ArrowRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { AssessmentList } from "@/components/dashboard/assessment-list";
 import { calculateStudentAverage } from "@/lib/grades";
 import { Button } from "@/components/ui/button";
 
