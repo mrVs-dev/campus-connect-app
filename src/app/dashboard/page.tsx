@@ -96,6 +96,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const [activeTab, setActiveTab] = React.useState("dashboard");
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
@@ -317,7 +318,7 @@ export default function DashboardPage() {
 
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
     await updateTeacher(teacherId, updatedData);
-    await fetchData(true); // Re-fetch data and show a toast
+    await fetchData(true);
     toast({
         title: "Teacher Updated",
         description: "The teacher's profile has been saved.",
@@ -327,7 +328,7 @@ export default function DashboardPage() {
   const handleSaveAdmission = async (admission: Admission, isNewClass: boolean) => {
     const success = await saveAdmission(admission, isNewClass);
     if (success) {
-      await fetchData();
+      await fetchData(true);
       toast({
         title: "Admissions Updated",
         description: "The admission records have been saved.",
@@ -368,7 +369,7 @@ export default function DashboardPage() {
         <div className="container relative h-full max-w-7xl">
           <main className="flex h-full flex-col overflow-y-auto pt-4 md:pt-8">
             <div className="container flex flex-col gap-6 py-4">
-              <Tabs defaultValue="dashboard" className="w-full space-y-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
                 <TabsList>
                   {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
                       <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
