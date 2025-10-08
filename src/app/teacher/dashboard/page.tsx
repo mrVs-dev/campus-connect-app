@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -100,48 +99,39 @@ export default function TeacherDashboardPage() {
           setAssessmentCategories(categoriesData);
 
           const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
-
-          const addStudentToClass = (schoolYear: string, programId: string, level: string, studentId: string) => {
-             const classKey = `${schoolYear}::${programId}::${level}`;
-             if (!classMap.has(classKey)) {
-                const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
-                classMap.set(classKey, { schoolYear, programId, programName, level, students: new Set() });
-             }
-             if (studentId) classMap.get(classKey)!.students.add(studentId);
-          };
-          
           const teacherId = loggedInTeacher.teacherId;
 
-          // 1. Add classes directly assigned to the teacher on their profile
-          if (loggedInTeacher.assignedClasses) {
-            loggedInTeacher.assignedClasses.forEach(classAssignment => {
-              const admission = admissions.find(a => a.schoolYear === classAssignment.schoolYear);
-              if (admission) {
-                admission.students.forEach(studentAdmission => {
-                  if (studentAdmission.enrollments.some(e => e.programId === classAssignment.programId && e.level === classAssignment.level)) {
-                    addStudentToClass(classAssignment.schoolYear, classAssignment.programId, classAssignment.level, studentAdmission.studentId);
-                  }
-                });
-                // Ensure the class appears even if no students are enrolled yet
-                addStudentToClass(classAssignment.schoolYear, classAssignment.programId, classAssignment.level, '');
-              }
-            });
-          }
-
-          // 2. Add classes from admissions data (class definitions and student-specific assignments)
           admissions.forEach(admission => {
-              // Add classes directly assigned to the teacher in the admission year
+              // 1. Find classes where the teacher is listed in the class definition
               admission.classes?.forEach(classDef => {
-                if (classDef.teacherIds?.includes(teacherId)) {
-                    // Add all students enrolled in that class
-                    admission.students.forEach(studentAdmission => {
-                        if (studentAdmission.enrollments.some(e => e.programId === classDef.programId && e.level === classDef.level)) {
-                            addStudentToClass(admission.schoolYear, classDef.programId, classDef.level, studentAdmission.studentId);
-                        }
-                    });
-                    // Ensure the class appears even if no students are enrolled
-                    addStudentToClass(admission.schoolYear, classDef.programId, classDef.level, '');
-                }
+                  if (classDef.teacherIds?.includes(teacherId)) {
+                      const classKey = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
+                       if (!classMap.has(classKey)) {
+                           const programName = programs.find(p => p.id === classDef.programId)?.name || "Unknown Program";
+                           classMap.set(classKey, { schoolYear: admission.schoolYear, programId: classDef.programId, programName, level: classDef.level, students: new Set() });
+                       }
+                  }
+              });
+
+              // 2. Find classes this teacher is assigned to on their profile for this school year
+              loggedInTeacher?.assignedClasses?.forEach(assignedClass => {
+                  if (assignedClass.schoolYear === admission.schoolYear) {
+                      const classKey = `${assignedClass.schoolYear}::${assignedClass.programId}::${assignedClass.level}`;
+                      if (!classMap.has(classKey)) {
+                           const programName = programs.find(p => p.id === assignedClass.programId)?.name || "Unknown Program";
+                           classMap.set(classKey, { schoolYear: assignedClass.schoolYear, programId: assignedClass.programId, programName, level: assignedClass.level, students: new Set() });
+                       }
+                  }
+              });
+
+              // 3. Populate students for all identified classes
+              admission.students.forEach(studentAdmission => {
+                  studentAdmission.enrollments.forEach(enrollment => {
+                       const classKey = `${admission.schoolYear}::${enrollment.programId}::${enrollment.level}`;
+                       if (classMap.has(classKey)) {
+                           classMap.get(classKey)!.students.add(studentAdmission.studentId);
+                       }
+                  });
               });
           });
           

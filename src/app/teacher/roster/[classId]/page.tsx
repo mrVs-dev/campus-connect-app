@@ -76,27 +76,15 @@ export default function RosterPage() {
             setLoggedInTeacher(currentTeacher);
 
             const studentIdsInClass = new Set<string>();
-            const admission = admissions.find(a => a.schoolYear === schoolYear);
+            const admissionForYear = admissions.find(a => a.schoolYear === schoolYear);
             
-            if (admission) {
-                // Find students who are in a class definition assigned to this teacher
-                const classDef = admission.classes?.find(c => c.programId === programId && c.level === level);
-                if (classDef) {
-                     admission.students.forEach(studentAdmission => {
-                        if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
-                            studentIdsInClass.add(studentAdmission.studentId);
-                        }
-                    });
-                }
-
-                // Also check classes assigned directly to the teacher's profile
-                if (currentTeacher.assignedClasses?.some(c => c.schoolYear === schoolYear && c.programId === programId && c.level === level)) {
-                     admission.students.forEach(studentAdmission => {
-                        if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
-                            studentIdsInClass.add(studentAdmission.studentId);
-                        }
-                    });
-                }
+            if (admissionForYear) {
+                // Find all students enrolled in this specific class for the year
+                admissionForYear.students.forEach(studentAdmission => {
+                    if (studentAdmission.enrollments.some(e => e.programId === programId && e.level === level)) {
+                        studentIdsInClass.add(studentAdmission.studentId);
+                    }
+                });
             } else {
                 console.warn(`No admission data found for school year ${schoolYear}. Roster may be incomplete.`);
             }
@@ -211,9 +199,9 @@ export default function RosterPage() {
   return (
     <div className="space-y-6">
        <div className="mb-6">
-        <Button variant="outline" size="sm" onClick={() => router.push('/teacher/roster')}>
+        <Button variant="outline" size="sm" onClick={() => router.push('/teacher/dashboard')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to All Rosters
+            Back to Dashboard
         </Button>
       </div>
 
@@ -347,5 +335,3 @@ export default function RosterPage() {
     </div>
   );
 }
-
-    

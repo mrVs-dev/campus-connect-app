@@ -51,25 +51,25 @@ export default function AllRostersPage() {
 
           const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
           
-          const addStudentToClass = (schoolYear: string, programId: string, level: string, studentId: string) => {
-             const classKey = `${schoolYear}::${programId}::${level}`;
-             if (!classMap.has(classKey)) {
-                const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
-                classMap.set(classKey, { schoolYear, programId, programName, level, students: new Set() });
-             }
-             if (studentId) classMap.get(classKey)!.students.add(studentId);
-          };
-
           admissions.forEach(admission => {
             // From class definitions, ensuring even empty classes are shown
             admission.classes?.forEach(classDef => {
-              addStudentToClass(admission.schoolYear, classDef.programId, classDef.level, '');
+              const classKey = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
+              if (!classMap.has(classKey)) {
+                const programName = programs.find(p => p.id === classDef.programId)?.name || "Unknown Program";
+                classMap.set(classKey, { schoolYear: admission.schoolYear, programId: classDef.programId, programName, level: classDef.level, students: new Set() });
+              }
             });
 
             // From student enrollments
             admission.students.forEach(studentAdmission => {
               studentAdmission.enrollments.forEach(enrollment => {
-                addStudentToClass(admission.schoolYear, enrollment.programId, enrollment.level, studentAdmission.studentId);
+                const classKey = `${admission.schoolYear}::${enrollment.programId}::${enrollment.level}`;
+                if (!classMap.has(classKey)) {
+                   const programName = programs.find(p => p.id === enrollment.programId)?.name || "Unknown Program";
+                   classMap.set(classKey, { schoolYear: admission.schoolYear, programId: enrollment.programId, programName, level: enrollment.level, students: new Set() });
+                }
+                classMap.get(classKey)!.students.add(studentAdmission.studentId);
               });
             });
           });
