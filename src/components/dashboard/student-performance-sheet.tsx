@@ -3,7 +3,7 @@
 "use client";
 
 import * as React from "react";
-import type { Student, Guardian, Enrollment, Assessment, Subject, AssessmentCategory, PickupPerson } from "@/lib/types";
+import type { Student, Guardian, Enrollment, Assessment, Subject, AssessmentCategory, PickupPerson, LetterGrade } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -30,6 +30,7 @@ interface StudentPerformanceSheetProps {
   assessments: Assessment[];
   subjects: Subject[];
   assessmentCategories: AssessmentCategory[];
+  gradeScale: LetterGrade[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
@@ -97,6 +98,7 @@ export function StudentPerformanceSheet({
   assessments,
   subjects,
   assessmentCategories,
+  gradeScale,
   open,
   onOpenChange,
   onUpdateStudent,

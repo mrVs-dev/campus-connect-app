@@ -1,6 +1,6 @@
 
 
-import type { Assessment, Subject, AssessmentCategory } from './types';
+import type { Assessment, Subject, AssessmentCategory, LetterGrade } from './types';
 
 export const calculateStudentAverage = (studentId: string, assessments: Assessment[], subjects: Subject[], assessmentCategories: AssessmentCategory[]): number => {
     const studentAssessments = assessments.filter(a => a.scores && a.scores[studentId] !== undefined);
@@ -36,10 +36,14 @@ export const calculateStudentAverage = (studentId: string, assessments: Assessme
     return Math.round(overallAverage);
 };
 
-export const getLetterGrade = (score: number): string => {
-    if (score >= 90) return 'A';
-    if (score >= 80) return 'B';
-    if (score >= 70) return 'C';
-    if (score >= 60) return 'D';
+export const getLetterGrade = (score: number, gradeScale: LetterGrade[]): string => {
+    const sortedScale = [...gradeScale].sort((a, b) => b.minScore - a.minScore);
+    
+    for (const grade of sortedScale) {
+        if (score >= grade.minScore) {
+            return grade.grade;
+        }
+    }
+    
     return 'F';
 };

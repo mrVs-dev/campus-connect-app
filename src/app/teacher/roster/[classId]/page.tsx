@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers, getSubjects, getAssessmentCategories } from "@/lib/firebase/firestore";
-import type { Student, Assessment, Subject, AssessmentCategory, Teacher } from "@/lib/types";
+import { getStudents, getAdmissions, getAssessments, saveAssessment, getTeachers, getSubjects, getAssessmentCategories, getGradeScale } from "@/lib/firebase/firestore";
+import type { Student, Assessment, Subject, AssessmentCategory, Teacher, LetterGrade } from "@/lib/types";
 import { programs } from "@/lib/program-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -34,6 +35,7 @@ export default function RosterPage() {
   const [classAssessments, setClassAssessments] = React.useState<Assessment[]>([]);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
+  const [gradeScale, setGradeScale] = React.useState<LetterGrade[]>([]);
   const [classInfo, setClassInfo] = React.useState<{ programName: string; level: string; programId: string } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -57,17 +59,19 @@ export default function RosterPage() {
             const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
             setClassInfo({ programName, level, programId });
 
-            const [allStudents, admissions, assessments, teachers, subjectsData, categoriesData] = await Promise.all([
+            const [allStudents, admissions, assessments, teachers, subjectsData, categoriesData, gradeScaleData] = await Promise.all([
               getStudents(), 
               getAdmissions(), 
               getAssessments(), 
               getTeachers(),
               getSubjects(),
               getAssessmentCategories(),
+              getGradeScale(),
             ]);
 
             setSubjects(subjectsData);
             setAssessmentCategories(categoriesData);
+            setGradeScale(gradeScaleData);
             
             const currentTeacher = teachers.find(t => t.email === user.email);
             if (!currentTeacher) {
@@ -97,7 +101,7 @@ export default function RosterPage() {
 
             const processedRoster = classRosterData.map(student => {
                 const averageScore = calculateStudentAverage(student.studentId, assessments, subjectsData, categoriesData);
-                const letterGrade = getLetterGrade(averageScore);
+                const letterGrade = getLetterGrade(averageScore, gradeScaleData);
                 return { ...student, averageScore, letterGrade };
             });
 
@@ -168,9 +172,9 @@ export default function RosterPage() {
     return {
       assessments: assessmentAverages,
       overall: overallClassAverage,
-      letterGrade: getLetterGrade(overallClassAverage),
+      letterGrade: getLetterGrade(overallClassAverage, gradeScale),
     };
-  }, [roster, classAssessments]);
+  }, [roster, classAssessments, gradeScale]);
 
 
   if (authLoading || loading) {

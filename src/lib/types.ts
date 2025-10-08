@@ -243,6 +243,12 @@ export interface StudentSupply {
   notes?: string;
 }
 
+export interface LetterGrade {
+  grade: string;
+  minScore: number;
+}
+
+
 // --- Settings ---
 const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Attendance', 'Settings'] as const;
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;

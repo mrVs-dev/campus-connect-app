@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import * as React from "react";
-import type { Student, Assessment, Admission, Enrollment, Subject, AssessmentCategory, UserRole } from "@/lib/types";
+import type { Student, Assessment, Admission, Enrollment, Subject, AssessmentCategory, UserRole, LetterGrade } from "@/lib/types";
 import { Upload, MoreHorizontal, ArrowUpDown, Trash2, Move, Search, Edit } from "lucide-react";
 import {
   Card,
@@ -56,6 +57,7 @@ export function StudentList({
   admissions,
   subjects,
   assessmentCategories,
+  gradeScale,
   onUpdateStudent,
   onUpdateStudentStatus,
   onImportStudents,
@@ -69,6 +71,7 @@ export function StudentList({
   admissions: Admission[];
   subjects: Subject[];
   assessmentCategories: AssessmentCategory[];
+  gradeScale: LetterGrade[];
   onUpdateStudent: (studentId: string, updatedData: Partial<Student>) => void;
   onUpdateStudentStatus: (student: Student, newStatus: Student['status'], reason: string) => void;
   onImportStudents: (students: Partial<Student>[]) => void;
@@ -412,6 +415,7 @@ export function StudentList({
         assessments={assessments}
         subjects={subjects}
         assessmentCategories={assessmentCategories}
+        gradeScale={gradeScale}
         open={!!selectedStudent}
         onOpenChange={(isOpen) => {
           if (!isOpen) {

@@ -7,7 +7,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PlusCircle, Trash2, AlertTriangle } from "lucide-react";
-import type { Subject, AssessmentCategory, UserRole, Permissions } from "@/lib/types";
+import type { Subject, AssessmentCategory, UserRole, Permissions, LetterGrade } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -467,15 +467,100 @@ function CategorySettings({ initialCategories, onSave }: { initialCategories: As
   );
 }
 
+// Grade Scale Schema and Form
+const gradeSchema = z.object({
+  grade: z.string(),
+  minScore: z.coerce.number().min(0).max(100),
+});
+
+const gradeScaleFormSchema = z.object({
+  grades: z.array(gradeSchema),
+});
+
+type GradeScaleFormValues = z.infer<typeof gradeScaleFormSchema>;
+
+function GradeScaleSettings({ initialGradeScale, onSave }: { initialGradeScale: LetterGrade[]; onSave: (grades: LetterGrade[]) => void }) {
+  const [isSaving, setIsSaving] = React.useState(false);
+  const { toast } = useToast();
+  
+  const form = useForm<GradeScaleFormValues>({
+    resolver: zodResolver(gradeScaleFormSchema),
+    defaultValues: { grades: initialGradeScale },
+  });
+
+  const { fields, } = useFieldArray({
+    control: form.control,
+    name: "grades",
+  });
+
+  React.useEffect(() => {
+    form.reset({ grades: initialGradeScale });
+  }, [initialGradeScale, form]);
+
+  const onSubmit = async (data: GradeScaleFormValues) => {
+    setIsSaving(true);
+    await onSave(data.grades);
+    setIsSaving(false);
+    toast({
+      title: "Grade Scale Saved",
+      description: "The letter grade scale has been updated.",
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Grading Scale</CardTitle>
+        <CardDescription>Set the minimum percentage required for each letter grade.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {fields.map((field, index) => (
+                <FormField
+                  key={field.id}
+                  control={form.control}
+                  name={`grades.${index}.minScore`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-semibold text-lg">Grade {form.getValues(`grades.${index}.grade`)}</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input type="number" placeholder="e.g., 90" {...field} className="pr-8" />
+                          <span className="absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">%</span>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Grade Scale"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 // Main Page Component
 interface SettingsPageProps {
   subjects: Subject[];
   assessmentCategories: AssessmentCategory[];
   allRoles: UserRole[];
   initialPermissions: Permissions | null;
+  gradeScale: LetterGrade[];
   onSaveSubjects: (subjects: Subject[]) => void;
   onSaveCategories: (categories: AssessmentCategory[]) => void;
   onSaveRoles: (roles: UserRole[]) => Promise<void>;
+  onSaveGradeScale: (grades: LetterGrade[]) => void;
 }
 
 export function SettingsPage({ 
@@ -486,6 +571,8 @@ export function SettingsPage({
   allRoles,
   onSaveRoles,
   initialPermissions,
+  gradeScale,
+  onSaveGradeScale
 }: SettingsPageProps) {
 
   if (!allRoles.length) {
@@ -498,6 +585,7 @@ export function SettingsPage({
       <PermissionSettings roles={allRoles} initialPermissions={initialPermissions} />
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
+      <GradeScaleSettings initialGradeScale={gradeScale} onSave={onSaveGradeScale} />
     </div>
   );
 }

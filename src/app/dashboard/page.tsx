@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, InventoryItem, Permissions } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, InventoryItem, Permissions, LetterGrade } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/app/dashboard/overview";
@@ -15,7 +15,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser } from "@/lib/firebase/firestore";
+import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, saveGradeScale } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -106,6 +106,7 @@ export default function DashboardPage() {
   const [statusHistory, setStatusHistory] = React.useState<StudentStatusHistory[]>([]);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
+  const [gradeScale, setGradeScale] = React.useState<LetterGrade[]>([]);
   const [fees, setFees] = React.useState<Fee[]>([]);
   const [invoices, setInvoices] = React.useState<Invoice[]>([]);
   const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
@@ -222,6 +223,8 @@ export default function DashboardPage() {
         assessmentsData, 
         statusHistoryData, 
         subjectsData,
+        categoriesData,
+        gradeScaleData,
         feesData,
         invoicesData,
         inventoryData,
@@ -230,6 +233,8 @@ export default function DashboardPage() {
         getAssessments(),
         getStudentStatusHistory(),
         getSubjects(),
+        getAssessmentCategories(),
+        getGradeScale(),
         getFees(),
         getInvoices(),
         getInventoryItems(),
@@ -242,7 +247,8 @@ export default function DashboardPage() {
       setAllUsers(allDbUsers as AuthUser[]);
       setStatusHistory(statusHistoryData);
       setSubjects(subjectsData);
-      setAssessmentCategories(await getAssessmentCategories());
+      setAssessmentCategories(categoriesData);
+      setGradeScale(gradeScaleData);
       setFees(feesData);
       setInvoices(invoicesData);
       setInventory(inventoryData);
@@ -395,6 +401,7 @@ export default function DashboardPage() {
                     onDeleteStudent={deleteStudent}
                     onDeleteSelectedStudents={deleteSelectedStudents}
                     onMoveStudents={(studentIds, schoolYear, fromClass, toClass) => moveStudentsToClass(studentIds, schoolYear, fromClass, toClass)}
+                    gradeScale={gradeScale}
                     />
                 </TabsContent>
                 <TabsContent value="users" className="space-y-4">
@@ -472,6 +479,8 @@ export default function DashboardPage() {
                     allRoles={allSystemRoles}
                     onSaveRoles={handleSaveRoles}
                     initialPermissions={permissions}
+                    gradeScale={gradeScale}
+                    onSaveGradeScale={saveGradeScale}
                   />
                 </TabsContent>
               </Tabs>
