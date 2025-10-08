@@ -192,13 +192,9 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
         enrollmentDate: studentData.enrollmentDate ? Timestamp.fromDate(studentData.enrollmentDate) : serverTimestamp()
     };
 
-    const cleanedData = Object.entries(studentForFirestore).reduce((acc, [key, value]) => {
-      // Keep familyId even if it's an empty string
-      if (value !== undefined || key === 'familyId') {
-        (acc as any)[key] = value;
-      }
-      return acc;
-    }, {} as Partial<Student>);
+    const cleanedData = Object.fromEntries(
+      Object.entries(studentForFirestore).filter(([_, value]) => value !== undefined)
+    );
     
     const dataWithTimestamps = convertDatesToTimestamps(cleanedData);
     await setDoc(studentDocRef, dataWithTimestamps);
@@ -255,15 +251,19 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentDoc = doc(db, 'students', studentId);
     
-    const cleanedData = Object.entries(dataToUpdate).reduce((acc, [key, value]) => {
-      // Keep familyId even if it's an empty string, otherwise filter out undefined
-      if (value !== undefined || key === 'familyId') {
-        (acc as any)[key] = value;
-      }
-      return acc;
-    }, {} as Partial<Student>);
+    // Create a copy of the object to avoid modifying the original
+    const updateDataCopy = { ...dataToUpdate };
+
+    // Firestore's update method does not allow `undefined` values.
+    // This loop removes any keys where the value is `undefined`.
+    // It allows `null` and empty strings `''` to be saved.
+    Object.keys(updateDataCopy).forEach(key => {
+        if (updateDataCopy[key as keyof typeof updateDataCopy] === undefined) {
+            delete updateDataCopy[key as keyof typeof updateDataCopy];
+        }
+    });
     
-    const dataWithTimestamps = convertDatesToTimestamps(cleanedData);
+    const dataWithTimestamps = convertDatesToTimestamps(updateDataCopy);
     await updateDoc(studentDoc, dataWithTimestamps);
 }
 

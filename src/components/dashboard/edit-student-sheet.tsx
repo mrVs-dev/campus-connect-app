@@ -602,5 +602,3 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
     </>
   );
 }
-
-    
