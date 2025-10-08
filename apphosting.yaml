@@ -1,4 +1,0 @@
-run: npm run start
-backends:
-  - id: studio-backend-asia
-    region: asia-southeast1
