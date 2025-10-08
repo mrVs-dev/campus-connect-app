@@ -240,5 +240,3 @@ export function AttendanceRoster({ students, classId, teacherId }: AttendanceRos
     </div>
   );
 }
-
-    

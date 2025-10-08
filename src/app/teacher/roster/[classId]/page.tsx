@@ -35,7 +35,7 @@ export default function RosterPage() {
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [gradeScale, setGradeScale] = React.useState<LetterGrade[]>([]);
-  const [classInfo, setClassInfo] = React.useState<{ programName: string; level: string; programId: string } | null>(null);
+  const [classInfo, setClassInfo] = React.useState<{ programName: string; level: string; programId: string, subjectIds: string[] } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
@@ -55,9 +55,9 @@ export default function RosterPage() {
                 throw new Error("Invalid class information provided.");
             }
 
-            const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
-            setClassInfo({ programName, level, programId });
-
+            const programInfo = programs.find(p => p.id === programId);
+            const programName = programInfo?.name || "Unknown Program";
+            
             const [allStudents, admissions, allAssessments, teachers, subjectsData, categoriesData, gradeScaleData] = await Promise.all([
               getStudents(), 
               getAdmissions(), 
@@ -68,6 +68,15 @@ export default function RosterPage() {
               getGradeScale(),
             ]);
 
+            const subjectsForProgram = subjectsData.filter(s => {
+                // This is a placeholder logic. You might need a more robust way to link subjects to programs/levels.
+                // For now, let's assume all subjects are for all classes.
+                // A better approach would be to have this mapping in your program-data.ts or in Firestore.
+                return true;
+            });
+            const subjectIdsForClass = subjectsForProgram.map(s => s.subjectId);
+
+            setClassInfo({ programName, level, programId, subjectIds: subjectIdsForClass });
             setSubjects(subjectsData);
             setAssessmentCategories(categoriesData);
             setGradeScale(gradeScaleData);
@@ -95,15 +104,18 @@ export default function RosterPage() {
             
             const teacherSubjectIds = currentTeacher.assignedSubjects || [];
             
-            // Filter assessments: must be by this teacher OR for a subject they teach,
-            // AND must have scores for at least one student in THIS class.
-            const allTeacherAssessments = allAssessments.filter(assessment => 
-                assessment.teacherId === currentTeacher.teacherId ||
-                teacherSubjectIds.includes(assessment.subjectId)
-            );
+            const assessmentsForThisClass = allAssessments.filter(assessment => {
+                 // Condition 1: Must be one of the subjects taught in this class
+                 const isForThisClassSubject = subjectIdsForClass.includes(assessment.subjectId);
+                 if (!isForThisClassSubject) return false;
 
-            const studentIdSet = new Set(classRosterData.map(s => s.studentId));
-            const assessmentsForThisClass = allTeacherAssessments.filter(assessment => {
+                 // Condition 2: Must be created by this teacher OR for a subject this teacher is assigned
+                 const isByThisTeacher = assessment.teacherId === currentTeacher.teacherId;
+                 const isForAssignedSubject = teacherSubjectIds.includes(assessment.subjectId);
+                 if (!isByThisTeacher && !isForAssignedSubject) return false;
+
+                 // Condition 3: Must have scores for at least one student in THIS class roster
+                 const studentIdSet = new Set(classRosterData.map(s => s.studentId));
                  return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
             });
 
@@ -124,7 +136,7 @@ export default function RosterPage() {
             setLoading(false);
         }
     }
-  }, [user, classId]);
+  }, [user, classId, router]);
   
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -306,7 +318,7 @@ export default function RosterPage() {
                             const avg = classAverages.assessments.find(a => a.assessmentId === assessment.assessmentId);
                             return (
                                 <TableCell key={assessment.assessmentId} className="text-center font-semibold">
-                                {avg?.average !== null ? `${avg?.average}%` : "—"}
+                                {avg?.average !== null && avg?.average !== undefined ? `${avg.average}%` : "—"}
                                 </TableCell>
                             )
                             })}
