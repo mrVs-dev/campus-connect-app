@@ -364,16 +364,28 @@ export function AdmissionsList({
         return students.find(s => s.studentId === studentId);
     };
 
-    const getTeacherName = (teacherId: string) => {
-        const teacher = teachers.find(t => t.teacherId === teacherId);
-        return teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Unknown';
-    };
+    const getTeachersForClass = React.useCallback((admission: Admission, classDef: { programId: string; level: string }): Teacher[] => {
+      const classInAdmission = admission.classes?.find(c => c.programId === classDef.programId && c.level === classDef.level);
+      const teacherIdsFromAdmission = new Set(classInAdmission?.teacherIds || []);
+      
+      const teachersFromProfiles = teachers.filter(teacher => 
+        teacher.assignedClasses?.some(ac => 
+          ac.schoolYear === admission.schoolYear && 
+          ac.programId === classDef.programId && 
+          ac.level === classDef.level
+        )
+      );
+
+      teachersFromProfiles.forEach(t => teacherIdsFromAdmission.add(t.teacherId));
+
+      return teachers.filter(t => teacherIdsFromAdmission.has(t.teacherId));
+    }, [teachers]);
 
     const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
 
     const groupedAdmissions = React.useMemo(() => {
         return sortedAdmissions.map(admission => {
-            const programsMap: { [key: string]: { programName: string; classes: (ClassDefinition & { students: Student[] })[] } } = {};
+            const programsMap: { [key: string]: { programName: string; classes: (ClassDefinition & { students: Student[], teachers: Teacher[] })[] } } = {};
     
             const processEnrollment = (student: Student, enrollment: Enrollment) => {
                 const programId = enrollment.programId;
@@ -396,7 +408,8 @@ export function AdmissionsList({
                     const existingClassDef = admission.classes?.find(c => c.programId === programId && c.level === levelName);
                     classInProgram = {
                         ...(existingClassDef || { programId: programId, level: levelName }),
-                        students: []
+                        students: [],
+                        teachers: getTeachersForClass(admission, { programId, level: levelName }),
                     };
                     programsMap[programId].classes.push(classInProgram);
                 }
@@ -431,13 +444,17 @@ export function AdmissionsList({
                     };
                 }
                 if (!programsMap[finalClassDef.programId].classes.some(c => c.level === finalClassDef.level)) {
-                    programsMap[finalClassDef.programId].classes.push({ ...finalClassDef, students: [] });
+                    programsMap[finalClassDef.programId].classes.push({ 
+                      ...finalClassDef, 
+                      students: [],
+                      teachers: getTeachersForClass(admission, finalClassDef),
+                    });
                 }
             });
     
             return { ...admission, programs: Object.values(programsMap) };
         });
-    }, [sortedAdmissions, students]);
+    }, [sortedAdmissions, students, getTeachersForClass]);
 
   return (
     <div className="space-y-8">
@@ -600,8 +617,8 @@ export function AdmissionsList({
                                                         <div>
                                                             <p className="font-medium">{classDef.level}</p>
                                                             <p className="text-sm text-muted-foreground">
-                                                                {classDef.teacherIds && classDef.teacherIds.length > 0 
-                                                                    ? `Teacher(s): ${classDef.teacherIds.map(getTeacherName).join(', ')}`
+                                                                {classDef.teachers && classDef.teachers.length > 0 
+                                                                    ? `Teacher(s): ${classDef.teachers.map(t => `${t.firstName} ${t.lastName}`).join(', ')}`
                                                                     : 'No teachers assigned'
                                                                 }
                                                             </p>
