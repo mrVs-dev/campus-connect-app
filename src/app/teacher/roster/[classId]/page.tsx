@@ -95,18 +95,15 @@ export default function RosterPage() {
             
             const teacherSubjectIds = currentTeacher.assignedSubjects || [];
             
-            // This is broad, includes all assessments for subjects the teacher teaches, across all classes.
+            // Filter assessments: must be by this teacher OR for a subject they teach,
+            // AND must have scores for at least one student in THIS class.
             const allTeacherAssessments = allAssessments.filter(assessment => 
                 assessment.teacherId === currentTeacher.teacherId ||
                 teacherSubjectIds.includes(assessment.subjectId)
             );
 
-            // Now, filter those assessments to only those relevant for THIS class.
-            // Heuristic: An assessment is relevant if its subject is assigned to the teacher AND students in this class have scores for it.
-            // This is an approximation. A more robust solution might involve linking subjects directly to programs/levels.
             const studentIdSet = new Set(classRosterData.map(s => s.studentId));
             const assessmentsForThisClass = allTeacherAssessments.filter(assessment => {
-                 // Check if any student in THIS class has a score for the assessment.
                  return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
             });
 
@@ -279,7 +276,7 @@ export default function RosterPage() {
                                     </Avatar>
                                     <div>
                                         <p className="font-semibold">{student.firstName} {student.lastName}</p>
-                                        <p className="text-sm text-muted-foreground">{student.khmerFirstName} {student.khmerLastName}</p>
+                                        <p className="text-sm text-muted-foreground">{student.khmerLastName} {student.khmerFirstName}</p>
                                         <p className="text-xs text-muted-foreground">{student.sex}</p>
                                     </div>
                                 </div>
@@ -357,4 +354,5 @@ export default function RosterPage() {
     </div>
   );
 }
+
     

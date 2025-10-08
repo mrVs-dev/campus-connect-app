@@ -131,9 +131,12 @@ export function GradeEntrySheet({
                        <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
                            <AvatarImage src={student.avatarUrl} alt="Avatar" className="object-cover" />
-                           <AvatarFallback>{student.firstName[0]}{student.lastName[0]}</AvatarFallback>
+                           <AvatarFallback>{(student.firstName || ' ')[0]}{(student.lastName || ' ')[0]}</AvatarFallback>
                          </Avatar>
-                        <div className="font-medium">{student.firstName} {student.lastName}</div>
+                        <div>
+                          <p className="font-medium">{student.firstName} {student.lastName}</p>
+                          <p className="text-sm text-muted-foreground">{student.khmerLastName} {student.khmerFirstName}</p>
+                        </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -162,3 +165,5 @@ export function GradeEntrySheet({
     </Sheet>
   );
 }
+
+    
