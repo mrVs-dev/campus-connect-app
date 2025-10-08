@@ -58,7 +58,7 @@ export default function RosterPage() {
             const programName = programs.find(p => p.id === programId)?.name || "Unknown Program";
             setClassInfo({ programName, level, programId });
 
-            const [allStudents, admissions, assessments, teachers, subjectsData, categoriesData, gradeScaleData] = await Promise.all([
+            const [allStudents, admissions, allAssessments, teachers, subjectsData, categoriesData, gradeScaleData] = await Promise.all([
               getStudents(), 
               getAdmissions(), 
               getAssessments(), 
@@ -94,14 +94,26 @@ export default function RosterPage() {
             const classRosterData = allStudents.filter(s => studentIdsInClass.has(s.studentId));
             
             const teacherSubjectIds = currentTeacher.assignedSubjects || [];
-            const relevantAssessments = assessments.filter(assessment => 
+            
+            // This is broad, includes all assessments for subjects the teacher teaches, across all classes.
+            const allTeacherAssessments = allAssessments.filter(assessment => 
                 assessment.teacherId === currentTeacher.teacherId ||
                 teacherSubjectIds.includes(assessment.subjectId)
             );
-            setClassAssessments(relevantAssessments.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
+
+            // Now, filter those assessments to only those relevant for THIS class.
+            // Heuristic: An assessment is relevant if its subject is assigned to the teacher AND students in this class have scores for it.
+            // This is an approximation. A more robust solution might involve linking subjects directly to programs/levels.
+            const studentIdSet = new Set(classRosterData.map(s => s.studentId));
+            const assessmentsForThisClass = allTeacherAssessments.filter(assessment => {
+                 // Check if any student in THIS class has a score for the assessment.
+                 return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
+            });
+
+            setClassAssessments(assessmentsForThisClass.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
 
             const processedRoster = classRosterData.map(student => {
-                const averageScore = calculateStudentAverage(student.studentId, assessments, subjectsData, categoriesData);
+                const averageScore = calculateStudentAverage(student.studentId, allAssessments, subjectsData, categoriesData);
                 const letterGrade = getLetterGrade(averageScore, gradeScaleData);
                 return { ...student, averageScore, letterGrade };
             });
