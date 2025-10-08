@@ -182,7 +182,7 @@ export default function TeacherDashboardPage() {
       fetchData();
   }, [fetchData]);
   
-  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId'> | Assessment) => {
+  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId'> | Assessment): Promise<Assessment | null> => {
     if (!loggedInTeacher) return null;
     try {
       const dataWithTeacher = { ...assessmentData, teacherId: loggedInTeacher.teacherId };
