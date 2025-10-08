@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -105,13 +104,11 @@ const formatDateSafe = (date: any): string => {
 };
 // ---
 
-export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers: initialPendingUsers, onAddTeacher, onDeleteTeacher }: TeacherListProps) {
+export function TeacherList({ userRole, teachers, pendingUsers, onAddTeacher, onDeleteTeacher }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = React.useState<Teacher | null>(null);
   const [userToApprove, setUserToApprove] = React.useState<AuthUser | null>(null);
-  const [teachers, setTeachers] = React.useState(initialTeachers);
-  const [pendingUsers, setPendingUsers] = React.useState(initialPendingUsers);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [roles, setRoles] = React.useState<UserRole[]>([]);
@@ -120,12 +117,6 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
   const isAdmin = userRole === 'Admin';
   const canEdit = isAdmin;
   const canDelete = isAdmin;
-
-
-  React.useEffect(() => {
-    setTeachers(initialTeachers);
-    setPendingUsers(initialPendingUsers);
-  }, [initialTeachers, initialPendingUsers]);
   
   React.useEffect(() => {
     async function fetchSupportingData() {
@@ -190,11 +181,7 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
         return;
     }
 
-    const newTeacher = await onAddTeacher(values as any);
-    if(newTeacher){
-        setTeachers(prev => [...prev, newTeacher]);
-        setPendingUsers(prev => prev.filter(p => p.email !== newTeacher.email));
-    }
+    await onAddTeacher(values as any);
     form.reset();
     setIsNewTeacherDialogOpen(false);
   };
@@ -202,23 +189,13 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
     if (!canEdit) return;
     try {
-      // Create a deep copy to ensure React detects the change
-      const newTeachers = [...teachers];
-      const teacherIndex = newTeachers.findIndex(t => t.teacherId === teacherId);
-      if (teacherIndex === -1) return;
-      
-      // Merge the updated data into a new object
-      const updatedTeacher = { ...newTeachers[teacherIndex], ...updatedData };
-      newTeachers[teacherIndex] = updatedTeacher;
-
       await updateTeacher(teacherId, updatedData);
-      
-      setTeachers(newTeachers);
       
       toast({
         title: "Teacher Updated",
         description: "Teacher profile has been successfully updated.",
       });
+      // The parent component will re-fetch and pass down the updated teachers list
       setTeacherToEdit(null);
     } catch (error) {
       console.error("Error updating teacher:", error);
@@ -467,5 +444,3 @@ export function TeacherList({ userRole, teachers: initialTeachers, pendingUsers:
     </div>
   );
 }
-
-    
