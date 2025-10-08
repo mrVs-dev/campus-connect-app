@@ -52,7 +52,7 @@ export default function AllRostersPage() {
           const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
           
           admissions.forEach(admission => {
-            // From class definitions, ensuring even empty classes are shown
+            // Source 1: Get classes from class definitions, ensuring even empty classes are shown
             admission.classes?.forEach(classDef => {
               const classKey = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
               if (!classMap.has(classKey)) {
@@ -61,7 +61,7 @@ export default function AllRostersPage() {
               }
             });
 
-            // From student enrollments
+            // Source 2: Get classes from student enrollments
             admission.students.forEach(studentAdmission => {
               studentAdmission.enrollments.forEach(enrollment => {
                 const classKey = `${admission.schoolYear}::${enrollment.programId}::${enrollment.level}`;
@@ -163,3 +163,5 @@ export default function AllRostersPage() {
     </div>
   )
 }
+
+    

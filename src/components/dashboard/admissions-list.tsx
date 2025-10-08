@@ -367,11 +367,13 @@ export function AdmissionsList({
     const getTeachersForClass = React.useCallback((admission: Admission, classDef: { programId: string; level: string }): Teacher[] => {
       const teacherIds = new Set<string>();
 
+      // Source 1: Get teachers from the class definition in the admission document
       const classInAdmission = admission.classes?.find(c => c.programId === classDef.programId && c.level === classDef.level);
       if (classInAdmission?.teacherIds) {
         classInAdmission.teacherIds.forEach(id => teacherIds.add(id));
       }
       
+      // Source 2: Get teachers who have this class in their own `assignedClasses` profile
       const teachersAssignedViaProfile = teachers.filter(teacher => 
         teacher.assignedClasses?.some(ac => 
           ac.schoolYear === admission.schoolYear && 
@@ -383,6 +385,7 @@ export function AdmissionsList({
 
       return teachers.filter(t => teacherIds.has(t.teacherId));
     }, [teachers]);
+
 
     const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
 
@@ -745,3 +748,5 @@ function EnrollmentCard({ form, index, remove }: { form: any, index: number; rem
     </div>
   );
 }
+
+    

@@ -102,18 +102,7 @@ export default function TeacherDashboardPage() {
           const teacherId = loggedInTeacher.teacherId;
 
           admissions.forEach(admission => {
-              // 1. Find classes where the teacher is listed in the class definition
-              admission.classes?.forEach(classDef => {
-                  if (classDef.teacherIds?.includes(teacherId)) {
-                      const classKey = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
-                       if (!classMap.has(classKey)) {
-                           const programName = programs.find(p => p.id === classDef.programId)?.name || "Unknown Program";
-                           classMap.set(classKey, { schoolYear: admission.schoolYear, programId: classDef.programId, programName, level: classDef.level, students: new Set() });
-                       }
-                  }
-              });
-
-              // 2. Find classes this teacher is assigned to on their profile for this school year
+              // Source 1: Get classes from the teacher's own profile
               loggedInTeacher?.assignedClasses?.forEach(assignedClass => {
                   if (assignedClass.schoolYear === admission.schoolYear) {
                       const classKey = `${assignedClass.schoolYear}::${assignedClass.programId}::${assignedClass.level}`;
@@ -124,7 +113,18 @@ export default function TeacherDashboardPage() {
                   }
               });
 
-              // 3. Populate students for all identified classes
+              // Source 2: Get classes where this teacher is listed in the class definition for the year
+              admission.classes?.forEach(classDef => {
+                  if (classDef.teacherIds?.includes(teacherId)) {
+                      const classKey = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
+                       if (!classMap.has(classKey)) {
+                           const programName = programs.find(p => p.id === classDef.programId)?.name || "Unknown Program";
+                           classMap.set(classKey, { schoolYear: admission.schoolYear, programId: classDef.programId, programName, level: classDef.level, students: new Set() });
+                       }
+                  }
+              });
+
+              // Now, populate students for all identified classes for this admission year
               admission.students.forEach(studentAdmission => {
                   studentAdmission.enrollments.forEach(enrollment => {
                        const classKey = `${admission.schoolYear}::${enrollment.programId}::${enrollment.level}`;
@@ -320,3 +320,5 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
+    
