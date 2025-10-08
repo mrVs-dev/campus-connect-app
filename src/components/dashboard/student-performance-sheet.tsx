@@ -108,7 +108,51 @@ export function StudentPerformanceSheet({
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
   const { toast } = useToast();
 
-  if (!student) return null;
+  const performanceBySubject = React.useMemo(() => {
+    if (!student) return [];
+    const studentAssessments = assessments.filter(
+      (a) => a.scores && a.scores[student.studentId] !== undefined
+    );
+    const categoryWeightMap = new Map(assessmentCategories.map(c => [c.name, c.weight / 100]));
+
+    return subjects.map(subject => {
+      const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
+      if (subjectAssessments.length === 0) {
+        return { subjectName: subject.englishTitle, overallScore: null };
+      }
+      
+      let totalWeightedScore = 0;
+      let totalWeight = 0;
+
+      subjectAssessments.forEach(assessment => {
+        const weight = categoryWeightMap.get(assessment.category) || 0;
+        const score = assessment.scores[student.studentId];
+        if (typeof score === 'number') {
+          const percentage = (score / assessment.totalMarks) * 100;
+          totalWeightedScore += percentage * weight;
+          totalWeight += weight;
+        }
+      });
+
+      if (totalWeight === 0) return { subjectName: subject.englishTitle, overallScore: null };
+
+      const overallScore = totalWeightedScore / totalWeight;
+      return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
+    });
+  }, [student, assessments, subjects, assessmentCategories]);
+
+  const studentGrades = React.useMemo(() => {
+    return performanceBySubject.reduce((acc, subject) => {
+      if (subject.overallScore !== null && subject.overallScore >= 0) {
+        acc[subject.subjectName] = subject.overallScore;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  }, [performanceBySubject]);
+
+  if (!student) {
+    return null;
+  }
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -139,48 +183,8 @@ export function StudentPerformanceSheet({
     }
   };
 
-  const studentAssessments = assessments.filter(
-    (a) => a.scores && a.scores[student.studentId] !== undefined
-  );
-  
-  const categoryWeightMap = new Map(assessmentCategories.map(c => [c.name, c.weight / 100]));
-
-  const performanceBySubject = subjects.map(subject => {
-    const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
-    if (subjectAssessments.length === 0) {
-      return { subjectName: subject.englishTitle, overallScore: null };
-    }
-    
-    let totalWeightedScore = 0;
-    let totalWeight = 0;
-
-    subjectAssessments.forEach(assessment => {
-      const weight = categoryWeightMap.get(assessment.category) || 0;
-      const score = assessment.scores[student.studentId];
-      if (typeof score === 'number') {
-        const percentage = (score / assessment.totalMarks) * 100;
-        totalWeightedScore += percentage * weight;
-        totalWeight += weight;
-      }
-    });
-
-    if (totalWeight === 0) return { subjectName: subject.englishTitle, overallScore: null };
-
-    const overallScore = totalWeightedScore / totalWeight;
-    return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
-  });
-
   const validSubjects = performanceBySubject.filter(s => s.overallScore !== null);
   const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length : 0;
-
-  const studentGrades = React.useMemo(() => {
-    return performanceBySubject.reduce((acc, subject) => {
-      if (subject.overallScore !== null) {
-        acc[subject.subjectName] = subject.overallScore;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-  }, [performanceBySubject]);
 
   const fullName = `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.replace(/ +/g, ' ').trim();
   const khmerFullName = `${student.khmerLastName || ''} ${student.khmerFirstName || ''}`.trim();
@@ -336,4 +340,3 @@ export function StudentPerformanceSheet({
     </Sheet>
   );
 }
-
