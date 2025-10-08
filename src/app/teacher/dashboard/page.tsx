@@ -5,8 +5,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getTeachers, getAdmissions, addTeacher, getStudents, getAssessments, saveAssessment, getSubjects, getAssessmentCategories, updateTeacher } from "@/lib/firebase/firestore";
-import type { Teacher, Admission, Student, Assessment, Subject, AssessmentCategory, ClassAssignment } from "@/lib/types";
+import { getTeachers, getAdmissions, getStudents, getAssessments, getSubjects, getAssessmentCategories, updateTeacher } from "@/lib/firebase/firestore";
+import type { Teacher, Admission, Student, Assessment, Subject, AssessmentCategory } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { programs } from "@/lib/program-data";
 import { BarChart, UserCheck, TrendingUp, ArrowRight } from "lucide-react";
@@ -34,9 +34,6 @@ export default function TeacherDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [assignedClasses, setAssignedClasses] = React.useState<AssignedClass[]>([]);
-  const [teacherAssessments, setTeacherAssessments] = React.useState<Assessment[]>([]);
-  const [subjects, setSubjects] = React.useState<Subject[]>([]);
-  const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [metrics, setMetrics] = React.useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -55,7 +52,7 @@ export default function TeacherDashboardPage() {
       let [teachers, admissions, allStudents, allAssessments, subjectsData, categoriesData] = await Promise.all([
         getTeachers(), 
         getAdmissions(), 
-        getStudents(), 
+        getStudents(),
         getAssessments(),
         getSubjects(),
         getAssessmentCategories(),
@@ -82,15 +79,6 @@ export default function TeacherDashboardPage() {
 
       setLoggedInTeacher(currentTeacher);
       
-      const teacherSubjectIds = currentTeacher.assignedSubjects || [];
-      const assessmentsForTeacher = allAssessments.filter(a => 
-          a.teacherId === currentTeacher?.teacherId || teacherSubjectIds.includes(a.subjectId)
-      );
-      setTeacherAssessments(assessmentsForTeacher);
-
-      setSubjects(subjectsData);
-      setAssessmentCategories(categoriesData);
-
       const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
       const teacherId = currentTeacher.teacherId;
 
@@ -155,7 +143,7 @@ export default function TeacherDashboardPage() {
         const studentAverages = uniqueStudents.map(s => ({ student: s, average: calculateStudentAverage(s.studentId, allAssessments, subjectsData, categoriesData) }));
         
         const totalAverage = studentAverages.reduce((sum, s) => sum + s.average, 0);
-        const overallAverage = Math.round(totalAverage / studentAverages.length);
+        const overallAverage = studentAverages.length > 0 ? Math.round(totalAverage / studentAverages.length) : 0;
 
         const outstandingStudent = studentAverages.reduce((max, current) => current.average > max.average ? current : max, studentAverages[0]);
         
@@ -181,25 +169,6 @@ export default function TeacherDashboardPage() {
       fetchData();
   }, [fetchData]);
   
-  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId'> | Assessment): Promise<Assessment | null> => {
-    if (!loggedInTeacher) return null;
-    try {
-      const dataWithTeacher = { ...assessmentData, teacherId: loggedInTeacher.teacherId };
-      const savedAssessment = await saveAssessment(dataWithTeacher);
-      
-      await fetchData(); // This will refresh all data including assessments
-      
-      return savedAssessment;
-    } catch (error) {
-      console.error("Error saving assessment:", error);
-      return null;
-    }
-  };
-  
-  const teacherSubjects = loggedInTeacher?.assignedSubjects 
-    ? subjects.filter(s => loggedInTeacher.assignedSubjects?.includes(s.subjectId))
-    : [];
-
   if (authLoading || loading) {
     return <div className="flex items-center justify-center h-screen">Loading your dashboard...</div>;
   }
@@ -299,5 +268,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    
