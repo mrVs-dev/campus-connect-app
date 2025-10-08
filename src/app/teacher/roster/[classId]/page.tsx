@@ -94,8 +94,10 @@ export default function RosterPage() {
 
             const classRosterData = allStudents.filter(s => studentIdsInClass.has(s.studentId));
             
+            const teacherSubjectIds = currentTeacher.assignedSubjects || [];
             const relevantAssessments = assessments.filter(assessment => 
-                assessment.teacherId === currentTeacher.teacherId
+                assessment.teacherId === currentTeacher.teacherId ||
+                teacherSubjectIds.includes(assessment.subjectId)
             );
             setClassAssessments(relevantAssessments.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
 
