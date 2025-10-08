@@ -48,6 +48,18 @@ function MissingFirebaseConfig() {
             Please follow the instructions in the <code className="bg-muted px-2 py-1 rounded-md text-sm">README.md</code> file
             to set up your <code className="bg-muted px-2 py-1 rounded-md text-sm">.env.local</code> file with the necessary Firebase keys.
           </p>
+           <div className="mt-4 border-t pt-4">
+            <p className="text-sm font-semibold">Debugging Information:</p>
+            <p className="text-xs text-muted-foreground">
+              This screen appears when the app cannot find its Firebase configuration. The `apphosting.yaml` file tells App Hosting which secrets to use. The backend then reads these as environment variables.
+            </p>
+            <p className="mt-2 text-sm">
+              <span className="font-semibold">Project ID read by the app:</span>
+              <code className="ml-2 bg-muted px-2 py-1 rounded-md font-mono text-destructive">
+                {process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "Not Found"}
+              </code>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -143,3 +155,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
