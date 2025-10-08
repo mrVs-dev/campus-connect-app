@@ -91,8 +91,7 @@ export default function RosterPage() {
             const classRosterData = allStudents.filter(s => studentIdsInClass.has(s.studentId));
             
             const relevantAssessments = assessments.filter(assessment => 
-                assessment.teacherId === currentTeacher.teacherId &&
-                classRosterData.some(student => assessment.scores && assessment.scores[student.studentId] !== undefined)
+                assessment.teacherId === currentTeacher.teacherId
             );
             setClassAssessments(relevantAssessments.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
 
