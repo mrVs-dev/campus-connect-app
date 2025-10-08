@@ -78,7 +78,7 @@ export function AssessmentList({
   const assessmentsByClass = React.useMemo(() => {
     const classMap = new Map<string, { schoolYear: string, programId: string, level: string, studentIds: Set<string> }>();
 
-    // 1. Identify all unique classes from admissions data
+    // 1. Identify all unique classes and the students in them from admissions data
     admissions.forEach(admission => {
       admission.students.forEach(studentAdmission => {
         studentAdmission.enrollments.forEach(enrollment => {
@@ -96,12 +96,14 @@ export function AssessmentList({
       });
     });
 
-    // 2. Group assessments by class
+    // 2. Group assessments by class based on accurate student membership
     const result: ClassWithAssessments[] = [];
     classMap.forEach((classInfo, classId) => {
+      const studentIdSet = classInfo.studentIds;
+      
       const assessmentsForClass = assessments.filter(assessment => {
-        // An assessment belongs to a class if at least one student in that class has a score for it.
-        return Array.from(classInfo.studentIds).some(studentId => assessment.scores.hasOwnProperty(studentId));
+        // An assessment belongs to this class if any student FROM THIS CLASS has a score for it.
+        return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
       });
 
       if (assessmentsForClass.length > 0) {
