@@ -136,7 +136,7 @@ export default function DashboardPage() {
     });
 }, [students, admissions]);
   
-  const fetchData = React.useCallback(async () => {
+  const fetchData = React.useCallback(async (showToast = false) => {
     if (!user) return;
     setIsDataLoading(true);
     try {
@@ -244,6 +244,11 @@ export default function DashboardPage() {
       setFees(feesData);
       setInvoices(invoicesData);
       setInventory(inventoryData);
+      
+      if (showToast) {
+        toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
+      }
+
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
@@ -294,8 +299,7 @@ export default function DashboardPage() {
             await deleteMainUser(userToDelete.uid);
         }
         
-        setTeachers(prev => prev.filter(t => t.teacherId !== teacher.teacherId));
-        setAllUsers(prev => prev.filter(u => u.email !== teacher.email));
+        await fetchData();
 
         toast({
             title: "Staff Deleted",
@@ -308,6 +312,20 @@ export default function DashboardPage() {
             description: "Could not remove the staff member.",
             variant: "destructive",
         });
+    }
+  };
+
+  const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
+    try {
+      await updateTeacher(teacherId, updatedData);
+      await fetchData(true); // Re-fetch data and show a toast
+      toast({
+        title: "Teacher Updated",
+        description: "The teacher's profile has been saved.",
+      });
+    } catch (error) {
+      console.error("Failed to update teacher:", error);
+      toast({ title: "Error", description: "Could not save teacher changes.", variant: "destructive" });
     }
   };
   
@@ -367,10 +385,12 @@ export default function DashboardPage() {
                 <TabsContent value="users" className="space-y-4">
                   <TeacherList 
                       userRole={userRole}
-                      teachers={teachers}
+                      initialTeachers={teachers}
                       onAddTeacher={addTeacher}
                       onDeleteTeacher={handleDeleteTeacher}
+                      onUpdateTeacher={handleUpdateTeacher}
                       pendingUsers={pendingUsers}
+                      onRefreshData={() => fetchData(true)}
                     />
                 </TabsContent>
                 <TabsContent value="assessments" className="space-y-4">

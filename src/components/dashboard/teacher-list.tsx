@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -61,8 +62,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { format } from "date-fns";
 import { EditTeacherSheet } from "./edit-teacher-sheet";
-import { updateTeacher, getSubjects, getAdmissions, getRoles, deleteTeacher, deleteMainUser } from "@/lib/firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
+import { getSubjects, getAdmissions, getRoles } from "@/lib/firebase/firestore";
 import type { User as AuthUser } from "firebase/auth";
 
 const teacherFormSchema = z.object({
@@ -77,10 +77,12 @@ type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 
 interface TeacherListProps {
   userRole: UserRole | null;
-  teachers: Teacher[];
+  initialTeachers: Teacher[];
   pendingUsers: AuthUser[];
   onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => Promise<Teacher | null>;
+  onUpdateTeacher: (teacherId: string, updatedData: Partial<Teacher>) => void;
   onDeleteTeacher: (teacher: Teacher) => void;
+  onRefreshData: () => void;
 }
 
 // --- Helper functions for robust date handling ---
@@ -104,7 +106,7 @@ const formatDateSafe = (date: any): string => {
 };
 // ---
 
-export function TeacherList({ userRole, teachers, pendingUsers, onAddTeacher, onDeleteTeacher }: TeacherListProps) {
+export function TeacherList({ userRole, initialTeachers: teachers, pendingUsers, onAddTeacher, onUpdateTeacher, onDeleteTeacher, onRefreshData }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = React.useState<Teacher | null>(null);
@@ -112,7 +114,6 @@ export function TeacherList({ userRole, teachers, pendingUsers, onAddTeacher, on
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [roles, setRoles] = React.useState<UserRole[]>([]);
-  const { toast } = useToast();
 
   const isAdmin = userRole === 'Admin';
   const canEdit = isAdmin;
@@ -182,34 +183,21 @@ export function TeacherList({ userRole, teachers, pendingUsers, onAddTeacher, on
     }
 
     await onAddTeacher(values as any);
+    onRefreshData();
     form.reset();
     setIsNewTeacherDialogOpen(false);
-  };
-  
-  const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
-    if (!canEdit) return;
-    try {
-      await updateTeacher(teacherId, updatedData);
-      
-      toast({
-        title: "Teacher Updated",
-        description: "Teacher profile has been successfully updated.",
-      });
-      // The parent component will re-fetch and pass down the updated teachers list
-      setTeacherToEdit(null);
-    } catch (error) {
-      console.error("Error updating teacher:", error);
-      toast({
-        title: "Update Failed",
-        description: "There was an error updating the teacher profile.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleDeleteClick = (teacher: Teacher) => {
     if (!canDelete) return;
     setTeacherToDelete(teacher);
+  };
+  
+  const handleConfirmDelete = () => {
+    if (teacherToDelete) {
+        onDeleteTeacher(teacherToDelete);
+        setTeacherToDelete(null);
+    }
   };
 
   return (
@@ -423,7 +411,7 @@ export function TeacherList({ userRole, teachers, pendingUsers, onAddTeacher, on
         teacher={teacherToEdit}
         open={!!teacherToEdit}
         onOpenChange={(isOpen) => !isOpen && setTeacherToEdit(null)}
-        onSave={handleUpdateTeacher}
+        onSave={onUpdateTeacher}
         subjects={subjects}
         admissions={admissions}
       />
@@ -437,10 +425,11 @@ export function TeacherList({ userRole, teachers, pendingUsers, onAddTeacher, on
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => teacherToDelete && onDeleteTeacher(teacherToDelete)}>Continue</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmDelete}>Continue</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 }
+
