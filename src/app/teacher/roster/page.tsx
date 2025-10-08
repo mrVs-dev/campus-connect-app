@@ -5,8 +5,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getAdmissions, getStudents, getAssessments, getSubjects, getAssessmentCategories } from "@/lib/firebase/firestore";
-import type { Admission, Student, Assessment, Subject, AssessmentCategory } from "@/lib/types";
+import { getAdmissions, getStudents, getAssessments, getSubjects, getAssessmentCategories, getTeachers } from "@/lib/firebase/firestore";
+import type { Admission, Student, Assessment, Subject, AssessmentCategory, Teacher } from "@/lib/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { programs } from "@/lib/program-data";
 import { ArrowRight } from "lucide-react";
@@ -41,18 +41,20 @@ export default function AllRostersPage() {
       const fetchData = async () => {
         try {
           setLoading(true);
-          const [admissions, allStudents, assessments, subjects, categories] = await Promise.all([
+          const [admissions, allStudents, assessments, subjects, categories, teachers] = await Promise.all([
             getAdmissions(),
             getStudents(),
             getAssessments(),
             getSubjects(),
             getAssessmentCategories(),
+            getTeachers(),
           ]);
 
           const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
+          const loggedInTeacher = teachers.find(t => t.email === user.email);
           
           admissions.forEach(admission => {
-            // Source 1: Get classes from class definitions, ensuring even empty classes are shown
+            // Source 1: Classes from explicit class definitions
             admission.classes?.forEach(classDef => {
               const classKey = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
               if (!classMap.has(classKey)) {
@@ -61,7 +63,7 @@ export default function AllRostersPage() {
               }
             });
 
-            // Source 2: Get classes from student enrollments
+            // Source 2: Classes implied by student enrollments
             admission.students.forEach(studentAdmission => {
               studentAdmission.enrollments.forEach(enrollment => {
                 const classKey = `${admission.schoolYear}::${enrollment.programId}::${enrollment.level}`;
@@ -74,7 +76,18 @@ export default function AllRostersPage() {
             });
           });
 
-          const classList: ClassRosterInfo[] = Array.from(classMap.values()).map(classInfo => {
+          // Logic for teacher-specific view vs all classes
+          const classesToDisplay = loggedInTeacher?.role === 'Teacher' 
+            ? Array.from(classMap.values()).filter(classInfo => {
+                const classInAdmission = admissions.find(a => a.schoolYear === classInfo.schoolYear)?.classes?.find(c => c.programId === classInfo.programId && c.level === classInfo.level);
+                const isAssignedInClassDef = classInAdmission?.teacherIds?.includes(loggedInTeacher.teacherId);
+                const isAssignedInProfile = loggedInTeacher.assignedClasses?.some(ac => ac.schoolYear === classInfo.schoolYear && ac.programId === classInfo.programId && ac.level === classInfo.level);
+                return isAssignedInClassDef || isAssignedInProfile;
+            })
+            : Array.from(classMap.values());
+
+
+          const classList: ClassRosterInfo[] = classesToDisplay.map(classInfo => {
             const studentsInClass = allStudents.filter(s => classInfo.students.has(s.studentId));
             const classAverages = studentsInClass.map(s => calculateStudentAverage(s.studentId, assessments, subjects, categories));
             const totalAverage = classAverages.reduce((sum, avg) => sum + avg, 0);
