@@ -111,9 +111,9 @@ export function StudentPerformanceSheet({
   const performanceBySubject = React.useMemo(() => {
     if (!student) return [];
     const studentAssessments = assessments.filter(
-      (a) => a.scores && a.scores[student.studentId] !== undefined
+      (a) => a.scores && typeof a.scores[student.studentId] === 'number'
     );
-    const categoryWeightMap = new Map(assessmentCategories.map(c => [c.name, c.weight / 100]));
+    const categoryWeightMap = new Map(assessmentCategories.map(c => [c.englishTitle, c.weight / 100]));
 
     return subjects.map(subject => {
       const subjectAssessments = studentAssessments.filter(a => a.subjectId === subject.subjectId);
@@ -123,19 +123,19 @@ export function StudentPerformanceSheet({
       
       let totalWeightedScore = 0;
       let totalWeight = 0;
-
+  
       subjectAssessments.forEach(assessment => {
         const weight = categoryWeightMap.get(assessment.category) || 0;
         const score = assessment.scores[student.studentId];
         if (typeof score === 'number') {
-          const percentage = (score / assessment.totalMarks) * 100;
-          totalWeightedScore += percentage * weight;
-          totalWeight += weight;
+            const percentage = (score / assessment.totalMarks) * 100;
+            totalWeightedScore += percentage * weight;
+            totalWeight += weight;
         }
       });
-
+  
       if (totalWeight === 0) return { subjectName: subject.englishTitle, overallScore: null };
-
+      
       const overallScore = totalWeightedScore / totalWeight;
       return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
     });
@@ -143,11 +143,12 @@ export function StudentPerformanceSheet({
   
   const validSubjects = performanceBySubject.filter(s => s.overallScore !== null);
   const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length : 0;
-
+  
   React.useEffect(() => {
     if (student) {
       const grades: Record<string, number> = {};
       performanceBySubject.forEach(subject => {
+        // Correctly include subjects with a score of 0. Only exclude null.
         if (subject.overallScore !== null) {
           grades[subject.subjectName] = subject.overallScore;
         }
