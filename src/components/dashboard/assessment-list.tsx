@@ -90,6 +90,7 @@ export function AssessmentList({
 
     // Step 1: Build a comprehensive map of all unique classes and the students in them.
     admissions.forEach(admission => {
+        // First, add classes defined in the admission year, even if they have no students yet.
         admission.classes?.forEach(classDef => {
             const classKey = `${admission.schoolYear}_${classDef.programId}_${classDef.level}`;
             if (!classMap.has(classKey)) {
@@ -102,6 +103,8 @@ export function AssessmentList({
             }
         });
         
+        // Next, add students to their respective classes based on their enrollments.
+        // This also creates class entries if they weren't explicitly defined.
         admission.students.forEach(studentAdmission => {
             studentAdmission.enrollments.forEach(enrollment => {
                 const classKey = `${admission.schoolYear}_${enrollment.programId}_${enrollment.level}`;
@@ -125,14 +128,14 @@ export function AssessmentList({
       const studentIdSet = classInfo.studentIds;
       if (studentIdSet.size === 0) return; // Skip classes with no students
 
+      // An assessment is relevant if it has a score for at least one student in this specific class roster.
       const assessmentsForClass = assessments.filter(assessment => {
-        // An assessment belongs to a class if it has scores for at least one student in that class.
         return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
       });
       
-      const assessmentsBySubject: Record<string, { subjectName: string; assessments: Assessment[] }> = {};
-
       if (assessmentsForClass.length > 0) {
+        const assessmentsBySubject: Record<string, { subjectName: string; assessments: Assessment[] }> = {};
+        
         assessmentsForClass.forEach(assessment => {
             if (!assessmentsBySubject[assessment.subjectId]) {
                 assessmentsBySubject[assessment.subjectId] = {
@@ -166,7 +169,7 @@ export function AssessmentList({
             <div>
               <CardTitle>Assessments Overview</CardTitle>
               <CardDescription>
-                A summary of all assessments created, grouped by class.
+                A summary of all assessments created, grouped by class. Only classes with scored assessments are shown.
               </CardDescription>
             </div>
             {canCreate && (
@@ -198,8 +201,10 @@ export function AssessmentList({
                           
                           subjectGroup.assessments.forEach(asmnt => {
                             categories.set(asmnt.category, (categories.get(asmnt.category) || 0) + 1);
-                            const teacherName = getTeacherName(asmnt.teacherId);
-                            teachersInSubject.set(teacherName, (teachersInSubject.get(teacherName) || 0) + 1);
+                            if (asmnt.teacherId) {
+                                const teacherName = getTeacherName(asmnt.teacherId);
+                                teachersInSubject.set(teacherName, (teachersInSubject.get(teacherName) || 0) + 1);
+                            }
                           });
 
                           return (
@@ -236,7 +241,7 @@ export function AssessmentList({
             </Accordion>
           ) : (
              <div className="text-center py-10 text-muted-foreground">
-                No assessments found.
+                No classes with scored assessments found.
               </div>
           )}
         </CardContent>
