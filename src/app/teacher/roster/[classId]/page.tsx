@@ -91,6 +91,7 @@ export default function RosterPage() {
             const classRosterData = allStudents.filter(s => studentIdsInClass.has(s.studentId));
             
             const relevantAssessments = assessments.filter(assessment => 
+                assessment.teacherId === currentTeacher.teacherId &&
                 classRosterData.some(student => assessment.scores && assessment.scores[student.studentId] !== undefined)
             );
             setClassAssessments(relevantAssessments.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
@@ -270,7 +271,11 @@ export default function RosterPage() {
                             <TableCell className="sticky left-[300px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.averageScore}</TableCell>
                             <TableCell className="sticky left-[400px] z-10 text-center font-medium" style={{ backgroundColor: index % 2 === 0 ? 'hsl(var(--card))' : 'hsl(var(--muted)/0.5)' }}>{student.letterGrade}</TableCell>
                             {classAssessments.map(assessment => (
-                            <TableCell key={assessment.assessmentId} className="text-center">
+                            <TableCell 
+                                key={assessment.assessmentId} 
+                                className="text-center cursor-pointer hover:bg-accent/50"
+                                onClick={() => setAssessmentToGrade(assessment)}
+                            >
                                 {assessment.scores[student.studentId] ?? "—"}
                             </TableCell>
                             ))}
