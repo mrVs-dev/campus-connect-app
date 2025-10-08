@@ -47,8 +47,8 @@ export function GradeEntrySheet({
   React.useEffect(() => {
     if (assessment) {
       const initialScores: Record<string, number | undefined> = {};
+      // Initialize scores for all students in the roster for this sheet.
       for (const student of students) {
-        // Ensure that 0 is a valid initial score
         const score = assessment.scores[student.studentId];
         initialScores[student.studentId] = typeof score === 'number' ? score : undefined;
       }
@@ -91,21 +91,31 @@ export function GradeEntrySheet({
     if (!assessment) return;
     setIsSaving(true);
     
-    // Construct a new, clean scores object based on the current UI state.
+    // Create a new, clean scores object.
     const newScores: Record<string, number> = {};
-    for (const studentId in scores) {
-        const scoreValue = scores[studentId];
-        // Only include scores that are numbers (this includes 0).
-        // `undefined` scores (blanks) will be excluded.
+
+    // Iterate over all students that are supposed to be in this sheet.
+    for (const student of students) {
+        const scoreValue = scores[student.studentId];
+        // Only include scores that are actual numbers. `undefined` will be skipped.
         if (typeof scoreValue === 'number') {
-            newScores[studentId] = scoreValue;
+            newScores[student.studentId] = scoreValue;
         }
     }
 
-    // This creates the final version of the assessment to be saved.
-    // It keeps all original assessment data but replaces the `scores` object
-    // with our newly constructed clean version.
-    const updatedAssessment = { ...assessment, scores: newScores };
+    // Merge the new scores object with any existing scores for students
+    // NOT in the current roster to avoid deleting their grades.
+    const finalScores = {...assessment.scores, ...newScores};
+    
+    // Now, ensure any student in *this* roster who has a blank score
+    // is fully removed from the final object.
+    for (const student of students) {
+        if (scores[student.studentId] === undefined) {
+            delete finalScores[student.studentId];
+        }
+    }
+    
+    const updatedAssessment = { ...assessment, scores: finalScores };
     
     await onSaveGrades(updatedAssessment);
     

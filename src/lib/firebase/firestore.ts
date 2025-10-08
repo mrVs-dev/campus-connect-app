@@ -254,17 +254,7 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentDoc = doc(db, 'students', studentId);
     
-    // Create a new object with all keys from the input data.
-    // This ensures that if a user clears a field (making it an empty string),
-    // it gets saved as an empty string instead of being filtered out.
-    const dataToSave: { [key: string]: any } = {};
-    for (const key in dataToUpdate) {
-        if (Object.prototype.hasOwnProperty.call(dataToUpdate, key)) {
-            dataToSave[key] = (dataToUpdate as any)[key];
-        }
-    }
-
-    const dataWithTimestamps = convertDatesToTimestamps(dataToSave);
+    const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
     await updateDoc(studentDoc, dataWithTimestamps);
 }
 
@@ -571,7 +561,8 @@ export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmen
         if ('assessmentId' in assessmentData) {
             // Update existing assessment
             const assessmentDoc = doc(db, 'assessments', assessmentData.assessmentId);
-            await setDoc(assessmentDoc, assessmentData, { merge: true });
+            // When updating, we replace the entire document to handle score removals.
+            await setDoc(assessmentDoc, assessmentData);
             return assessmentData;
         } else {
             // Create new assessment
