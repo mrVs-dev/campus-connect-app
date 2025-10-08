@@ -148,7 +148,6 @@ export function StudentPerformanceSheet({
     if (student) {
       const grades: Record<string, number> = {};
       performanceBySubject.forEach(subject => {
-        // Correctly include subjects with a score of 0. Only exclude null.
         if (subject.overallScore !== null) {
           grades[subject.subjectName] = subject.overallScore;
         }
@@ -242,7 +241,7 @@ export function StudentPerformanceSheet({
                     <CardTitle className="text-base">AI Progress Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {studentGrades && (
+                  {studentGrades && student && (
                     <AiSummary studentId={student.studentId} grades={studentGrades} />
                   )}
                 </CardContent>
