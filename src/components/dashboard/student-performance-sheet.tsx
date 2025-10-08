@@ -158,7 +158,6 @@ export function StudentPerformanceSheet({
     }
   }, [student, performanceBySubject]);
 
-
   if (!student) {
     return null;
   }
@@ -242,7 +241,7 @@ export function StudentPerformanceSheet({
                     <CardTitle className="text-base">AI Progress Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {studentGrades !== null && (
+                    {studentGrades && (
                       <AiSummary studentId={student.studentId} grades={studentGrades} />
                     )}
                 </CardContent>
