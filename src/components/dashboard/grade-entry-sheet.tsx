@@ -91,28 +91,30 @@ export function GradeEntrySheet({
     if (!assessment) return;
     setIsSaving(true);
     
-    // Create a new, clean scores object.
+    // Create a new, clean scores object based only on the students in this class roster.
     const newScores: Record<string, number> = {};
 
     // Iterate over all students that are supposed to be in this sheet.
     for (const student of students) {
         const scoreValue = scores[student.studentId];
         // Only include scores that are actual numbers. `undefined` will be skipped.
-        if (typeof scoreValue === 'number') {
+        if (typeof scoreValue === 'number' && !isNaN(scoreValue)) {
             newScores[student.studentId] = scoreValue;
         }
     }
-
-    // Merge the new scores object with any existing scores for students
-    // NOT in the current roster to avoid deleting their grades.
-    const finalScores = {...assessment.scores, ...newScores};
     
-    // Now, ensure any student in *this* roster who has a blank score
-    // is fully removed from the final object.
-    for (const student of students) {
-        if (scores[student.studentId] === undefined) {
-            delete finalScores[student.studentId];
+    // Merge the new scores object with any existing scores for students
+    // NOT in the current roster to avoid deleting their grades from other classes.
+    const finalScores: Record<string, number> = {};
+    for (const studentId in assessment.scores) {
+        if (!students.some(s => s.studentId === studentId)) {
+            finalScores[studentId] = assessment.scores[studentId];
         }
+    }
+
+    // Add the updated scores for the current roster
+    for(const studentId in newScores) {
+        finalScores[studentId] = newScores[studentId];
     }
     
     const updatedAssessment = { ...assessment, scores: finalScores };
@@ -183,3 +185,5 @@ export function GradeEntrySheet({
     </Sheet>
   );
 }
+
+    
