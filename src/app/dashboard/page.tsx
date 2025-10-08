@@ -316,17 +316,30 @@ export default function DashboardPage() {
   };
 
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
-    try {
-      await updateTeacher(teacherId, updatedData);
-      await fetchData(true); // Re-fetch data and show a toast
-      toast({
+    await updateTeacher(teacherId, updatedData);
+    await fetchData(true); // Re-fetch data and show a toast
+    toast({
         title: "Teacher Updated",
         description: "The teacher's profile has been saved.",
+    });
+  };
+  
+  const handleSaveAdmission = async (admission: Admission, isNewClass: boolean) => {
+    const success = await saveAdmission(admission, isNewClass);
+    if (success) {
+      await fetchData();
+      toast({
+        title: "Admissions Updated",
+        description: "The admission records have been saved.",
       });
-    } catch (error) {
-      console.error("Failed to update teacher:", error);
-      toast({ title: "Error", description: "Could not save teacher changes.", variant: "destructive" });
+    } else {
+       toast({
+        title: "Save Failed",
+        description: "Could not save admission changes.",
+        variant: "destructive"
+      });
     }
+    return success;
   };
   
   const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
@@ -431,7 +444,7 @@ export default function DashboardPage() {
                     admissions={admissions}
                     students={students}
                     teachers={teachers}
-                    onSave={saveAdmission}
+                    onSave={handleSaveAdmission}
                     onImport={importAdmissions}
                     />
                 </TabsContent>
