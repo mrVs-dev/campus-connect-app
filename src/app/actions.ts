@@ -8,7 +8,22 @@ export async function getStudentSummary(
   input: SummarizeStudentProgressInput
 ) {
   try {
-    const { summary } = await summarizeStudentProgress(input);
+    // Final safeguard: Ensure no zero-value grades are passed to the AI.
+    const validGrades: Record<string, number> = {};
+    for (const subject in input.grades) {
+        if (Object.prototype.hasOwnProperty.call(input.grades, subject)) {
+            const grade = input.grades[subject];
+            if (typeof grade === 'number' && grade > 0) {
+                validGrades[subject] = grade;
+            }
+        }
+    }
+
+    if (Object.keys(validGrades).length === 0) {
+        return { summary: "No performance data available to generate a summary.", error: null };
+    }
+
+    const { summary } = await summarizeStudentProgress({ ...input, grades: validGrades });
     return { summary, error: null };
   } catch (error) {
     console.error("Error generating student summary:", error);

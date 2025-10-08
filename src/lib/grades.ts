@@ -54,3 +54,4 @@ export const getLetterGrade = (score: number, gradeScale: LetterGrade[]): string
     return 'F';
 };
 
+
