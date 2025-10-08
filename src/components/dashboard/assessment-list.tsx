@@ -83,25 +83,12 @@ export function AssessmentList({
     setIsNewAssessmentOpen(isOpen);
   };
   
-  const assessmentsByClass = React.useMemo(() => {
-    const classMap = new Map<string, { schoolYear: string, programId: string, level: string, studentIds: Set<string> }>();
+ const assessmentsByClass = React.useMemo(() => {
+    const classMap = new Map<string, { schoolYear: string, programId: string, level: string, studentIds: Set<string>, teacherIds: Set<string> }>();
 
+    // Step 1: Build a comprehensive map of all classes, their students, and their assigned teachers.
     admissions.forEach(admission => {
-      admission.students.forEach(studentAdmission => {
-        studentAdmission.enrollments.forEach(enrollment => {
-          const classKey = `${admission.schoolYear}_${enrollment.programId}_${enrollment.level}`;
-          if (!classMap.has(classKey)) {
-            classMap.set(classKey, {
-              schoolYear: admission.schoolYear,
-              programId: enrollment.programId,
-              level: enrollment.level,
-              studentIds: new Set(),
-            });
-          }
-          classMap.get(classKey)!.studentIds.add(studentAdmission.studentId);
-        });
-      });
-      // Also ensure classes defined in the admission document but without students are included
+      // Process classes defined in the admission document to get teacher assignments
       admission.classes?.forEach(classDef => {
         const classKey = `${admission.schoolYear}_${classDef.programId}_${classDef.level}`;
         if (!classMap.has(classKey)) {
@@ -110,22 +97,66 @@ export function AssessmentList({
             programId: classDef.programId,
             level: classDef.level,
             studentIds: new Set(),
+            teacherIds: new Set(classDef.teacherIds || []),
           });
+        } else {
+          classDef.teacherIds?.forEach(id => classMap.get(classKey)!.teacherIds.add(id));
         }
+      });
+      // Also add teachers who are assigned this class via their own profile
+      teachers.forEach(teacher => {
+          teacher.assignedClasses?.forEach(assignedClass => {
+              if (assignedClass.schoolYear === admission.schoolYear) {
+                  const classKey = `${assignedClass.schoolYear}_${assignedClass.programId}_${assignedClass.level}`;
+                  if (classMap.has(classKey)) {
+                      classMap.get(classKey)!.teacherIds.add(teacher.teacherId);
+                  }
+              }
+          })
       })
+
+      // Process student enrollments to populate student lists for each class
+      admission.students.forEach(studentAdmission => {
+        studentAdmission.enrollments.forEach(enrollment => {
+          const classKey = `${admission.schoolYear}_${enrollment.programId}_${enrollment.level}`;
+          if (!classMap.has(classKey)) {
+            // Create class from enrollment if it wasn't in the class definitions
+            classMap.set(classKey, {
+              schoolYear: admission.schoolYear,
+              programId: enrollment.programId,
+              level: enrollment.level,
+              studentIds: new Set(),
+              teacherIds: new Set(),
+            });
+          }
+          classMap.get(classKey)!.studentIds.add(studentAdmission.studentId);
+        });
+      });
     });
 
     const result: ClassWithAssessments[] = [];
+    
+    // Step 2: Iterate through each defined class to find its valid assessments.
     classMap.forEach((classInfo, classId) => {
       const studentIdSet = classInfo.studentIds;
-      
-      const assessmentsForClass = assessments.filter(assessment => {
-        if (!studentIdSet.size) return false;
-        
-        const studentHasScore = Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
-        if (!studentHasScore) return false;
+      if (!studentIdSet.size) return; // Skip classes with no students
 
-        return true;
+      const assessmentsForClass = assessments.filter(assessment => {
+        // --- STRICT VALIDATION LOGIC ---
+        // 1. Teacher Match: The assessment must be created by a teacher assigned to this class.
+        const isTaughtByAssignedTeacher = classInfo.teacherIds.has(assessment.teacherId);
+        if (!isTaughtByAssignedTeacher) return false;
+
+        // 2. Student Match: The assessment must have scores for at least one student in THIS class.
+        const hasScoreForClassStudent = Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
+        if (!hasScoreForClassStudent) return false;
+
+        // 3. Subject Match: The assessment's subject must be one taught by the teacher who created it.
+        const teacher = teachers.find(t => t.teacherId === assessment.teacherId);
+        const teacherTeachesSubject = teacher?.assignedSubjects?.includes(assessment.subjectId);
+        if (!teacherTeachesSubject) return false;
+
+        return true; // If all checks pass, the assessment belongs to this class.
       });
 
       if (assessmentsForClass.length > 0) {

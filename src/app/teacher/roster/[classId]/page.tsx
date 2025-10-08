@@ -35,7 +35,7 @@ export default function RosterPage() {
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [gradeScale, setGradeScale] = React.useState<LetterGrade[]>([]);
-  const [classInfo, setClassInfo] = React.useState<{ programName: string; level: string; programId: string, subjectIds: string[] } | null>(null);
+  const [classInfo, setClassInfo] = React.useState<{ programName: string; level: string; programId: string; } | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
@@ -67,16 +67,8 @@ export default function RosterPage() {
               getAssessmentCategories(),
               getGradeScale(),
             ]);
-
-            const subjectsForProgram = subjectsData.filter(s => {
-                // This is a placeholder logic. You might need a more robust way to link subjects to programs/levels.
-                // For now, let's assume all subjects are for all classes.
-                // A better approach would be to have this mapping in your program-data.ts or in Firestore.
-                return true;
-            });
-            const subjectIdsForClass = subjectsForProgram.map(s => s.subjectId);
-
-            setClassInfo({ programName, level, programId, subjectIds: subjectIdsForClass });
+            
+            setClassInfo({ programName, level, programId });
             setSubjects(subjectsData);
             setAssessmentCategories(categoriesData);
             setGradeScale(gradeScaleData);
@@ -105,18 +97,18 @@ export default function RosterPage() {
             const teacherSubjectIds = currentTeacher.assignedSubjects || [];
             
             const assessmentsForThisClass = allAssessments.filter(assessment => {
-                 // Condition 1: Must be one of the subjects taught in this class
-                 const isForThisClassSubject = subjectIdsForClass.includes(assessment.subjectId);
-                 if (!isForThisClassSubject) return false;
+                 // --- STRICT VALIDATION LOGIC FOR TEACHER ROSTER ---
+                 // Condition 1: Must be created by this specific teacher.
+                 if (assessment.teacherId !== currentTeacher.teacherId) return false;
 
-                 // Condition 2: Must be created by this teacher OR for a subject this teacher is assigned
-                 const isByThisTeacher = assessment.teacherId === currentTeacher.teacherId;
-                 const isForAssignedSubject = teacherSubjectIds.includes(assessment.subjectId);
-                 if (!isByThisTeacher && !isForAssignedSubject) return false;
+                 // Condition 2: The assessment's subject must be one assigned to this teacher.
+                 if (!teacherSubjectIds.includes(assessment.subjectId)) return false;
 
-                 // Condition 3: Must have scores for at least one student in THIS class roster
+                 // Condition 3: Must have scores for at least one student in THIS class roster.
                  const studentIdSet = new Set(classRosterData.map(s => s.studentId));
-                 return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
+                 if (!Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId))) return false;
+
+                 return true;
             });
 
             setClassAssessments(assessmentsForThisClass.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
