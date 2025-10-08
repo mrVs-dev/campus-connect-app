@@ -170,7 +170,9 @@ export function StudentPerformanceSheet({
 
 
   const studentGrades = performanceBySubject.reduce((acc, subject) => {
-    acc[subject.subjectName] = subject.overallScore;
+    if (subject.overallScore > 0) {
+        acc[subject.subjectName] = subject.overallScore;
+    }
     return acc;
   }, {} as Record<string, number>);
 
