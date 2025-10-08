@@ -89,7 +89,7 @@ const formSchema = z.object({
 type EnrollmentFormValues = z.infer<typeof formSchema>;
 
 type EnrollmentFormProps = {
-  onEnroll: (student: Omit<Student, 'studentId' | 'status'>) => Promise<boolean>;
+  onEnroll: (student: Omit<Student, 'studentId' | 'status'>) => Promise<any>;
 };
 
 export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
@@ -192,11 +192,9 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
 
   async function onSubmit(values: z.output<typeof formSchema>) {
     setIsSubmitting(true);
-    const success = await onEnroll(values);
-    if (success) {
-      form.reset();
-      fetchNextId();
-    }
+    await onEnroll(values);
+    form.reset();
+    fetchNextId();
     setIsSubmitting(false);
   }
 
@@ -674,5 +672,3 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
     </>
   );
 }
-
-    

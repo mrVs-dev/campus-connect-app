@@ -193,7 +193,8 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     };
 
     const cleanedData = Object.entries(studentForFirestore).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
+      // Keep familyId even if it's an empty string
+      if (value !== undefined || key === 'familyId') {
         (acc as any)[key] = value;
       }
       return acc;
@@ -255,7 +256,8 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
     const studentDoc = doc(db, 'students', studentId);
     
     const cleanedData = Object.entries(dataToUpdate).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
+      // Keep familyId even if it's an empty string, otherwise filter out undefined
+      if (value !== undefined || key === 'familyId') {
         (acc as any)[key] = value;
       }
       return acc;
