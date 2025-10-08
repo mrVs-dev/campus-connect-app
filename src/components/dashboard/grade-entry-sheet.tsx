@@ -46,14 +46,19 @@ export function GradeEntrySheet({
 
   React.useEffect(() => {
     if (assessment) {
-      setScores(assessment.scores || {});
+      // Ensure we have a clean copy of scores from the assessment prop
+      // to avoid stale state issues.
+      const initialScores: Record<string, number | undefined> = {};
+      for (const student of students) {
+        initialScores[student.studentId] = assessment.scores[student.studentId];
+      }
+      setScores(initialScores);
     }
-  }, [assessment]);
+  }, [assessment, students]);
 
   const handleScoreChange = (studentId: string, value: string) => {
     if (!assessment) return;
 
-    // If the input is blank, we represent the score as `undefined` to mark it for removal.
     if (value === "") {
       setScores(prev => ({ ...prev, [studentId]: undefined }));
       return;
@@ -61,7 +66,6 @@ export function GradeEntrySheet({
 
     const score = parseInt(value, 10);
 
-    // If the input is a valid number
     if (!isNaN(score)) {
       if (score > assessment.totalMarks) {
         toast({
@@ -87,16 +91,22 @@ export function GradeEntrySheet({
     if (!assessment) return;
     setIsSaving(true);
     
-    // Create a new scores object, explicitly removing any entries that are undefined.
-    const validScores: Record<string, number> = {};
-    for (const studentId in scores) {
-      const scoreValue = scores[studentId];
-      if (typeof scoreValue === 'number' && !isNaN(scoreValue)) {
-        validScores[studentId] = scoreValue;
+    // Create a new scores object from the current state.
+    const newScores = { ...assessment.scores };
+    
+    // Iterate over the local `scores` state to update the object.
+    Object.keys(scores).forEach(studentId => {
+      const newScore = scores[studentId];
+      if (newScore === undefined) {
+        // If the score is explicitly set to undefined (cleared), delete the key.
+        delete newScores[studentId];
+      } else {
+        // Otherwise, update or set the score.
+        newScores[studentId] = newScore;
       }
-    }
+    });
 
-    const updatedAssessment = { ...assessment, scores: validScores };
+    const updatedAssessment = { ...assessment, scores: newScores };
     await onSaveGrades(updatedAssessment);
     setIsSaving(false);
     onOpenChange(false);
@@ -140,8 +150,7 @@ export function GradeEntrySheet({
                     <TableCell className="text-right">
                       <Input
                         type="number"
-                        // Display the score if it's a number (including 0), otherwise display an empty string.
-                        value={typeof scores[student.studentId] === 'number' ? scores[student.studentId] : ""}
+                        value={scores[student.studentId] ?? ""}
                         onChange={(e) => handleScoreChange(student.studentId, e.target.value)}
                         max={assessment.totalMarks}
                         min={0}
