@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import type { Assessment, Student, Subject, AssessmentCategory, UserRole, Admission, Enrollment } from "@/lib/types";
-import { PlusCircle, MoreHorizontal, Edit, BookCopy, Layers2, Hash } from "lucide-react";
+import type { Assessment, Student, Subject, AssessmentCategory, UserRole, Admission, Enrollment, Teacher } from "@/lib/types";
+import { PlusCircle, MoreHorizontal, Edit, BookCopy, Layers2, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,7 @@ interface ClassWithAssessments {
   assessments: Assessment[];
   assessmentsBySubject: { subjectName: string; count: number }[];
   assessmentsByCategory: { categoryName: string; count: number }[];
+  assessmentsByTeacher: { teacherName: string; count: number }[];
 }
 
 export function AssessmentList({
@@ -41,6 +42,7 @@ export function AssessmentList({
   subjects,
   assessmentCategories,
   admissions,
+  teachers,
   onSaveAssessment,
   userRole,
 }: {
@@ -49,6 +51,7 @@ export function AssessmentList({
   subjects: Subject[];
   assessmentCategories: AssessmentCategory[];
   admissions: Admission[];
+  teachers: Teacher[];
   onSaveAssessment: (assessment: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => Promise<Assessment | null>;
   userRole: UserRole;
 }) {
@@ -62,6 +65,11 @@ export function AssessmentList({
     return subjects.find((s) => s.subjectId === subjectId)?.englishTitle || "Unknown";
   };
   
+  const getTeacherName = (teacherId: string) => {
+      const teacher = teachers.find(t => t.teacherId === teacherId);
+      return teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Unknown Teacher';
+  }
+
   const handleEdit = (assessment: Assessment) => {
     if (!canCreate) return;
     setAssessmentToEdit(assessment);
@@ -78,7 +86,6 @@ export function AssessmentList({
   const assessmentsByClass = React.useMemo(() => {
     const classMap = new Map<string, { schoolYear: string, programId: string, level: string, studentIds: Set<string> }>();
 
-    // 1. Identify all unique classes and the students in them from admissions data
     admissions.forEach(admission => {
       admission.students.forEach(studentAdmission => {
         studentAdmission.enrollments.forEach(enrollment => {
@@ -94,26 +101,45 @@ export function AssessmentList({
           classMap.get(classKey)!.studentIds.add(studentAdmission.studentId);
         });
       });
+      // Also ensure classes defined in the admission document but without students are included
+      admission.classes?.forEach(classDef => {
+        const classKey = `${admission.schoolYear}_${classDef.programId}_${classDef.level}`;
+        if (!classMap.has(classKey)) {
+          classMap.set(classKey, {
+            schoolYear: admission.schoolYear,
+            programId: classDef.programId,
+            level: classDef.level,
+            studentIds: new Set(),
+          });
+        }
+      })
     });
 
-    // 2. Group assessments by class based on accurate student membership
     const result: ClassWithAssessments[] = [];
     classMap.forEach((classInfo, classId) => {
       const studentIdSet = classInfo.studentIds;
       
       const assessmentsForClass = assessments.filter(assessment => {
-        // An assessment belongs to this class if any student FROM THIS CLASS has a score for it.
-        return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
+        if (!studentIdSet.size) return false;
+        
+        const studentHasScore = Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
+        if (!studentHasScore) return false;
+
+        return true;
       });
 
       if (assessmentsForClass.length > 0) {
         const subjectCounts: Record<string, number> = {};
         const categoryCounts: Record<string, number> = {};
+        const teacherCounts: Record<string, number> = {};
 
         assessmentsForClass.forEach(a => {
           const subjectName = getSubjectName(a.subjectId);
           subjectCounts[subjectName] = (subjectCounts[subjectName] || 0) + 1;
           categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
+          
+          const teacherName = getTeacherName(a.teacherId);
+          teacherCounts[teacherName] = (teacherCounts[teacherName] || 0) + 1;
         });
 
         result.push({
@@ -124,12 +150,13 @@ export function AssessmentList({
           assessments: assessmentsForClass,
           assessmentsBySubject: Object.entries(subjectCounts).map(([subjectName, count]) => ({ subjectName, count })),
           assessmentsByCategory: Object.entries(categoryCounts).map(([categoryName, count]) => ({ categoryName, count })),
+          assessmentsByTeacher: Object.entries(teacherCounts).map(([teacherName, count]) => ({ teacherName, count })),
         });
       }
     });
 
     return result.sort((a,b) => b.schoolYear.localeCompare(a.schoolYear) || a.programName.localeCompare(b.programName) || a.level.localeCompare(b.level));
-  }, [admissions, assessments, subjects]);
+  }, [admissions, assessments, subjects, teachers]);
 
 
   return (
@@ -165,7 +192,7 @@ export function AssessmentList({
                       </div>
                    </AccordionTrigger>
                    <AccordionContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/50 rounded-lg">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-muted/50 rounded-lg">
                         <div className="space-y-3">
                           <h4 className="font-semibold flex items-center gap-2"><BookCopy className="h-4 w-4" /> By Subject</h4>
                            <div className="flex flex-wrap gap-2">
@@ -179,6 +206,14 @@ export function AssessmentList({
                           <div className="flex flex-wrap gap-2">
                              {classData.assessmentsByCategory.map(cat => (
                               <Badge key={cat.categoryName} variant="outline">{cat.categoryName} ({cat.count})</Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4" /> By Teacher</h4>
+                          <div className="flex flex-wrap gap-2">
+                             {classData.assessmentsByTeacher.map(t => (
+                              <Badge key={t.teacherName} variant="secondary" className="bg-blue-100 text-blue-800">{t.teacherName} ({t.count})</Badge>
                             ))}
                           </div>
                         </div>

@@ -440,6 +440,7 @@ export default function DashboardPage() {
                     subjects={subjects}
                     assessmentCategories={assessmentCategories}
                     admissions={admissions}
+                    teachers={teachers}
                     onSaveAssessment={saveAssessment}
                     />
                 </TabsContent>
