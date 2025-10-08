@@ -46,11 +46,11 @@ export function GradeEntrySheet({
 
   React.useEffect(() => {
     if (assessment) {
-      // Ensure we have a clean copy of scores from the assessment prop
-      // to avoid stale state issues.
       const initialScores: Record<string, number | undefined> = {};
       for (const student of students) {
-        initialScores[student.studentId] = assessment.scores[student.studentId];
+        // Ensure that 0 is a valid initial score
+        const score = assessment.scores[student.studentId];
+        initialScores[student.studentId] = typeof score === 'number' ? score : undefined;
       }
       setScores(initialScores);
     }
@@ -91,23 +91,24 @@ export function GradeEntrySheet({
     if (!assessment) return;
     setIsSaving(true);
     
-    // Create a new scores object from the current state.
-    const newScores = { ...assessment.scores };
-    
-    // Iterate over the local `scores` state to update the object.
-    Object.keys(scores).forEach(studentId => {
-      const newScore = scores[studentId];
-      if (newScore === undefined) {
-        // If the score is explicitly set to undefined (cleared), delete the key.
-        delete newScores[studentId];
-      } else {
-        // Otherwise, update or set the score.
-        newScores[studentId] = newScore;
-      }
-    });
+    // Construct a new, clean scores object based on the current UI state.
+    const newScores: Record<string, number> = {};
+    for (const studentId in scores) {
+        const scoreValue = scores[studentId];
+        // Only include scores that are numbers (this includes 0).
+        // `undefined` scores (blanks) will be excluded.
+        if (typeof scoreValue === 'number') {
+            newScores[studentId] = scoreValue;
+        }
+    }
 
+    // This creates the final version of the assessment to be saved.
+    // It keeps all original assessment data but replaces the `scores` object
+    // with our newly constructed clean version.
     const updatedAssessment = { ...assessment, scores: newScores };
+    
     await onSaveGrades(updatedAssessment);
+    
     setIsSaving(false);
     onOpenChange(false);
   };
