@@ -24,6 +24,7 @@ import { ImageCropDialog } from "./image-crop-dialog";
 import { programs } from "@/lib/program-data";
 import 'react-image-crop/dist/ReactCrop.css'
 import { User } from "lucide-react";
+import { calculateStudentAverage } from "@/lib/grades";
 
 interface StudentPerformanceSheetProps {
   student: Student | null;
@@ -156,12 +157,16 @@ export function StudentPerformanceSheet({
     subjectAssessments.forEach(assessment => {
       const weight = categoryWeightMap.get(assessment.category) || 0;
       const score = assessment.scores[student.studentId];
-      const percentage = (score / assessment.totalMarks) * 100;
-      totalWeightedScore += percentage * weight;
-      totalWeight += weight;
+      if (typeof score === 'number') {
+        const percentage = (score / assessment.totalMarks) * 100;
+        totalWeightedScore += percentage * weight;
+        totalWeight += weight;
+      }
     });
 
-    const overallScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
+    if (totalWeight === 0) return { subjectName: subject.englishTitle, overallScore: null };
+
+    const overallScore = totalWeightedScore / totalWeight;
     return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
   });
 

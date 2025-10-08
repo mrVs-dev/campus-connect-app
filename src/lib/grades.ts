@@ -21,9 +21,6 @@ export const calculateStudentAverage = (studentId: string, assessments: Assessme
       subjectAssessments.forEach(assessment => {
         const weight = categoryWeightMap.get(assessment.category) || 0;
         const score = assessment.scores[studentId];
-
-        // This check is now redundant due to the top-level filter, but it's safe to keep.
-        // It ensures we only calculate for assessments where the student has a numerical score.
         if (typeof score === 'number') {
             const percentage = (score / assessment.totalMarks) * 100;
             totalWeightedScore += percentage * weight;
@@ -31,7 +28,9 @@ export const calculateStudentAverage = (studentId: string, assessments: Assessme
         }
       });
   
-      const overallScore = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
+      if (totalWeight === 0) return { subjectName: subject.englishTitle, overallScore: null };
+      
+      const overallScore = totalWeightedScore / totalWeight;
       return { subjectName: subject.englishTitle, overallScore: Math.round(overallScore) };
     });
   
