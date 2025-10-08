@@ -34,5 +34,5 @@ jobs:
         with:
           serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
-          channelId: ${{ github.event_name == 'push' && 'live' || 'preview' }}
+          channelId: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'live' || 'preview' }}
           expires: 30d
