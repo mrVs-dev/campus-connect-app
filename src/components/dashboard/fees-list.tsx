@@ -326,5 +326,3 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
     </>
   );
 }
-
-    
