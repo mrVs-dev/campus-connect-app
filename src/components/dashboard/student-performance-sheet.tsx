@@ -173,12 +173,14 @@ export function StudentPerformanceSheet({
   const validSubjects = performanceBySubject.filter(s => s.overallScore !== null);
   const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length : 0;
 
-  const studentGrades = performanceBySubject.reduce((acc, subject) => {
-    if (typeof subject.overallScore === 'number') {
+  const studentGrades = React.useMemo(() => {
+    return performanceBySubject.reduce((acc, subject) => {
+      if (subject.overallScore !== null) {
         acc[subject.subjectName] = subject.overallScore;
-    }
-    return acc;
-  }, {} as Record<string, number>);
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  }, [performanceBySubject]);
 
   const fullName = `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.replace(/ +/g, ' ').trim();
   const khmerFullName = `${student.khmerLastName || ''} ${student.khmerFirstName || ''}`.trim();
