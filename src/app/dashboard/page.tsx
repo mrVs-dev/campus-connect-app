@@ -97,6 +97,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = React.useState("dashboard");
+  const [activeAdmissionsAccordion, setActiveAdmissionsAccordion] = React.useState<string | undefined>(undefined);
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
@@ -447,6 +448,8 @@ export default function DashboardPage() {
                     teachers={teachers}
                     onSave={handleSaveAdmission}
                     onImport={importAdmissions}
+                    activeAccordion={activeAdmissionsAccordion}
+                    onAccordionChange={setActiveAdmissionsAccordion}
                     />
                 </TabsContent>
                 <TabsContent value="enrollment" className="space-y-4">
@@ -479,5 +482,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    

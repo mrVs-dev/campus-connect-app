@@ -241,6 +241,8 @@ interface AdmissionsListProps {
   teachers: Teacher[];
   onSave: (admission: Admission, isNewClass: boolean) => Promise<boolean>;
   onImport: (data: { studentId: string; schoolYear: string; programId: string; level: string; }[]) => void;
+  activeAccordion: string | undefined;
+  onAccordionChange: (value: string | undefined) => void;
 }
 
 export function AdmissionsList({
@@ -249,6 +251,8 @@ export function AdmissionsList({
   teachers,
   onSave,
   onImport,
+  activeAccordion,
+  onAccordionChange,
 }: AdmissionsListProps) {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const activeStudents = React.useMemo(() => students.filter(s => s.status === 'Active'), [students]);
@@ -293,6 +297,14 @@ export function AdmissionsList({
             form.setValue('enrollments', []);
         }
     }, [watchedStudentId, watchedSchoolYear, admissions, form]);
+    
+    React.useEffect(() => {
+        // If there's no active accordion and there are admissions, default to the first one.
+        if (!activeAccordion && admissions.length > 0) {
+            onAccordionChange(admissions.sort((a, b) => b.schoolYear.localeCompare(a.schoolYear))[0].admissionId);
+        }
+    }, [activeAccordion, admissions, onAccordionChange]);
+
 
     async function onSubmit(values: AdmissionFormValues) {
         setIsSubmitting(true);
@@ -607,7 +619,7 @@ export function AdmissionsList({
                 </div>
             </CardHeader>
             <CardContent>
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion type="single" collapsible className="w-full" value={activeAccordion} onValueChange={onAccordionChange}>
                     {groupedAdmissions.map(admission => (
                         <AccordionItem key={admission.admissionId} value={admission.admissionId}>
                             <AccordionTrigger>{admission.schoolYear}</AccordionTrigger>
@@ -748,5 +760,3 @@ function EnrollmentCard({ form, index, remove }: { form: any, index: number; rem
     </div>
   );
 }
-
-    
