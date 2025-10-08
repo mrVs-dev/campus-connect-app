@@ -30,10 +30,12 @@ interface ClassWithAssessments {
   schoolYear: string;
   programName: string;
   level: string;
-  assessments: Assessment[];
-  assessmentsBySubject: { subjectName: string; count: number }[];
-  assessmentsByCategory: { categoryName: string; count: number }[];
-  assessmentsByTeacher: { teacherName: string; count: number }[];
+  totalAssessments: number;
+  assessmentsBySubject: {
+    subjectId: string;
+    subjectName: string;
+    assessments: Assessment[];
+  }[];
 }
 
 export function AssessmentList({
@@ -127,19 +129,18 @@ export function AssessmentList({
         // An assessment belongs to a class if it has scores for at least one student in that class.
         return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
       });
+      
+      const assessmentsBySubject: Record<string, { subjectName: string; assessments: Assessment[] }> = {};
 
       if (assessmentsForClass.length > 0) {
-        const subjectCounts: Record<string, number> = {};
-        const categoryCounts: Record<string, number> = {};
-        const teacherCounts: Record<string, number> = {};
-
-        assessmentsForClass.forEach(a => {
-          const subjectName = getSubjectName(a.subjectId);
-          subjectCounts[subjectName] = (subjectCounts[subjectName] || 0) + 1;
-          categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
-          
-          const teacherName = getTeacherName(a.teacherId);
-          teacherCounts[teacherName] = (teacherCounts[teacherName] || 0) + 1;
+        assessmentsForClass.forEach(assessment => {
+            if (!assessmentsBySubject[assessment.subjectId]) {
+                assessmentsBySubject[assessment.subjectId] = {
+                    subjectName: getSubjectName(assessment.subjectId),
+                    assessments: []
+                };
+            }
+            assessmentsBySubject[assessment.subjectId].assessments.push(assessment);
         });
 
         result.push({
@@ -147,16 +148,14 @@ export function AssessmentList({
           schoolYear: classInfo.schoolYear,
           programName: programs.find(p => p.id === classInfo.programId)?.name || 'Unknown Program',
           level: classInfo.level,
-          assessments: assessmentsForClass,
-          assessmentsBySubject: Object.entries(subjectCounts).map(([subjectName, count]) => ({ subjectName, count })),
-          assessmentsByCategory: Object.entries(categoryCounts).map(([categoryName, count]) => ({ categoryName, count })),
-          assessmentsByTeacher: Object.entries(teacherCounts).map(([teacherName, count]) => ({ teacherName, count })),
+          totalAssessments: assessmentsForClass.length,
+          assessmentsBySubject: Object.entries(assessmentsBySubject).map(([subjectId, data]) => ({subjectId, ...data})),
         });
       }
     });
 
     return result.sort((a,b) => b.schoolYear.localeCompare(a.schoolYear) || a.programName.localeCompare(b.programName) || a.level.localeCompare(b.level));
-  }, [admissions, assessments, subjects, teachers]);
+  }, [admissions, assessments, subjects]);
 
 
   return (
@@ -188,35 +187,48 @@ export function AssessmentList({
                    <AccordionTrigger>
                       <div className="flex flex-col items-start text-left">
                         <span className="font-semibold text-base">{classData.programName} - {classData.level}</span>
-                        <span className="text-sm text-muted-foreground font-normal">{classData.schoolYear} • {classData.assessments.length} Assessment(s)</span>
+                        <span className="text-sm text-muted-foreground font-normal">{classData.schoolYear} • {classData.totalAssessments} Assessment(s)</span>
                       </div>
                    </AccordionTrigger>
                    <AccordionContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-muted/50 rounded-lg">
-                        <div className="space-y-3">
-                          <h4 className="font-semibold flex items-center gap-2"><BookCopy className="h-4 w-4" /> By Subject</h4>
-                           <div className="flex flex-wrap gap-2">
-                            {classData.assessmentsBySubject.map(sub => (
-                              <Badge key={sub.subjectName} variant="secondary">{sub.subjectName} ({sub.count})</Badge>
-                            ))}
-                          </div>
-                        </div>
-                         <div className="space-y-3">
-                          <h4 className="font-semibold flex items-center gap-2"><Layers2 className="h-4 w-4" /> By Category</h4>
-                          <div className="flex flex-wrap gap-2">
-                             {classData.assessmentsByCategory.map(cat => (
-                              <Badge key={cat.categoryName} variant="outline">{cat.categoryName} ({cat.count})</Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4" /> By Teacher</h4>
-                          <div className="flex flex-wrap gap-2">
-                             {classData.assessmentsByTeacher.map(t => (
-                              <Badge key={t.teacherName} variant="secondary" className="bg-blue-100 text-blue-800">{t.teacherName} ({t.count})</Badge>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="p-4 bg-muted/50 rounded-lg space-y-4">
+                        {classData.assessmentsBySubject.map(subjectGroup => {
+                          const categories = new Map<string, number>();
+                          const teachersInSubject = new Map<string, number>();
+                          
+                          subjectGroup.assessments.forEach(asmnt => {
+                            categories.set(asmnt.category, (categories.get(asmnt.category) || 0) + 1);
+                            const teacherName = getTeacherName(asmnt.teacherId);
+                            teachersInSubject.set(teacherName, (teachersInSubject.get(teacherName) || 0) + 1);
+                          });
+
+                          return (
+                            <div key={subjectGroup.subjectId} className="p-3 border bg-background rounded-md">
+                                <h4 className="font-semibold text-base flex items-center gap-2 mb-3">
+                                    <BookCopy className="h-4 w-4" /> {subjectGroup.subjectName}
+                                    <Badge variant="secondary" className="ml-2">{subjectGroup.assessments.length} Assessment(s)</Badge>
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 pl-6">
+                                  <div>
+                                    <h5 className="font-medium flex items-center gap-2 text-sm mb-1"><Layers2 className="h-4 w-4" /> By Category</h5>
+                                    <div className="flex flex-wrap gap-2">
+                                      {Array.from(categories.entries()).map(([name, count]) => (
+                                        <Badge key={name} variant="outline">{name} ({count})</Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h5 className="font-medium flex items-center gap-2 text-sm mb-1"><User className="h-4 w-4" /> By Teacher</h5>
+                                    <div className="flex flex-wrap gap-2">
+                                      {Array.from(teachersInSubject.entries()).map(([name, count]) => (
+                                        <Badge key={name} variant="secondary" className="bg-blue-100 text-blue-800">{name} ({count})</Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                            </div>
+                          )
+                        })}
                       </div>
                    </AccordionContent>
                 </AccordionItem>
