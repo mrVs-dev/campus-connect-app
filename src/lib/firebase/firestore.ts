@@ -922,6 +922,7 @@ export async function getGradeScale(): Promise<LetterGrade[]> {
   }
   // Default values if not set
   return [
+    { grade: 'A+', minScore: 97 },
     { grade: 'A', minScore: 90 },
     { grade: 'B', minScore: 80 },
     { grade: 'C', minScore: 70 },
