@@ -36,7 +36,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
-import type { Teacher, Subject, Admission, UserRole } from "@/lib/types";
+import type { Teacher, Subject, Admission, UserRole, ClassAssignment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css';
@@ -187,15 +187,42 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
     loadRoles();
 
     if (teacher) {
+        // Combine assignments from both sources
+        const combinedAssignments = new Map<string, ClassAssignment>();
+
+        // 1. Add assignments from the teacher's profile
+        teacher.assignedClasses?.forEach(ac => {
+            const key = `${ac.schoolYear}::${ac.programId}::${ac.level}`;
+            if (!combinedAssignments.has(key)) {
+                combinedAssignments.set(key, ac);
+            }
+        });
+
+        // 2. Add assignments from the main admissions data
+        admissions.forEach(admission => {
+            admission.classes?.forEach(classDef => {
+                if (classDef.teacherIds?.includes(teacher.teacherId)) {
+                    const key = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
+                    if (!combinedAssignments.has(key)) {
+                        combinedAssignments.set(key, {
+                            schoolYear: admission.schoolYear,
+                            programId: classDef.programId,
+                            level: classDef.level,
+                        });
+                    }
+                }
+            });
+        });
+
       form.reset({
         ...teacher,
         role: teacher.role || 'Teacher',
         joinedDate: toDate(teacher.joinedDate),
         assignedSubjects: teacher.assignedSubjects || [],
-        assignedClasses: teacher.assignedClasses || [],
+        assignedClasses: Array.from(combinedAssignments.values()),
       });
     }
-  }, [teacher, form, open]);
+  }, [teacher, form, open, admissions]);
 
   const avatarUrl = form.watch("avatarUrl");
 
@@ -479,3 +506,4 @@ export function EditTeacherSheet({ teacher, open, onOpenChange, onSave, subjects
     </>
   );
 }
+
