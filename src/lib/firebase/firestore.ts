@@ -1,4 +1,5 @@
 
+
 import { 
   collection, 
   getDocs, 
@@ -186,21 +187,22 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     const newStudentId = await getNextStudentId();
     const studentDocRef = doc(db, 'students', newStudentId);
 
-    const studentForFirestore = {
+    const studentForFirestore: Partial<Student> & { status: string; enrollmentDate: Date | Timestamp } = {
         ...studentData,
         status: "Active",
         enrollmentDate: studentData.enrollmentDate ? Timestamp.fromDate(studentData.enrollmentDate) : serverTimestamp()
     };
-
-    const cleanedData = Object.fromEntries(
-      Object.entries(studentForFirestore).filter(([_, value]) => value !== undefined)
-    );
     
-    const dataWithTimestamps = convertDatesToTimestamps(cleanedData);
+    // Explicitly include familyId even if it's an empty string
+    if (studentData.familyId !== undefined) {
+      studentForFirestore.familyId = studentData.familyId;
+    }
+
+    const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
     await setDoc(studentDocRef, dataWithTimestamps);
     
     const newStudent: Student = {
-        ...studentData,
+        ...(studentData as Omit<Student, 'studentId' | 'status'>),
         studentId: newStudentId,
         enrollmentDate: studentData.enrollmentDate || new Date(),
         status: "Active",
@@ -208,6 +210,7 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     
     return newStudent;
 }
+
 
 export async function importStudents(studentsData: Partial<Student>[]): Promise<Student[]> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
@@ -250,22 +253,22 @@ export async function importStudents(studentsData: Partial<Student>[]): Promise<
 export async function updateStudent(studentId: string, dataToUpdate: Partial<Student>): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentDoc = doc(db, 'students', studentId);
-    
-    // Create a copy of the object to avoid modifying the original
+
+    // Create a copy so we don't modify the original object from the form
     const updateDataCopy = { ...dataToUpdate };
 
-    // Firestore's update method does not allow `undefined` values.
-    // This loop removes any keys where the value is `undefined`.
-    // It allows `null` and empty strings `''` to be saved.
-    Object.keys(updateDataCopy).forEach(key => {
-        if (updateDataCopy[key as keyof typeof updateDataCopy] === undefined) {
-            delete updateDataCopy[key as keyof typeof updateDataCopy];
+    // Delete keys with `undefined` values, as Firestore doesn't allow them.
+    // Allow `null` and empty strings `''` to be saved.
+    (Object.keys(updateDataCopy) as Array<keyof typeof updateDataCopy>).forEach(key => {
+        if (updateDataCopy[key] === undefined) {
+            delete updateDataCopy[key];
         }
     });
     
     const dataWithTimestamps = convertDatesToTimestamps(updateDataCopy);
     await updateDoc(studentDoc, dataWithTimestamps);
 }
+
 
 export async function updateStudentStatus(
     student: Student, 
@@ -354,6 +357,42 @@ export async function deleteAllStudents(): Promise<void> {
 
     await batch.commit();
 }
+
+export async function swapLegacyStudentNames(): Promise<number> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+
+    const studentsCollection = collection(db, 'students');
+    const snapshot = await getDocs(studentsCollection);
+    
+    const batch = writeBatch(db);
+    let updatedCount = 0;
+
+    snapshot.docs.forEach(doc => {
+        const student = { ...doc.data(), studentId: doc.id } as Student;
+        const idNumberStr = student.studentId.replace('STU', '');
+        const idNumber = parseInt(idNumberStr, 10);
+
+        if (!isNaN(idNumber) && idNumber <= 1831) {
+            const tempFirstName = student.firstName;
+            const newFirstName = student.lastName;
+            const newLastName = tempFirstName;
+
+            const studentRef = doc(db, 'students', student.studentId);
+            batch.update(studentRef, {
+                firstName: newFirstName,
+                lastName: newLastName
+            });
+            updatedCount++;
+        }
+    });
+
+    if (updatedCount > 0) {
+        await batch.commit();
+    }
+
+    return updatedCount;
+}
+
 
 // --- Student Status History ---
 export async function getStudentStatusHistory(): Promise<StudentStatusHistory[]> {

@@ -27,8 +27,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { savePermissions } from "@/lib/firebase/firestore";
+import { savePermissions, swapLegacyStudentNames } from "@/lib/firebase/firestore";
 import { APP_MODULES } from "@/lib/modules";
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
@@ -549,6 +559,64 @@ function GradeScaleSettings({ initialGradeScale, onSave }: { initialGradeScale: 
   );
 }
 
+function DataCorrectionSettings({ onSwapNames }: { onSwapNames: () => Promise<void> }) {
+  const [isConfirmOpen, setIsConfirmOpen] = React.useState(false);
+  const [isSwapping, setIsSwapping] = React.useState(false);
+
+  const handleSwap = async () => {
+    setIsSwapping(true);
+    await onSwapNames();
+    setIsSwapping(false);
+    setIsConfirmOpen(false);
+  };
+
+  return (
+    <>
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive flex items-center gap-2">
+            <AlertTriangle /> Data Correction
+          </CardTitle>
+          <CardDescription>
+            Use these tools for one-time data fixes. Use with caution.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold">Swap Legacy Student Names</h4>
+              <p className="text-sm text-muted-foreground">
+                Swaps the First and Last names for students with ID STU1831 and lower.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => setIsConfirmOpen(true)}
+              disabled={isSwapping}
+            >
+              {isSwapping ? "Running..." : "Fix Legacy Names"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently swap the first and last names for all students with an ID of STU1831 or lower. This action cannot be easily undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSwap}>Confirm and Run</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 
 // Main Page Component
 interface SettingsPageProps {
@@ -561,6 +629,8 @@ interface SettingsPageProps {
   onSaveCategories: (categories: AssessmentCategory[]) => void;
   onSaveRoles: (roles: UserRole[]) => Promise<void>;
   onSaveGradeScale: (grades: LetterGrade[]) => void;
+  onSwapLegacyNames: () => Promise<void>;
+  userRole: UserRole | null;
 }
 
 export function SettingsPage({ 
@@ -572,7 +642,9 @@ export function SettingsPage({
   onSaveRoles,
   initialPermissions,
   gradeScale,
-  onSaveGradeScale
+  onSaveGradeScale,
+  onSwapLegacyNames,
+  userRole
 }: SettingsPageProps) {
 
   if (!allRoles.length) {
@@ -586,6 +658,9 @@ export function SettingsPage({
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
       <GradeScaleSettings initialGradeScale={gradeScale} onSave={onSaveGradeScale} />
+       {userRole === 'Admin' && (
+        <DataCorrectionSettings onSwapNames={onSwapLegacyNames} />
+      )}
     </div>
   );
 }
