@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole, Permissions } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole, Permissions, LetterGrade } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 
 // Type guards to check for Firestore Timestamps
@@ -912,11 +912,27 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
   await setDoc(settingsDocRef, { config: permissions });
 }
 
-    
+export async function getGradeScale(): Promise<LetterGrade[]> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'gradeScale');
+  const docSnap = await getDoc(settingsDocRef);
+  
+  if (docSnap.exists() && docSnap.data().grades) {
+    return docSnap.data().grades;
+  }
+  // Default values if not set
+  return [
+    { grade: 'A', minScore: 90 },
+    { grade: 'B', minScore: 80 },
+    { grade: 'C', minScore: 70 },
+    { grade: 'D', minScore: 60 },
+    { grade: 'E', minScore: 50 },
+    { grade: 'F', minScore: 0 },
+  ];
+}
 
-    
-
-
-
-
-
+export async function saveGradeScale(grades: LetterGrade[]): Promise<void> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'gradeScale');
+  await setDoc(settingsDocRef, { grades: grades });
+}
