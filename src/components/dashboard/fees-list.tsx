@@ -199,6 +199,10 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
     }
   };
 
+  const sortedFees = React.useMemo(() => {
+    return [...fees].sort((a, b) => a.name.localeCompare(b.name));
+  }, [fees]);
+
   return (
     <>
       <Card>
@@ -226,7 +230,7 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {fees.map((fee) => (
+              {sortedFees.map((fee) => (
                 <TableRow key={fee.feeId}>
                   <TableCell className="font-medium">{fee.name}</TableCell>
                   <TableCell><Badge variant="outline">{fee.type}</Badge></TableCell>
