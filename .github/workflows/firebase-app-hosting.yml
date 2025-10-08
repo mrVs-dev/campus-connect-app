@@ -13,16 +13,13 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: firebase/firebase-tools@v13
-        with:
-          serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
-          projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
-          channelId: live
-      - run: npm ci && npm run build
+
+      - name: Install Dependencies and Build
+        run: npm ci && npm run build
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -31,9 +28,11 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      - uses: firebase/firebase-tools@v13
+
+      - name: Deploy to App Hosting
+        uses: firebase/firebase-tools@v13
         with:
           serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
-          channelId: preview
+          channelId: ${{ github.event_name == 'push' && 'live' || 'preview' }}
           expires: 30d
