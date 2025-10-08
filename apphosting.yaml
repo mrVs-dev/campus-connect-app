@@ -19,4 +19,5 @@ runConfig:
     - secret: NEXT_PUBLIC_FIREBASE_APP_ID
 
 # The service account your App Hosting backend runs as.
-serviceAccount: 7466969346-compute@developer.gserviceaccount.com
+# By not specifying one, App Hosting will use a default service account
+# that already has the necessary permissions to access secrets.
