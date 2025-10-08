@@ -254,9 +254,20 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentDoc = doc(db, 'students', studentId);
     
-    const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
+    // Create a new object with all keys from the input data.
+    // This ensures that if a user clears a field (making it an empty string),
+    // it gets saved as an empty string instead of being filtered out.
+    const dataToSave: { [key: string]: any } = {};
+    for (const key in dataToUpdate) {
+        if (Object.prototype.hasOwnProperty.call(dataToUpdate, key)) {
+            dataToSave[key] = (dataToUpdate as any)[key];
+        }
+    }
+
+    const dataWithTimestamps = convertDatesToTimestamps(dataToSave);
     await updateDoc(studentDoc, dataWithTimestamps);
 }
+
 
 
 export async function updateStudentStatus(
@@ -356,22 +367,24 @@ export async function swapLegacyStudentNames(): Promise<number> {
     const batch = writeBatch(db);
     let updatedCount = 0;
 
-    snapshot.docs.forEach(doc => {
-        const student = { ...doc.data(), studentId: doc.id } as Student;
+    snapshot.docs.forEach(docSnap => {
+        const student = { ...docSnap.data(), studentId: docSnap.id } as Student;
         const idNumberStr = student.studentId.replace('STU', '');
-        const idNumber = parseInt(idNumberStr, 10);
+        
+        if (idNumberStr) {
+            const idNumber = parseInt(idNumberStr, 10);
+            if (!isNaN(idNumber) && idNumber <= 1831) {
+                const tempFirstName = student.firstName;
+                const newFirstName = student.lastName;
+                const newLastName = tempFirstName;
 
-        if (!isNaN(idNumber) && idNumber <= 1831) {
-            const tempFirstName = student.firstName;
-            const newFirstName = student.lastName;
-            const newLastName = tempFirstName;
-
-            const studentRef = doc(db, 'students', student.studentId);
-            batch.update(studentRef, {
-                firstName: newFirstName,
-                lastName: newLastName
-            });
-            updatedCount++;
+                const studentRef = doc(db, 'students', student.studentId);
+                batch.update(studentRef, {
+                    firstName: newFirstName,
+                    lastName: newLastName
+                });
+                updatedCount++;
+            }
         }
     });
 
