@@ -5,7 +5,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { PlusCircle, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Edit, Trash2, ArrowUpDown } from "lucide-react";
 import type { Fee, FeeType, FeeFrequency } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -171,10 +171,13 @@ interface FeesListProps {
   onDeleteFee: (feeId: string) => void;
 }
 
+type SortableKey = 'name' | 'type' | 'frequency' | 'amount';
+
 export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [feeToEdit, setFeeToEdit] = React.useState<Fee | null>(null);
   const [feeToDelete, setFeeToDelete] = React.useState<Fee | null>(null);
+  const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>({ key: 'name', direction: 'asc' });
 
   const handleEdit = (fee: Fee) => {
     setFeeToEdit(fee);
@@ -198,10 +201,34 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
       setFeeToDelete(null);
     }
   };
+  
+  const requestSort = (key: SortableKey) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   const sortedFees = React.useMemo(() => {
-    return [...fees].sort((a, b) => a.name.localeCompare(b.name));
-  }, [fees]);
+    let sortableItems = [...fees];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [fees, sortConfig]);
+
 
   return (
     <>
@@ -222,10 +249,30 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Frequency</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('name')}>
+                        Name
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('type')}>
+                        Type
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort('frequency')}>
+                        Frequency
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </TableHead>
+                <TableHead className="text-right">
+                    <Button variant="ghost" onClick={() => requestSort('amount')}>
+                        Amount
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </TableHead>
                 <TableHead><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
@@ -279,3 +326,5 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
     </>
   );
 }
+
+    
