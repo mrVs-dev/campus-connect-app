@@ -194,7 +194,7 @@ export function AttendanceRoster({ students, classId, teacherId }: AttendanceRos
                                     </Avatar>
                                     <div>
                                         <p className="font-semibold">{student.firstName} {student.lastName}</p>
-                                        <p className="text-sm text-muted-foreground">{student.khmerFirstName} {student.khmerLastName}</p>
+                                        <p className="text-sm text-muted-foreground">{student.khmerLastName} {student.khmerFirstName}</p>
                                         <p className="text-xs text-muted-foreground">{student.sex}</p>
                                     </div>
                                 </div>
