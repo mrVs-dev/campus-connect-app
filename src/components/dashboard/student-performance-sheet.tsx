@@ -142,14 +142,18 @@ export function StudentPerformanceSheet({
   }, [student, assessments, subjects, assessmentCategories]);
 
   const studentGrades = React.useMemo(() => {
+    if (!performanceBySubject) return {};
     return performanceBySubject.reduce((acc, subject) => {
-      if (subject.overallScore !== null && subject.overallScore >= 0) {
+      if (subject.overallScore !== null) {
         acc[subject.subjectName] = subject.overallScore;
       }
       return acc;
     }, {} as Record<string, number>);
   }, [performanceBySubject]);
 
+  const validSubjects = performanceBySubject.filter(s => s.overallScore !== null);
+  const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length : 0;
+  
   if (!student) {
     return null;
   }
@@ -182,9 +186,6 @@ export function StudentPerformanceSheet({
         fileInputRef.current.value = ""; // Reset file input
     }
   };
-
-  const validSubjects = performanceBySubject.filter(s => s.overallScore !== null);
-  const overallAverage = validSubjects.length > 0 ? validSubjects.reduce((acc, curr) => acc + (curr.overallScore || 0), 0) / validSubjects.length : 0;
 
   const fullName = `${student.firstName || ''} ${student.middleName || ''} ${student.lastName || ''}`.replace(/ +/g, ' ').trim();
   const khmerFullName = `${student.khmerLastName || ''} ${student.khmerFirstName || ''}`.trim();
