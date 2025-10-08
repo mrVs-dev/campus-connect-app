@@ -118,6 +118,7 @@ export interface Assessment {
   totalMarks: number;
   scores: Record<string, number>; // { [studentId]: rawScore }
   creationDate?: Date;
+  classId?: string; // Explicit link to the class (schoolYear_programId_level)
 }
 
 // For yearly admissions

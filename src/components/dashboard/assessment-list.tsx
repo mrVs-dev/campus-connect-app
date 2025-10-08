@@ -125,13 +125,8 @@ export function AssessmentList({
     
     // Step 2: Iterate through each defined class to find its valid assessments.
     classMap.forEach((classInfo, classId) => {
-      const studentIdSet = classInfo.studentIds;
-      if (studentIdSet.size === 0) return; // Skip classes with no students
-
-      // An assessment is relevant if it has a score for at least one student in this specific class roster.
-      const assessmentsForClass = assessments.filter(assessment => {
-        return Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId));
-      });
+      // An assessment is relevant if its classId matches the current class.
+      const assessmentsForClass = assessments.filter(assessment => assessment.classId === classId);
       
       if (assessmentsForClass.length > 0) {
         const assessmentsBySubject: Record<string, { subjectName: string; assessments: Assessment[] }> = {};

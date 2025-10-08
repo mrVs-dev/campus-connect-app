@@ -94,22 +94,8 @@ export default function RosterPage() {
 
             const classRosterData = allStudents.filter(s => studentIdsInClass.has(s.studentId));
             
-            const teacherSubjectIds = currentTeacher.assignedSubjects || [];
-            
-            const assessmentsForThisClass = allAssessments.filter(assessment => {
-                 // --- STRICT VALIDATION LOGIC FOR TEACHER ROSTER ---
-                 // Condition 1: Must be created by this specific teacher.
-                 if (assessment.teacherId !== currentTeacher.teacherId) return false;
-
-                 // Condition 2: The assessment's subject must be one assigned to this teacher.
-                 if (!teacherSubjectIds.includes(assessment.subjectId)) return false;
-
-                 // Condition 3: Must have scores for at least one student in THIS class roster.
-                 const studentIdSet = new Set(classRosterData.map(s => s.studentId));
-                 if (!Object.keys(assessment.scores).some(studentId => studentIdSet.has(studentId))) return false;
-
-                 return true;
-            });
+            // Filter assessments that are explicitly for this class
+            const assessmentsForThisClass = allAssessments.filter(assessment => assessment.classId === classId);
 
             setClassAssessments(assessmentsForThisClass.sort((a,b) => (b.creationDate?.getTime() || 0) - (a.creationDate?.getTime() || 0)));
 
@@ -144,7 +130,7 @@ export default function RosterPage() {
     if (!loggedInTeacher) return null;
     try {
       const isNewAssessment = !('assessmentId' in assessmentData);
-      const dataWithTeacher = { ...assessmentData, teacherId: loggedInTeacher.teacherId };
+      const dataWithTeacher = { ...assessmentData, teacherId: loggedInTeacher.teacherId, classId: classId };
       const savedAssessment = await saveAssessment(dataWithTeacher);
       
       await fetchData(); // Refetch all data to update the view
@@ -345,6 +331,7 @@ export default function RosterPage() {
         onSave={handleSaveAssessment}
         subjects={teacherSubjects}
         assessmentCategories={assessmentCategories}
+        classId={classId}
       />
       
       <GradeEntrySheet

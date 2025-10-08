@@ -44,9 +44,10 @@ interface NewAssessmentDialogProps {
   existingAssessment?: Assessment | null;
   subjects: Subject[];
   assessmentCategories: AssessmentCategory[];
+  classId?: string; // Make classId optional for admin creation
 }
 
-export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssessment, subjects, assessmentCategories }: NewAssessmentDialogProps) {
+export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssessment, subjects, assessmentCategories, classId }: NewAssessmentDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
 
   const form = useForm<NewAssessmentFormValues>({
@@ -78,12 +79,13 @@ export function NewAssessmentDialog({ open, onOpenChange, onSave, existingAssess
     let result: Assessment | null = null;
     
     if (existingAssessment) {
-      const updatedAssessment = { ...existingAssessment, ...values };
+      const updatedAssessment = { ...existingAssessment, ...values, classId: existingAssessment.classId || classId };
       result = await onSave(updatedAssessment);
     } else {
       const newAssessmentData = {
         ...values,
         scores: {},
+        classId: classId,
       };
       result = await onSave(newAssessmentData);
     }
