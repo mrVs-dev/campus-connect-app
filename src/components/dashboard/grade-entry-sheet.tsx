@@ -53,11 +53,9 @@ export function GradeEntrySheet({
   const handleScoreChange = (studentId: string, value: string) => {
     if (!assessment) return;
 
-    // If the input is blank, we want to remove the score for this student.
+    // If the input is blank, we represent the score as `undefined` to mark it for removal.
     if (value === "") {
-      const newScores = { ...scores };
-      delete newScores[studentId];
-      setScores(newScores);
+      setScores(prev => ({ ...prev, [studentId]: undefined }));
       return;
     }
 
@@ -83,20 +81,20 @@ export function GradeEntrySheet({
       }
       setScores(prev => ({ ...prev, [studentId]: score }));
     }
-    // If the input is not a number (e.g., "abc") but not blank, we do nothing to prevent bad data.
   };
 
   const handleSave = async () => {
     if (!assessment) return;
     setIsSaving(true);
     
-    // Create a new scores object with only defined, numerical scores.
-    const validScores = Object.entries(scores).reduce((acc, [key, value]) => {
-      if (typeof value === 'number' && !isNaN(value)) {
-        acc[key] = value;
+    // Create a new scores object, explicitly removing any entries that are undefined.
+    const validScores: Record<string, number> = {};
+    for (const studentId in scores) {
+      const scoreValue = scores[studentId];
+      if (typeof scoreValue === 'number' && !isNaN(scoreValue)) {
+        validScores[studentId] = scoreValue;
       }
-      return acc;
-    }, {} as Record<string, number>);
+    }
 
     const updatedAssessment = { ...assessment, scores: validScores };
     await onSaveGrades(updatedAssessment);
@@ -165,5 +163,3 @@ export function GradeEntrySheet({
     </Sheet>
   );
 }
-
-    
