@@ -122,10 +122,12 @@ export default function RosterPage() {
     fetchData();
   }, [fetchData]);
   
-  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => {
+  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId'> | Assessment) => {
+    if (!loggedInTeacher) return null;
     try {
       const isNewAssessment = !('assessmentId' in assessmentData);
-      const savedAssessment = await saveAssessment(assessmentData);
+      const dataWithTeacher = { ...assessmentData, teacherId: loggedInTeacher.teacherId };
+      const savedAssessment = await saveAssessment(dataWithTeacher);
       
       await fetchData(); // Refetch all data to update the view
       
@@ -193,7 +195,7 @@ export default function RosterPage() {
 
   const teacherSubjects = loggedInTeacher?.assignedSubjects 
     ? subjects.filter(s => loggedInTeacher.assignedSubjects?.includes(s.subjectId))
-    : subjects;
+    : [];
 
   return (
     <div className="space-y-6">

@@ -31,26 +31,17 @@ interface PerformanceMetrics {
   mostImprovedStudent: { name: string; improvement: number } | null;
 }
 
-function getCurrentSchoolYear() {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  if (currentMonth < 7) { 
-    return `${currentYear - 1}-${currentYear}`;
-  }
-  return `${currentYear}-${currentYear + 1}`;
-}
-
 export default function TeacherDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [assignedClasses, setAssignedClasses] = React.useState<AssignedClass[]>([]);
-  const [allAssessments, setAllAssessments] = React.useState<Assessment[]>([]);
+  const [teacherAssessments, setTeacherAssessments] = React.useState<Assessment[]>([]);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
   const [metrics, setMetrics] = React.useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [loggedInTeacher, setLoggedInTeacher] = React.useState<Teacher | null>(null);
 
   React.useEffect(() => {
     if (!authLoading && !user) {
@@ -58,156 +49,154 @@ export default function TeacherDashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  React.useEffect(() => {
-    if (user) {
-      const fetchData = async () => {
-        try {
-          setLoading(true);
-          let [teachers, admissions, allStudents, assessments, subjectsData, categoriesData] = await Promise.all([
-            getTeachers(), 
-            getAdmissions(), 
-            getStudents(), 
-            getAssessments(),
-            getSubjects(),
-            getAssessmentCategories(),
-          ]);
-          
-          let loggedInTeacher = teachers.find(t => t.email === user.email);
-          
-          if (!loggedInTeacher) {
-             // If user is not in the teacher list at all, they might be admin/other role
-            router.replace('/dashboard');
-            return;
-          }
-          
-          // Auto-assign 'Teacher' role if not present, but only if they are not another role type
-          if (!loggedInTeacher.role) {
-            loggedInTeacher.role = 'Teacher';
-            await updateTeacher(loggedInTeacher.teacherId, { role: 'Teacher' });
-             // Re-fetch teachers to get the latest role
-            teachers = await getTeachers();
-            loggedInTeacher = teachers.find(t => t.email === user.email)!;
-          }
+  const fetchData = React.useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      let [teachers, admissions, allStudents, allAssessments, subjectsData, categoriesData] = await Promise.all([
+        getTeachers(), 
+        getAdmissions(), 
+        getStudents(), 
+        getAssessments(),
+        getSubjects(),
+        getAssessmentCategories(),
+      ]);
+      
+      let currentTeacher = teachers.find(t => t.email === user.email);
+      
+      if (!currentTeacher) {
+        router.replace('/dashboard');
+        return;
+      }
+      
+      if (!currentTeacher.role) {
+        currentTeacher.role = 'Teacher';
+        await updateTeacher(currentTeacher.teacherId, { role: 'Teacher' });
+        teachers = await getTeachers();
+        currentTeacher = teachers.find(t => t.email === user.email)!;
+      }
 
-          if (loggedInTeacher.role !== 'Teacher') {
-            router.replace('/dashboard');
-            return;
-          }
-          
-          setAllAssessments(assessments);
-          setSubjects(subjectsData);
-          setAssessmentCategories(categoriesData);
+      if (currentTeacher.role !== 'Teacher') {
+        router.replace('/dashboard');
+        return;
+      }
 
-          const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
-          const teacherId = loggedInTeacher.teacherId;
+      setLoggedInTeacher(currentTeacher);
+      
+      const assessmentsForTeacher = allAssessments.filter(a => a.teacherId === currentTeacher?.teacherId);
+      setTeacherAssessments(assessmentsForTeacher);
 
-          admissions.forEach(admission => {
-              // Source 1: Get classes from the teacher's own profile
-              loggedInTeacher?.assignedClasses?.forEach(assignedClass => {
-                  if (assignedClass.schoolYear === admission.schoolYear) {
-                      const classKey = `${assignedClass.schoolYear}::${assignedClass.programId}::${assignedClass.level}`;
-                      if (!classMap.has(classKey)) {
-                           const programName = programs.find(p => p.id === assignedClass.programId)?.name || "Unknown Program";
-                           classMap.set(classKey, { schoolYear: assignedClass.schoolYear, programId: assignedClass.programId, programName, level: assignedClass.level, students: new Set() });
-                       }
+      setSubjects(subjectsData);
+      setAssessmentCategories(categoriesData);
+
+      const classMap = new Map<string, { schoolYear: string, programId: string; programName: string; level: string; students: Set<string> }>();
+      const teacherId = currentTeacher.teacherId;
+
+       admissions.forEach(admission => {
+        // Source 1: Get classes from the teacher's own profile
+        currentTeacher?.assignedClasses?.forEach(assignedClass => {
+            if (assignedClass.schoolYear === admission.schoolYear) {
+                const classKey = `${assignedClass.schoolYear}::${assignedClass.programId}::${assignedClass.level}`;
+                if (!classMap.has(classKey)) {
+                      const programName = programs.find(p => p.id === assignedClass.programId)?.name || "Unknown Program";
+                      classMap.set(classKey, { schoolYear: assignedClass.schoolYear, programId: assignedClass.programId, programName, level: assignedClass.level, students: new Set() });
                   }
-              });
+            }
+        });
 
-              // Source 2: Get classes where this teacher is listed in the class definition for the year
-              admission.classes?.forEach(classDef => {
-                  if (classDef.teacherIds?.includes(teacherId)) {
-                      const classKey = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
-                       if (!classMap.has(classKey)) {
-                           const programName = programs.find(p => p.id === classDef.programId)?.name || "Unknown Program";
-                           classMap.set(classKey, { schoolYear: admission.schoolYear, programId: classDef.programId, programName, level: classDef.level, students: new Set() });
-                       }
+        // Source 2: Get classes where this teacher is listed in the class definition for the year
+        admission.classes?.forEach(classDef => {
+            if (classDef.teacherIds?.includes(teacherId)) {
+                const classKey = `${admission.schoolYear}::${classDef.programId}::${classDef.level}`;
+                  if (!classMap.has(classKey)) {
+                      const programName = programs.find(p => p.id === classDef.programId)?.name || "Unknown Program";
+                      classMap.set(classKey, { schoolYear: admission.schoolYear, programId: classDef.programId, programName, level: classDef.level, students: new Set() });
                   }
-              });
+            }
+        });
 
-              // Now, populate students for all identified classes for this admission year
-              admission.students.forEach(studentAdmission => {
-                  studentAdmission.enrollments.forEach(enrollment => {
-                       const classKey = `${admission.schoolYear}::${enrollment.programId}::${enrollment.level}`;
-                       if (classMap.has(classKey)) {
-                           classMap.get(classKey)!.students.add(studentAdmission.studentId);
-                       }
-                  });
-              });
-          });
-          
-          const classes: AssignedClass[] = Array.from(classMap.values()).map(classInfo => {
-            const studentsInClass = allStudents.filter(s => classInfo.students.has(s.studentId));
-            const classAverages = studentsInClass.map(s => calculateStudentAverage(s.studentId, assessments, subjectsData, categoriesData));
-            const totalAverage = classAverages.reduce((sum, avg) => sum + avg, 0);
-            const averagePerformance = studentsInClass.length > 0 ? Math.round(totalAverage / studentsInClass.length) : 0;
-            
-            return {
-              classId: `${classInfo.schoolYear}_${classInfo.programId}_${classInfo.level}`.replace(/\s+/g, '-'),
-              schoolYear: classInfo.schoolYear,
-              programId: classInfo.programId,
-              programName: classInfo.programName,
-              level: classInfo.level,
-              students: studentsInClass,
-              averagePerformance: averagePerformance,
-            };
-          });
-          
-          setAssignedClasses(classes.sort((a,b) => b.schoolYear.localeCompare(a.schoolYear) || a.programName.localeCompare(b.programName) || a.level.localeCompare(b.level)));
-
-          // Calculate overall metrics
-          const allClassStudents = classes.flatMap(c => c.students);
-          const uniqueStudentIds = [...new Set(allClassStudents.map(s => s.studentId))];
-          const uniqueStudents = uniqueStudentIds.map(id => allStudents.find(s => s.studentId === id)!);
-          
-          if (uniqueStudents.length > 0) {
-            const studentAverages = uniqueStudents.map(s => ({ student: s, average: calculateStudentAverage(s.studentId, assessments, subjectsData, categoriesData) }));
-            
-            const totalAverage = studentAverages.reduce((sum, s) => sum + s.average, 0);
-            const overallAverage = Math.round(totalAverage / studentAverages.length);
-
-            const outstandingStudent = studentAverages.reduce((max, current) => current.average > max.average ? current : max, studentAverages[0]);
-            
-            // NOTE: Most improved student logic is a placeholder. A real implementation would need historical data.
-            const mostImprovedStudent = studentAverages.length > 1 ? { name: `${studentAverages[1].student.firstName} ${studentAverages[1].student.lastName}`, improvement: 5 } : null;
-
-            setMetrics({
-              overallAverage,
-              outstandingStudent: { name: `${outstandingStudent.student.firstName} ${outstandingStudent.student.lastName}`, score: outstandingStudent.average },
-              mostImprovedStudent,
+        // Now, populate students for all identified classes for this admission year
+        admission.students.forEach(studentAdmission => {
+            studentAdmission.enrollments.forEach(enrollment => {
+                  const classKey = `${admission.schoolYear}::${enrollment.programId}::${enrollment.level}`;
+                  if (classMap.has(classKey)) {
+                      classMap.get(classKey)!.students.add(studentAdmission.studentId);
+                  }
             });
-          }
+        });
+      });
+      
+      const classes: AssignedClass[] = Array.from(classMap.values()).map(classInfo => {
+        const studentsInClass = allStudents.filter(s => classInfo.students.has(s.studentId));
+        const classAverages = studentsInClass.map(s => calculateStudentAverage(s.studentId, allAssessments, subjectsData, categoriesData));
+        const totalAverage = classAverages.reduce((sum, avg) => sum + avg, 0);
+        const averagePerformance = studentsInClass.length > 0 ? Math.round(totalAverage / studentsInClass.length) : 0;
+        
+        return {
+          classId: `${classInfo.schoolYear}_${classInfo.programId}_${classInfo.level}`.replace(/\s+/g, '-'),
+          schoolYear: classInfo.schoolYear,
+          programId: classInfo.programId,
+          programName: classInfo.programName,
+          level: classInfo.level,
+          students: studentsInClass,
+          averagePerformance: averagePerformance,
+        };
+      });
+      
+      setAssignedClasses(classes.sort((a,b) => b.schoolYear.localeCompare(a.schoolYear) || a.programName.localeCompare(b.programName) || a.level.localeCompare(b.level)));
+
+      const allClassStudents = classes.flatMap(c => c.students);
+      const uniqueStudentIds = [...new Set(allClassStudents.map(s => s.studentId))];
+      const uniqueStudents = uniqueStudentIds.map(id => allStudents.find(s => s.studentId === id)!);
+      
+      if (uniqueStudents.length > 0) {
+        const studentAverages = uniqueStudents.map(s => ({ student: s, average: calculateStudentAverage(s.studentId, allAssessments, subjectsData, categoriesData) }));
+        
+        const totalAverage = studentAverages.reduce((sum, s) => sum + s.average, 0);
+        const overallAverage = Math.round(totalAverage / studentAverages.length);
+
+        const outstandingStudent = studentAverages.reduce((max, current) => current.average > max.average ? current : max, studentAverages[0]);
+        
+        const mostImprovedStudent = studentAverages.length > 1 ? { name: `${studentAverages[1].student.firstName} ${studentAverages[1].student.lastName}`, improvement: 5 } : null;
+
+        setMetrics({
+          overallAverage,
+          outstandingStudent: { name: `${outstandingStudent.student.firstName} ${outstandingStudent.student.lastName}`, score: outstandingStudent.average },
+          mostImprovedStudent,
+        });
+      }
 
 
-        } catch (err: any) {
-          console.error("Failed to fetch teacher data:", err);
-          setError(err.message || "Could not load your dashboard. Please try again later.");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchData();
+    } catch (err: any) {
+      console.error("Failed to fetch teacher data:", err);
+      setError(err.message || "Could not load your dashboard. Please try again later.");
+    } finally {
+      setLoading(false);
     }
   }, [user, router]);
   
-  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => {
+  React.useEffect(() => {
+      fetchData();
+  }, [fetchData]);
+  
+  const handleSaveAssessment = async (assessmentData: Omit<Assessment, 'assessmentId'> | Assessment) => {
+    if (!loggedInTeacher) return null;
     try {
-      const savedAssessment = await saveAssessment(assessmentData);
-      setAllAssessments(prev => {
-        const existingIndex = prev.findIndex(a => a.assessmentId === savedAssessment.assessmentId);
-        if (existingIndex > -1) {
-            const updatedAssessments = [...prev];
-            updatedAssessments[existingIndex] = savedAssessment;
-            return updatedAssessments;
-        } else {
-            return [...prev, savedAssessment];
-        }
-      });
+      const dataWithTeacher = { ...assessmentData, teacherId: loggedInTeacher.teacherId };
+      const savedAssessment = await saveAssessment(dataWithTeacher);
+      
+      await fetchData(); // This will refresh all data including assessments
+      
       return savedAssessment;
     } catch (error) {
       console.error("Error saving assessment:", error);
       return null;
     }
   };
+  
+  const teacherSubjects = loggedInTeacher?.assignedSubjects 
+    ? subjects.filter(s => loggedInTeacher.assignedSubjects?.includes(s.subjectId))
+    : [];
 
   if (authLoading || loading) {
     return <div className="flex items-center justify-center h-screen">Loading your dashboard...</div>;
@@ -306,12 +295,12 @@ export default function TeacherDashboardPage() {
           </div>
           
           <div>
-             <h2 className="text-2xl font-bold mb-4">Assessments</h2>
+             <h2 className="text-2xl font-bold mb-4">My Assessments</h2>
              <AssessmentList
                 userRole="Teacher"
-                assessments={allAssessments}
+                assessments={teacherAssessments}
                 students={assignedClasses.flatMap(c => c.students)}
-                subjects={subjects}
+                subjects={teacherSubjects}
                 assessmentCategories={assessmentCategories}
                 onSaveAssessment={handleSaveAssessment}
             />
@@ -320,5 +309,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    

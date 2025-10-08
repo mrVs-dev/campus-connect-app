@@ -1,5 +1,4 @@
 
-
 import { 
   collection, 
   getDocs, 
@@ -522,7 +521,7 @@ export async function getAssessments(): Promise<Assessment[]> {
     });
 }
 
-export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment): Promise<Assessment | null> {
+export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmentId'> | Assessment): Promise<Assessment | null> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
     try {
@@ -536,7 +535,6 @@ export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmen
             const assessmentsCollection = collection(db, 'assessments');
             const dataToSave = {
                 ...assessmentData,
-                teacherId: "T001", // Placeholder teacher ID
                 creationDate: serverTimestamp(),
             };
             const newDocRef = await addDoc(assessmentsCollection, dataToSave);
@@ -917,6 +915,7 @@ export async function savePermissions(permissions: Permissions): Promise<void> {
     
 
     
+
 
 
 
