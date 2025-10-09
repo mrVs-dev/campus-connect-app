@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -61,17 +62,24 @@ export default function TeacherDashboardPage() {
       let currentTeacher = teachers.find(t => t.email === user.email);
       
       if (!currentTeacher) {
-        router.replace('/dashboard');
+        // This case should be handled by the main dashboard page, but as a fallback:
+        setError("Could not find teacher data for your account. You may not have a teacher role assigned.");
+        setLoading(false);
+        // Optional: Redirect after a delay
+        // setTimeout(() => router.replace('/dashboard'), 3000);
         return;
       }
       
+      // Ensure the role is set if it's missing (legacy data)
       if (!currentTeacher.role) {
         currentTeacher.role = 'Teacher';
         await updateTeacher(currentTeacher.teacherId, { role: 'Teacher' });
-        teachers = await getTeachers();
+        // Re-fetch teachers to get the updated role for checks
+        teachers = await getTeachers(); 
         currentTeacher = teachers.find(t => t.email === user.email)!;
       }
 
+      // If user is logged in but their role is not 'Teacher', redirect them
       if (currentTeacher.role !== 'Teacher') {
         router.replace('/dashboard');
         return;

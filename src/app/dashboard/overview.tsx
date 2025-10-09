@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
@@ -377,10 +378,12 @@ export function Overview({ students, admissions }: OverviewProps) {
                    {program.subDivisions && Object.values(program.subDivisions).some(v => v > 0) && (
                     <div className="pt-4 space-y-1">
                         {Object.entries(program.subDivisions).map(([name, count]) => (
-                            <div key={name} className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">{name}</span>
-                                <span className="font-semibold ml-2">{count}</span>
-                            </div>
+                            count > 0 ? (
+                                <div key={name} className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">{name}</span>
+                                    <span className="font-semibold ml-2">{count}</span>
+                                </div>
+                            ) : null
                         ))}
                     </div>
                    )}

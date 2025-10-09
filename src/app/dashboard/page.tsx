@@ -300,7 +300,7 @@ export default function DashboardPage() {
   const handleUpdateStudentStatus = async (student: Student, newStatus: Student['status'], reason: string) => {
     if (!user) return;
     await updateStudentStatus(student, newStatus, reason, user);
-    await fetchData();
+    await fetchData(true);
     toast({
       title: "Status Updated",
       description: `${student.firstName}'s status has been changed to ${newStatus}.`,
@@ -316,7 +316,7 @@ export default function DashboardPage() {
             await deleteMainUser(userToDelete.uid);
         }
         
-        await fetchData();
+        await fetchData(true);
 
         toast({
             title: "Staff Deleted",
@@ -359,6 +359,24 @@ export default function DashboardPage() {
     return success;
   };
   
+  const handleSaveAssessment = async (assessment: Assessment) => {
+    const result = await saveAssessment(assessment);
+    if(result) {
+        await fetchData(true);
+        toast({
+          title: "Assessment Saved",
+          description: "The assessment has been successfully saved.",
+        });
+    } else {
+       toast({
+        title: "Save Failed",
+        description: "Could not save the assessment.",
+        variant: "destructive"
+      });
+    }
+    return result;
+  }
+  
   const handleSwapLegacyNames = async () => {
     try {
       const count = await swapLegacyStudentNames();
@@ -400,7 +418,7 @@ export default function DashboardPage() {
       <Header userRole={userRole} />
       <div className="flex min-h-screen w-full flex-col">
         <main className="flex flex-1 flex-col gap-4 bg-background p-4 md:gap-8 md:p-6">
-          <div className="container mx-auto grid flex-1 gap-4 p-0">
+          <div className="mx-auto grid w-full flex-1 gap-4 p-0">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
                 <TabsList>
                   {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
@@ -422,10 +440,10 @@ export default function DashboardPage() {
                     assessmentCategories={assessmentCategories}
                     onUpdateStudent={handleUpdateStudent}
                     onUpdateStudentStatus={handleUpdateStudentStatus}
-                    onImportStudents={importStudents}
-                    onDeleteStudent={deleteStudent}
-                    onDeleteSelectedStudents={deleteSelectedStudents}
-                    onMoveStudents={(studentIds, schoolYear, fromClass, toClass) => moveStudentsToClass(studentIds, schoolYear, fromClass, toClass)}
+                    onImportStudents={(importedStudents) => { importStudents(importedStudents); fetchData(true); }}
+                    onDeleteStudent={(studentId) => { deleteStudent(studentId); fetchData(true); }}
+                    onDeleteSelectedStudents={(studentIds) => { deleteSelectedStudents(studentIds); fetchData(true); }}
+                    onMoveStudents={(studentIds, schoolYear, fromClass, toClass) => { moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); fetchData(true); }}
                     gradeScale={gradeScale}
                     />
                 </TabsContent>
@@ -449,14 +467,14 @@ export default function DashboardPage() {
                     assessmentCategories={assessmentCategories}
                     admissions={admissions}
                     teachers={teachers}
-                    onSaveAssessment={saveAssessment}
+                    onSaveAssessment={handleSaveAssessment}
                     />
                 </TabsContent>
                 <TabsContent value="fees" className="space-y-4">
                   <FeesList
                     fees={fees}
-                    onSaveFee={saveFee}
-                    onDeleteFee={deleteFee}
+                    onSaveFee={(fee) => { const success = saveFee(fee); if (success) fetchData(true); return success; }}
+                    onDeleteFee={(feeId) => { deleteFee(feeId); fetchData(true); }}
                     />
                 </TabsContent>
                  <TabsContent value="invoicing" className="space-y-4">
@@ -464,15 +482,15 @@ export default function DashboardPage() {
                     invoices={invoices}
                     students={students}
                     fees={fees}
-                    onSaveInvoice={saveInvoice}
-                    onDeleteInvoice={deleteInvoice}
+                    onSaveInvoice={(invoice) => { const success = saveInvoice(invoice); if (success) fetchData(true); return success; }}
+                    onDeleteInvoice={(invoiceId) => { deleteInvoice(invoiceId); fetchData(true); }}
                     />
                 </TabsContent>
                  <TabsContent value="inventory" className="space-y-4">
                   <InventoryList
                     inventoryItems={inventory}
-                    onSaveItem={saveInventoryItem}
-                    onDeleteItem={deleteInventoryItem}
+                    onSaveItem={(item) => { const success = saveInventoryItem(item); if (success) fetchData(true); return success; }}
+                    onDeleteItem={(itemId) => { deleteInventoryItem(itemId); fetchData(true); }}
                     />
                 </TabsContent>
                 <TabsContent value="admissions" className="space-y-4">
@@ -481,13 +499,13 @@ export default function DashboardPage() {
                     students={students}
                     teachers={teachers}
                     onSave={handleSaveAdmission}
-                    onImport={importAdmissions}
+                    onImport={(data) => { importAdmissions(data); fetchData(true); }}
                     activeAccordion={activeAdmissionsAccordion}
                     onAccordionChange={setActiveAdmissionsAccordion}
                     />
                 </TabsContent>
                 <TabsContent value="enrollment" className="space-y-4">
-                  <EnrollmentForm onEnroll={addStudent as any} />
+                  <EnrollmentForm onEnroll={(student) => { addStudent(student); fetchData(true); }} />
                 </TabsContent>
                 <TabsContent value="statusHistory" className="space-y-4">
                   <StatusHistoryList
@@ -502,13 +520,13 @@ export default function DashboardPage() {
                     userRole={userRole}
                     subjects={subjects}
                     assessmentCategories={assessmentCategories}
-                    onSaveSubjects={saveSubjects}
-                    onSaveCategories={saveAssessmentCategories}
+                    onSaveSubjects={(s) => { saveSubjects(s); fetchData(true); }}
+                    onSaveCategories={(c) => { saveAssessmentCategories(c); fetchData(true); }}
                     allRoles={allSystemRoles}
                     onSaveRoles={handleSaveRoles}
                     initialPermissions={permissions}
                     gradeScale={gradeScale}
-                    onSaveGradeScale={saveGradeScale}
+                    onSaveGradeScale={(g) => { saveGradeScale(g); fetchData(true); }}
                     onSwapLegacyNames={handleSwapLegacyNames}
                   />
                 </TabsContent>
