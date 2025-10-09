@@ -64,6 +64,7 @@ const convertDatesToTimestamps = (data: any): any => {
     }
 
     if (typeof data === 'object' && data !== null) {
+        // Handle nested objects recursively
         const newData: { [key: string]: any } = {};
         for (const key in data) {
             if (Object.prototype.hasOwnProperty.call(data, key)) {

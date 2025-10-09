@@ -374,10 +374,10 @@ export function Overview({ students, admissions }: OverviewProps) {
                   <p className="font-semibold text-lg">{program.name}</p>
                   <p className="text-4xl font-bold">{program.total}</p>
                   <p className="text-sm text-muted-foreground">Total Admissions</p>
-                   {program.subDivisions && (
+                   {program.subDivisions && Object.values(program.subDivisions).some(v => v > 0) && (
                     <div className="pt-4 space-y-1">
                         {Object.entries(program.subDivisions).map(([name, count]) => (
-                            <div key={name} className="flex items-center text-sm">
+                            <div key={name} className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">{name}</span>
                                 <span className="font-semibold ml-2">{count}</span>
                             </div>

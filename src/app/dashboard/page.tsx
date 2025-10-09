@@ -281,6 +281,15 @@ export default function DashboardPage() {
     }
     fetchData();
   }, [user, authLoading, router, fetchData]);
+  
+  const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
+    await updateStudent(studentId, updatedData);
+    await fetchData(true); // Refetch data and show a success toast.
+    toast({
+        title: "Student Updated",
+        description: "The student's profile has been saved.",
+    });
+  };
 
   const handleSaveRoles = async (newRoles: UserRole[]) => {
     await saveRoles(newRoles);
@@ -389,10 +398,9 @@ export default function DashboardPage() {
   return (
     <>
       <Header userRole={userRole} />
-      <div className="hidden h-[calc(100vh-4rem)] border-t bg-background md:block">
-        <div className="container relative h-full max-w-7xl">
-          <main className="flex h-full flex-col overflow-y-auto pt-4 md:pt-8">
-            <div className="container flex flex-col gap-6 py-4">
+      <div className="flex min-h-screen w-full flex-col">
+        <main className="flex flex-1 flex-col gap-4 bg-background p-4 md:gap-8 md:p-6">
+          <div className="container mx-auto grid flex-1 gap-4 p-0">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
                 <TabsList>
                   {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
@@ -412,7 +420,7 @@ export default function DashboardPage() {
                     admissions={admissions}
                     subjects={subjects}
                     assessmentCategories={assessmentCategories}
-                    onUpdateStudent={updateStudent}
+                    onUpdateStudent={handleUpdateStudent}
                     onUpdateStudentStatus={handleUpdateStudentStatus}
                     onImportStudents={importStudents}
                     onDeleteStudent={deleteStudent}
@@ -505,9 +513,8 @@ export default function DashboardPage() {
                   />
                 </TabsContent>
               </Tabs>
-            </div>
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
     </>
   );
