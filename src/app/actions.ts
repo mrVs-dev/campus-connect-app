@@ -9,12 +9,25 @@ export async function getStudentSummary(
   input: SummarizeStudentProgressInput
 ) {
   try {
-    // The grades are pre-filtered in the component; no need for extra filtering here.
-    if (Object.keys(input.grades).length === 0) {
+    // --- SERVER-SIDE VALIDATION ---
+    // Filter out any subjects that have null or undefined grades before sending to the AI.
+    const validGrades: Record<string, number> = {};
+    for (const subject in input.grades) {
+        const grade = input.grades[subject];
+        if (typeof grade === 'number' && !isNaN(grade)) {
+            validGrades[subject] = grade;
+        }
+    }
+    
+    // If no valid grades are left after filtering, there's nothing to summarize.
+    if (Object.keys(validGrades).length === 0) {
         return { summary: "No performance data available to generate a summary.", error: null };
     }
 
-    const { summary } = await summarizeStudentProgress(input);
+    const { summary } = await summarizeStudentProgress({
+        studentId: input.studentId,
+        grades: validGrades
+    });
     return { summary, error: null };
   } catch (error) {
     console.error("Error generating student summary:", error);
