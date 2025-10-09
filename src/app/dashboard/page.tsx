@@ -417,9 +417,9 @@ export default function DashboardPage() {
       <Header userRole={userRole} />
       <div className="flex min-h-screen w-full flex-col">
         <main className="flex flex-1 flex-col gap-4 bg-background p-4 md:gap-8 md:p-6">
-          <div className="mx-auto grid w-full max-w-full flex-1 gap-4 p-0">
+          <div className="mx-auto w-full max-w-full">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-                <TabsList className="h-auto flex-wrap">
+                <TabsList className="h-auto flex-wrap justify-start">
                   {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
                       <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
                         {tab.label}
