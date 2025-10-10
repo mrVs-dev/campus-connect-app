@@ -36,5 +36,6 @@ jobs:
         with:
           serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
+          backendId: campus-connect-app
           channelId: ${{ github.event_name == 'push' && 'live' || 'preview' }}
           expires: 30d
