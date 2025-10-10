@@ -97,7 +97,10 @@ export default function LoginPage() {
         console.error("Authentication failed:", error);
         if (error.code === 'auth/unauthorized-domain') {
           setError(`Authentication Error: ${error.message}. Please make sure the domain is authorized in your Firebase project.`);
-        } else {
+        } else if (error.code === 'auth/popup-blocked') {
+            setError("Pop-up blocked. Please allow pop-ups for this site in your browser's address bar and try again.");
+        }
+        else {
           setError(`Failed to sign in. Error: ${error.message || error.code}`);
         }
         setIsSigningIn(false);
@@ -160,5 +163,3 @@ export default function LoginPage() {
       </div>
     );
 }
-
-    
