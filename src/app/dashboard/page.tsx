@@ -120,7 +120,7 @@ export default function DashboardPage() {
   
   const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
     if (!permissions || !userRole) return false;
-    if (userRole === 'Admin') return true;
+    if (user?.email === ADMIN_EMAIL) return true;
 
     return permissions[module]?.[userRole]?.[action] ?? false;
   };
