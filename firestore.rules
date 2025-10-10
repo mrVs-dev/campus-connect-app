@@ -1,69 +1,35 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Allow broad read access for any authenticated user to prevent initial load race conditions
+    // Allow read access to all collections for any authenticated user
     match /{document=**} {
-      allow read: if isAuthenticated();
+      allow read: if request.auth != null;
+      allow write: if false; // Default deny writes
     }
-    
-    // Lock down writes and deletes to be more specific
+
+    // Allow users to be created on sign-in
     match /users/{userId} {
-      allow write, delete: if request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == userId;
     }
     
-    match /students/{studentId} {
-      allow write, delete: if isAuthenticated(); // More specific rules can be added here later
+    // Allow admin to write to settings
+    match /settings/{setting} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'Admin';
     }
-    
-    match /admissions/{admissionId} {
-      allow write, delete: if isAuthenticated();
-    }
-    
+
+    // Allow teachers to write to their assigned data
     match /assessments/{assessmentId} {
-       allow write, delete: if isAuthenticated();
-    }
-    
-    match /teachers/{teacherId} {
-      allow write, delete: if isAuthenticated();
-    }
-    
-    match /student_status_history/{historyId} {
-        allow create: if isAuthenticated();
-        allow update, delete: if false; // History should be immutable
+        allow read: if request.auth != null;
+        allow create, update: if request.auth.uid in resource.data.teacherIds;
     }
 
-    match /settings/{settingId} {
-        allow write, delete: if isAuthenticated();
-    }
-    
-    match /metadata/{docId} {
-      allow write: if isAuthenticated();
-    }
-    
     match /attendance/{attendanceId} {
-        allow write, delete: if isAuthenticated();
-    }
-    
-    match /fcmTokens/{token} {
-        allow write, delete: if isAuthenticated();
-    }
-
-    match /fees/{feeId} {
-        allow write, delete: if isAuthenticated();
-    }
-    
-    match /invoices/{invoiceId} {
-        allow write, delete: if isAuthenticated();
-    }
-    
-    match /inventory/{itemId} {
-        allow write, delete: if isAuthenticated();
+        allow read: if request.auth != null;
+        allow create, update: if request.auth.uid == resource.data.recordedById;
     }
   }
 }
