@@ -43,12 +43,6 @@ if (isFirebaseConfigured) {
   auth = getAuth(app);
   db = getFirestore(app);
   
-  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-    console.log("Connecting to Firebase Emulators");
-    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableCors: true });
-    connectFirestoreEmulator(db, "127.0.0.1", 8080);
-  }
-
   // Check if window is defined (i.e., we are on the client-side)
   if (typeof window !== 'undefined') {
     // This will run in the browser console
