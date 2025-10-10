@@ -89,7 +89,7 @@ const TABS_CONFIG: { value: string, label: string, module: AppModule }[] = [
   { value: "settings", label: "Settings", module: "Settings" },
 ];
 
-type LoadingState = 'Authenticating' | 'Checking Role' | 'Fetching Initial Data' | 'Fetching Main Data' | 'Idle' | 'Error';
+type LoadingState = 'Authenticating' | 'Checking Role' | 'Fetching Main Data' | 'Idle' | 'Error';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -221,9 +221,10 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
 
-        // Fetch critical data sequentially to avoid race conditions
-        const allRolesFromDb = await getRoles();
-        const allTeachersFromDb = await getTeachers();
+        const [allRolesFromDb, allTeachersFromDb] = await Promise.all([
+          getRoles(),
+          getTeachers()
+        ]);
         
         setAllSystemRoles(allRolesFromDb);
         setTeachers(allTeachersFromDb);
@@ -246,7 +247,6 @@ export default function DashboardPage() {
               return;
           }
           
-          // Now fetch permissions
           const savedPermissions = await getPermissions();
           const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
           APP_MODULES.forEach(module => {
@@ -261,9 +261,7 @@ export default function DashboardPage() {
             });
           });
           setPermissions(completePermissions);
-          // Role is set, now we can fetch the rest of the data.
         } else {
-          // If no role, check if they are a student or guardian before showing pending approval.
           const allStudentsFromDb = await getStudents();
           if (allStudentsFromDb.some(s => s.studentEmail === loggedInUserEmail)) {
               router.replace('/student/dashboard');
@@ -273,7 +271,7 @@ export default function DashboardPage() {
               router.replace('/guardian/dashboard');
               return;
           }
-          setLoadingState('Idle');
+          setLoadingState('Idle'); // Stay on the page but show pending approval
           return;
         }
       } catch (error) {
@@ -548,5 +546,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
