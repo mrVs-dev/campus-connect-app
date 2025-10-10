@@ -1,13 +1,16 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow reading from the users collection for any authenticated user.
-    // This is needed to check for user approval status.
     match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+
+    match /students/{studentId} {
       allow read, write: if request.auth != null;
     }
 
-    // Default deny all other reads and writes
     match /{document=**} {
       allow read, write: if false;
     }
