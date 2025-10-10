@@ -223,14 +223,13 @@ export default function DashboardPage() {
   // Effect 2: Fetch initial user role and permissions
   React.useEffect(() => {
     const checkUserRoleAndPermissions = async () => {
-      if (!user || authLoading || loadingState !== 'Checking Role') return;
+      if (loadingState !== 'Checking Role' || !user) return;
 
       try {
-        const [allTeachersFromDb, allRolesFromDb, allStudentsFromDb] = await Promise.all([
-          getTeachers(),
-          getRoles(),
-          getStudents(),
-        ]);
+        // Fetch critical data sequentially to avoid race conditions
+        const allTeachersFromDb = await getTeachers();
+        const allRolesFromDb = await getRoles();
+        const allStudentsFromDb = await getStudents();
         
         setTeachers(allTeachersFromDb);
         setAllSystemRoles(allRolesFromDb);
@@ -287,7 +286,7 @@ export default function DashboardPage() {
     
     checkUserRoleAndPermissions();
     
-  }, [user, authLoading, loadingState, router]);
+  }, [user, loadingState, router]);
 
   // Effect 3: Fetch main data only after a user role has been established
   React.useEffect(() => {
@@ -548,3 +547,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
