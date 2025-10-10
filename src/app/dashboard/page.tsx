@@ -138,8 +138,8 @@ export default function DashboardPage() {
   }, [students, admissions]);
   
   const fetchData = React.useCallback(async (showToast = false) => {
-    if (!user || !userRole) {
-      console.warn("FetchData called without user or userRole.");
+    if (!user) {
+      console.warn("FetchData called without user.");
       return;
     };
     
@@ -157,8 +157,6 @@ export default function DashboardPage() {
         invoicesData,
         inventoryData,
         allDbUsers,
-        allRolesFromDb,
-        allTeachers
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -171,8 +169,6 @@ export default function DashboardPage() {
         getInvoices(),
         getInventoryItems(),
         getUsers(),
-        getRoles(),
-        getTeachers(),
       ]);
 
       setStudents(studentsData);
@@ -186,10 +182,8 @@ export default function DashboardPage() {
       setInvoices(invoicesData);
       setInventory(inventoryData);
       setAllUsers(allDbUsers as AuthUser[]);
-      setAllSystemRoles(allRolesFromDb);
-      setTeachers(allTeachers);
       
-      const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
+      const teacherEmails = new Set(teachers.map(t => t.email).filter(Boolean));
       setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
       
       if (showToast) {
@@ -205,9 +199,9 @@ export default function DashboardPage() {
       });
       setLoadingState('Error');
     } finally {
-      setLoadingState('Idle');
+      if(userRole) setLoadingState('Idle');
     }
-  }, [user, userRole, toast]);
+  }, [user, toast, teachers, userRole]);
   
   React.useEffect(() => {
     if (authLoading) {
@@ -230,20 +224,21 @@ export default function DashboardPage() {
         const loggedInUserEmail = user.email;
 
         // Fetch these first as they are needed to determine roles and permissions
-        const [allRolesFromDb, allTeachers, allStudents] = await Promise.all([
+        const [allRolesFromDb, allTeachersFromDb, allStudentsFromDb, savedPermissions] = await Promise.all([
           getRoles(),
           getTeachers(),
           getStudents(),
+          getPermissions(),
         ]);
         
         setAllSystemRoles(allRolesFromDb);
-        setTeachers(allTeachers);
+        setTeachers(allTeachersFromDb);
 
         let currentUserRole: UserRole | null = null;
         if (loggedInUserEmail === ADMIN_EMAIL) {
           currentUserRole = 'Admin';
         } else {
-          const loggedInStaffMember = allTeachers.find(t => t.email === loggedInUserEmail);
+          const loggedInStaffMember = allTeachersFromDb.find(t => t.email === loggedInUserEmail);
           if (loggedInStaffMember?.role) {
             currentUserRole = loggedInStaffMember.role;
           }
@@ -252,32 +247,23 @@ export default function DashboardPage() {
         setUserRole(currentUserRole);
 
         if (!currentUserRole) {
-          // If no staff role, check if they are a student or guardian
-           if (allStudents.some(s => s.studentEmail === loggedInUserEmail)) {
+           if (allStudentsFromDb.some(s => s.studentEmail === loggedInUserEmail)) {
               router.replace('/student/dashboard');
               return;
           }
-          if (allStudents.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
+          if (allStudentsFromDb.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
               router.replace('/guardian/dashboard');
               return;
           }
-           // If none of the above, they are pending
-          const allDbUsers = await getUsers();
-          setAllUsers(allDbUsers as AuthUser[]);
-          const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
-          setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
           setLoadingState('Idle');
           return;
         }
 
-        // --- Role-based Redirects ---
         if (currentUserRole === 'Teacher') {
             router.replace('/teacher/dashboard');
             return;
         }
         
-        // --- Set up permissions for authorized staff ---
-        const savedPermissions = await getPermissions();
         const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
         APP_MODULES.forEach(module => {
            if (!completePermissions[module]) completePermissions[module] = {};
@@ -292,8 +278,7 @@ export default function DashboardPage() {
         });
         setPermissions(completePermissions);
         
-        // Once role and permissions are set, trigger the main data fetch for the dashboard
-        fetchData();
+        await fetchData();
 
       } catch (error) {
         console.error("Error checking user role:", error);
