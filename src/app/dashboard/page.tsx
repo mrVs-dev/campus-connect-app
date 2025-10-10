@@ -15,7 +15,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, saveGradeScale, swapLegacyStudentNames } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, swapLegacyStudentNames } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -531,5 +531,7 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
 
     
