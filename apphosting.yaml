@@ -6,4 +6,6 @@ run:
     - npm run build
 entrypoint: npm start
 backend:
+  id: campus-connect-app
+  region: asia-southeast1
   serviceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

@@ -10,6 +10,9 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "frameworksBackend": {}
+    "frameworksBackend": {
+      "id": "campus-connect-app",
+      "region": "asia-southeast1"
+    }
   }
 }
