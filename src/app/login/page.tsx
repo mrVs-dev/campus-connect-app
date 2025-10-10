@@ -79,55 +79,51 @@ export default function LoginPage() {
   React.useEffect(() => {
     if (!authLoading && user) {
       router.replace('/dashboard');
-      return;
     }
-    
-    // This effect runs on page load to check for a redirect result.
+  }, [user, authLoading, router]);
+  
+  // This effect runs on page load to check for a redirect result.
+  React.useEffect(() => {
     const handleRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
-          await getOrCreateUser(result.user);
-          // Successful sign-in will be handled by the auth state listener
-        } else {
-          // No redirect result, so we are ready for user to click sign-in
-          setIsSigningIn(false);
+          // A user was successfully signed in on redirect.
+          // The useAuth hook will now pick up the new user and redirect to the dashboard.
+          // We can stop the loading indicator on this page.
         }
       } catch (error: any) {
-        console.error("Authentication failed:", error);
+        console.error("Authentication failed during redirect:", error);
         if (error.code === 'auth/unauthorized-domain') {
-          setError(`Authentication Error: ${error.message}. Please make sure the domain is authorized in your Firebase project.`);
-        } else if (error.code === 'auth/popup-blocked') {
-            setError("Pop-up blocked. Please allow pop-ups for this site in your browser's address bar and try again.");
+          setError(`Authentication Error: ${error.message}. Please make sure this domain is authorized in your Firebase project's settings.`);
+        } else {
+          setError(`Failed to sign in after redirect. Error: ${error.message || error.code}`);
         }
-        else {
-          setError(`Failed to sign in. Error: ${error.message || error.code}`);
-        }
+      } finally {
+        // Whether there was a redirect result or not, we are no longer in a "signing in" state.
         setIsSigningIn(false);
       }
     };
 
-    if (!user) {
-       handleRedirectResult();
-    }
-  }, [user, authLoading, router]);
+    handleRedirectResult();
+  }, []);
 
   const handleSignIn = async () => {
     setError(null);
     setIsSigningIn(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-      // The page will redirect, and the result will be handled on the next page load by getRedirectResult.
-    } catch (error: any) {
-      console.error("Authentication failed:", error);
-      setError(`Failed to sign in. Error: ${error.message || error.code}`);
-      setIsSigningIn(false);
-    }
+    const provider = new GoogleAuthProvider();
+    await signInWithRedirect(auth, provider);
+    // After this call, the browser will redirect to Google's sign-in page.
+    // The user will then be redirected back here, and the useEffect above will handle the result.
   };
 
   if (authLoading || isSigningIn) {
     return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
+  }
+  
+  // Don't render the login form if we already know there's a user.
+  if (user) {
+     return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
   }
 
   return (
@@ -147,9 +143,9 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
+            <Button className="w-full" onClick={handleSignIn}>
                 <GoogleIcon />
-                <span className="ml-2">{isSigningIn ? "Redirecting..." : "Sign in with Google"}</span>
+                <span className="ml-2">Sign in with Google</span>
             </Button>
           </CardContent>
           <CardFooter className="flex-col items-start text-xs text-muted-foreground">
