@@ -28,7 +28,6 @@ import { AppModule, initialPermissions, APP_MODULES } from "@/lib/modules";
 
 // --- IMPORTANT: Admin Exception ---
 const ADMIN_EMAIL = "vannak@api-school.com"; 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function MissingFirebaseConfig() {
   return (
@@ -221,15 +220,10 @@ export default function DashboardPage() {
       if (!user || loadingState !== 'Checking Role') return;
 
       try {
-        await sleep(1000); // Critical delay to allow Firebase auth state to propagate
-
-        const allTeachersFromDb = await getTeachers();
-        const allRolesFromDb = await getRoles();
-        const allStudentsFromDb = await getStudents();
-
+        const [allTeachersFromDb, allRolesFromDb] = await Promise.all([getTeachers(), getRoles()]);
+        
         setTeachers(allTeachersFromDb);
         setAllSystemRoles(allRolesFromDb);
-        setStudents(allStudentsFromDb); // Set students now for role checking
 
         let currentUserRole: UserRole | null = null;
         if (user.email === ADMIN_EMAIL) {
@@ -264,6 +258,9 @@ export default function DashboardPage() {
           });
           setPermissions(completePermissions);
         } else {
+          // If no staff role, check if they are a student or guardian
+          const allStudentsFromDb = await getStudents();
+          setStudents(allStudentsFromDb); // Set students now for role checking
           if (allStudentsFromDb.some(s => s.studentEmail === user.email)) {
             router.replace('/student/dashboard');
             return;
@@ -272,7 +269,7 @@ export default function DashboardPage() {
             router.replace('/guardian/dashboard');
             return;
           }
-          // If no role found, they are pending approval
+          // If no role found at all, they are pending approval
           setLoadingState('Idle'); 
         }
       } catch (error) {
@@ -544,9 +541,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
-
-    
-
-    
