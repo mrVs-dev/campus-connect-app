@@ -223,14 +223,16 @@ export default function DashboardPage() {
       try {
         await sleep(1000); // Critical delay to allow Firebase auth state to propagate
 
-        const [allTeachersFromDb, allRolesFromDb, allStudentsFromDb] = await Promise.all([
-          getTeachers(),
-          getRoles(),
-          getStudents() // Fetch students here to check for student/guardian roles
-        ]);
+        // --- STAGE 1: Fetch only essential role data ---
+        const allTeachersFromDb = await getTeachers();
+        const allRolesFromDb = await getRoles();
+
+        // --- STAGE 2: Fetch students for guardian/student role check ---
+        const allStudentsFromDb = await getStudents();
 
         setTeachers(allTeachersFromDb);
         setAllSystemRoles(allRolesFromDb);
+        setStudents(allStudentsFromDb); // Set students now for role checking
 
         let currentUserRole: UserRole | null = null;
         if (user.email === ADMIN_EMAIL) {
