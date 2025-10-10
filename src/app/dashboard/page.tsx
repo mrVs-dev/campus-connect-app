@@ -223,15 +223,18 @@ export default function DashboardPage() {
   // Effect 2: Fetch initial user role and permissions
   React.useEffect(() => {
     const checkUserRoleAndPermissions = async () => {
-      // Guard: Only run when user is authenticated and we're in the 'Checking Role' state.
       if (!user || authLoading || loadingState !== 'Checking Role') return;
 
       try {
-        const allTeachersFromDb = await getTeachers();
-        const allRolesFromDb = await getRoles();
+        const [allTeachersFromDb, allRolesFromDb, allStudentsFromDb] = await Promise.all([
+          getTeachers(),
+          getRoles(),
+          getStudents(),
+        ]);
         
         setTeachers(allTeachersFromDb);
         setAllSystemRoles(allRolesFromDb);
+        setStudents(allStudentsFromDb);
 
         let currentUserRole: UserRole | null = null;
         if (user.email === ADMIN_EMAIL) {
@@ -266,9 +269,6 @@ export default function DashboardPage() {
           });
           setPermissions(completePermissions);
         } else {
-          // If no staff role, check if they are a student or guardian
-          const allStudentsFromDb = await getStudents();
-          setStudents(allStudentsFromDb); // Set students now for role checking
           if (allStudentsFromDb.some(s => s.studentEmail === user.email)) {
             router.replace('/student/dashboard');
             return;
@@ -277,7 +277,6 @@ export default function DashboardPage() {
             router.replace('/guardian/dashboard');
             return;
           }
-          // If no role found at all, they are pending approval
           setLoadingState('Idle'); 
         }
       } catch (error) {
@@ -549,5 +548,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    

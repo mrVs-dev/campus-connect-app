@@ -1,25 +1,76 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow reading of settings by any authenticated user
-    match /settings/{docId} {
-       allow read, write: if request.auth != null;
+
+    // Helper functions
+    function isSuperAdmin() {
+      return request.auth.token.email == "vannak@api-school.com";
     }
 
-    // Allow read/write to these collections for any authenticated user
-    match /(students|users|teachers|admissions|student_status_history|assessments|fees|invoices|inventory|fcmTokens)/{docId} {
-      allow read, write: if request.auth != null;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Allow transactions on student counter for authenticated users
-    match /metadata/studentCounter {
-      allow read, write: if request.auth != null;
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // --- Collections ---
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
     }
     
-    // More specific rules can go here in the future
-    // e.g., match /students/{studentId} {
-    //  allow read: if request.auth.uid == studentId || isTeacherOfStudent(studentId)
-    // }
+    match /metadata/{docId} {
+        allow read, write: if isSignedIn();
+    }
+    
+    match /students/{studentId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    match /admissions/{year} {
+        allow read, write: if isSignedIn();
+    }
+    
+    match /assessments/{assessmentId} {
+        allow read, write: if isSignedIn();
+    }
+    
+    match /teachers/{teacherId} {
+        allow read: if isSignedIn() || isSuperAdmin();
+        allow write: if isSignedIn();
+    }
+    
+    match /student_status_history/{historyId} {
+        allow read, write: if isSignedIn();
+    }
+    
+    match /attendance/{attendanceId} {
+        allow read, write: if isSignedIn();
+    }
+    
+    match /fcmTokens/{token} {
+        allow read, write: if isSignedIn();
+    }
+    
+    match /fees/{feeId} {
+        allow read, write: if isSignedIn();
+    }
+    
+    match /invoices/{invoiceId} {
+        allow read, write: if isSignedIn();
+    }
+    
+    match /inventory/{itemId} {
+        allow read, write: if isSignedIn();
+    }
+
+    match /settings/{setting} {
+      allow read: if isSignedIn() || isSuperAdmin();
+      allow write: if isSignedIn();
+    }
   }
 }
