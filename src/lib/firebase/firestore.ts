@@ -641,21 +641,24 @@ export async function moveStudentsToClass(studentIds: string[], schoolYear: stri
 export async function getAssessments(): Promise<Assessment[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const assessmentsCollection = collection(db, 'assessments');
-    const snapshot = await getDocs(assessmentsCollection).catch(serverError => {
+    try {
+        const snapshot = await getDocs(assessmentsCollection);
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            const dataWithDates = convertTimestampsToDates(data);
+            return {
+                ...dataWithDates,
+                assessmentId: doc.id,
+            } as Assessment;
+        });
+    } catch (serverError) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: assessmentsCollection.path,
             operation: 'list',
         }));
-        throw serverError;
-    });
-    return snapshot.docs.map(doc => {
-        const data = doc.data();
-        const dataWithDates = convertTimestampsToDates(data);
-        return {
-            ...dataWithDates,
-            assessmentId: doc.id,
-        } as Assessment;
-    });
+        console.error("Permission error fetching assessments, returning empty array.", serverError);
+        return []; // Return empty array to prevent app crash
+    }
 }
 
 export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmentId'> | Assessment): Promise<Assessment | null> {
