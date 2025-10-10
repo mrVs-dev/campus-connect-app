@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup, GoogleAuthProvider, User } from "firebase/auth";
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, User } from "firebase/auth";
 import { auth, firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { getOrCreateUser } from "@/lib/firebase/firestore";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,7 +68,7 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(false);
+  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start as true to handle redirect
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   
@@ -79,6 +79,33 @@ export default function LoginPage() {
   React.useEffect(() => {
     if (!authLoading && user) {
       router.replace('/dashboard');
+      return;
+    }
+    
+    // This effect runs on page load to check for a redirect result.
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          await getOrCreateUser(result.user);
+          // Successful sign-in will be handled by the auth state listener
+        } else {
+          // No redirect result, so we are ready for user to click sign-in
+          setIsSigningIn(false);
+        }
+      } catch (error: any) {
+        console.error("Authentication failed:", error);
+        if (error.code === 'auth/unauthorized-domain') {
+          setError(`Authentication Error: ${error.message}. Please make sure the domain is authorized in your Firebase project.`);
+        } else {
+          setError(`Failed to sign in. Error: ${error.message || error.code}`);
+        }
+        setIsSigningIn(false);
+      }
+    };
+
+    if (!user) {
+       handleRedirectResult();
     }
   }, [user, authLoading, router]);
 
@@ -87,26 +114,16 @@ export default function LoginPage() {
     setIsSigningIn(true);
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      await getOrCreateUser(result.user);
-      // The useAuth hook and dashboard page will handle routing.
+      await signInWithRedirect(auth, provider);
+      // The page will redirect, and the result will be handled on the next page load by getRedirectResult.
     } catch (error: any) {
       console.error("Authentication failed:", error);
-      if (error.code === 'auth/popup-blocked') {
-        setError("Pop-up blocked. Please allow pop-ups for this site in your browser's address bar and try again.");
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        setError("Sign-in was cancelled. Please try again.");
-      } else if (error.code === 'auth/unauthorized-domain') {
-         setError(`Authentication Error: ${error.message}. Please make sure the domain is authorized in your Firebase project.`);
-      } else {
-        setError(`Failed to sign in. Error: ${error.message || error.code}`);
-      }
-    } finally {
-        setIsSigningIn(false);
+      setError(`Failed to sign in. Error: ${error.message || error.code}`);
+      setIsSigningIn(false);
     }
   };
 
-  if (authLoading || user) {
+  if (authLoading || isSigningIn) {
     return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
   }
 
@@ -129,7 +146,7 @@ export default function LoginPage() {
             )}
             <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
                 <GoogleIcon />
-                <span className="ml-2">{isSigningIn ? "Signing in..." : "Sign in with Google"}</span>
+                <span className="ml-2">{isSigningIn ? "Redirecting..." : "Sign in with Google"}</span>
             </Button>
           </CardContent>
           <CardFooter className="flex-col items-start text-xs text-muted-foreground">
@@ -143,3 +160,5 @@ export default function LoginPage() {
       </div>
     );
 }
+
+    
