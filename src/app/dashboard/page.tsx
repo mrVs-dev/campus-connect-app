@@ -214,7 +214,6 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
         
-        // Fetch teachers first to determine roles
         const allTeachersFromDb = await getTeachers();
         setTeachers(allTeachersFromDb);
 
@@ -236,7 +235,6 @@ export default function DashboardPage() {
                 return;
             }
             
-            // Now fetch roles and permissions since we have a privileged user
             const [allRolesFromDb, savedPermissions] = await Promise.all([
                 getRoles(),
                 getPermissions()
@@ -256,7 +254,7 @@ export default function DashboardPage() {
                 });
             });
             setPermissions(completePermissions);
-            await fetchData(); // Fetch all other data after role is set
+            fetchData(); 
 
         } else {
             const allStudentsFromDb = await getStudents();
@@ -310,12 +308,6 @@ export default function DashboardPage() {
     if (!user) return;
     try {
         await deleteTeacher(teacher.teacherId);
-        // This is a placeholder for a real implementation of deleting the auth user
-        // In a real app, this would require admin privileges and a backend function.
-        // const userToDelete = allUsers.find(u => u.email === teacher.email);
-        // if (userToDelete) {
-        //     await deleteMainUser(userToDelete.uid);
-        // }
         
         await fetchData(true);
 
