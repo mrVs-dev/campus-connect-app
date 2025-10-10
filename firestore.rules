@@ -3,8 +3,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow open access to all collections individually
+    // Default catch-all for any path - wide open
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    // Explicit open rules for all known collections
     match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /metadata/{docId} {
       allow read, write: if true;
     }
 
@@ -12,10 +21,14 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /student_status_history/{historyId} {
+      allow read, write: if true;
+    }
+
     match /admissions/{admissionId} {
       allow read, write: if true;
     }
-    
+
     match /assessments/{assessmentId} {
       allow read, write: if true;
     }
@@ -23,25 +36,17 @@ service cloud.firestore {
     match /teachers/{teacherId} {
       allow read, write: if true;
     }
-
-    match /student_status_history/{historyId} {
-      allow read, write: if true;
-    }
-
-    match /settings/{settingId} {
-      allow read, write: if true;
-    }
     
-    match /metadata/{docId} {
-        allow read, write: if true;
+    match /attendance/{attendanceId} {
+      allow read, write: if true;
     }
 
-    match /attendance/{attendanceId} {
+    match /fcmTokens/{tokenId} {
         allow read, write: if true;
     }
     
     match /fees/{feeId} {
-      allow read, write: if true;
+        allow read, write: if true;
     }
 
     match /invoices/{invoiceId} {
@@ -52,7 +57,7 @@ service cloud.firestore {
         allow read, write: if true;
     }
 
-    match /fcmTokens/{tokenId} {
+    match /settings/{settingId} {
       allow read, write: if true;
     }
   }
