@@ -1,10 +1,25 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to the entire database for any authenticated user.
-    // This is a secure starting point for development.
-    match /{document=**} {
+    // Allow reading of settings by any authenticated user
+    match /settings/{docId} {
+       allow read, write: if request.auth != null;
+    }
+
+    // Allow read/write to these collections for any authenticated user
+    match /(students|users|teachers|admissions|student_status_history|assessments|fees|invoices|inventory|fcmTokens)/{docId} {
       allow read, write: if request.auth != null;
     }
+
+    // Allow transactions on student counter for authenticated users
+    match /metadata/studentCounter {
+      allow read, write: if request.auth != null;
+    }
+    
+    // More specific rules can go here in the future
+    // e.g., match /students/{studentId} {
+    //  allow read: if request.auth.uid == studentId || isTeacherOfStudent(studentId)
+    // }
   }
 }

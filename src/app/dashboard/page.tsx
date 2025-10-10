@@ -156,8 +156,6 @@ export default function DashboardPage() {
         feesData,
         invoicesData,
         inventoryData,
-        teachersData,
-        allUsersData,
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -169,15 +167,11 @@ export default function DashboardPage() {
         getFees(),
         getInvoices(),
         getInventoryItems(),
-        getTeachers(),
-        getUsers(),
       ]);
 
       setStudents(studentsData);
       setAdmissions(admissionsData);
       setAssessments(assessmentsData);
-      setTeachers(teachersData);
-      setAllUsers(allUsersData as AuthUser[]);
       setStatusHistory(statusHistoryData);
       setSubjects(subjectsData);
       setAssessmentCategories(categoriesData);
@@ -223,13 +217,15 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
 
-        const [allTeachers, allDbUsers, allRolesFromDb, savedPermissions] = await Promise.all([
-          getTeachers(), 
+        // Fetch these first as they are needed to determine roles and permissions
+        const [allDbUsers, allRolesFromDb, allTeachers] = await Promise.all([
           getUsers(),
           getRoles(),
-          getPermissions(),
+          getTeachers(),
         ]);
+        
         setAllSystemRoles(allRolesFromDb);
+        setTeachers(allTeachers);
 
         let currentUserRole: UserRole | null = null;
         if (loggedInUserEmail === ADMIN_EMAIL) {
@@ -242,6 +238,7 @@ export default function DashboardPage() {
         }
         
         setUserRole(currentUserRole);
+        setAllUsers(allDbUsers as AuthUser[]);
 
         if (!currentUserRole) {
           const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
@@ -250,20 +247,7 @@ export default function DashboardPage() {
           return;
         }
 
-        const allStudents = await getStudents();
-        if (allStudents.some(s => s.studentEmail === loggedInUserEmail)) {
-            router.replace('/student/dashboard');
-            return;
-        }
-        if (allStudents.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
-            router.replace('/guardian/dashboard');
-            return;
-        }
-        if (currentUserRole === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-        }
-        
+        const savedPermissions = await getPermissions();
         const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
         APP_MODULES.forEach(module => {
            if (!completePermissions[module]) completePermissions[module] = {};
@@ -278,8 +262,23 @@ export default function DashboardPage() {
         });
         setPermissions(completePermissions);
         
-        // Once role and permissions are set, trigger data fetch
+        // Once role and permissions are set, trigger the main data fetch
         fetchData();
+
+        // Check for redirects after setting up the role and permissions
+        const allStudents = await getStudents();
+        if (allStudents.some(s => s.studentEmail === loggedInUserEmail)) {
+            router.replace('/student/dashboard');
+            return;
+        }
+        if (allStudents.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
+            router.replace('/guardian/dashboard');
+            return;
+        }
+        if (currentUserRole === 'Teacher') {
+            router.replace('/teacher/dashboard');
+            return;
+        }
 
       } catch (error) {
         console.error("Error checking user role:", error);
@@ -546,5 +545,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
