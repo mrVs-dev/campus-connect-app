@@ -156,6 +156,9 @@ export default function DashboardPage() {
         feesData,
         invoicesData,
         inventoryData,
+        allDbUsers,
+        allRolesFromDb,
+        allTeachers
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -167,6 +170,9 @@ export default function DashboardPage() {
         getFees(),
         getInvoices(),
         getInventoryItems(),
+        getUsers(),
+        getRoles(),
+        getTeachers(),
       ]);
 
       setStudents(studentsData);
@@ -179,6 +185,12 @@ export default function DashboardPage() {
       setFees(feesData);
       setInvoices(invoicesData);
       setInventory(inventoryData);
+      setAllUsers(allDbUsers as AuthUser[]);
+      setAllSystemRoles(allRolesFromDb);
+      setTeachers(allTeachers);
+      
+      const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
+      setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
       
       if (showToast) {
         toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
@@ -218,10 +230,10 @@ export default function DashboardPage() {
         const loggedInUserEmail = user.email;
 
         // Fetch these first as they are needed to determine roles and permissions
-        const [allDbUsers, allRolesFromDb, allTeachers] = await Promise.all([
-          getUsers(),
+        const [allRolesFromDb, allTeachers, allStudents] = await Promise.all([
           getRoles(),
           getTeachers(),
+          getStudents(),
         ]);
         
         setAllSystemRoles(allRolesFromDb);
@@ -238,15 +250,33 @@ export default function DashboardPage() {
         }
         
         setUserRole(currentUserRole);
-        setAllUsers(allDbUsers as AuthUser[]);
 
         if (!currentUserRole) {
+          // If no staff role, check if they are a student or guardian
+           if (allStudents.some(s => s.studentEmail === loggedInUserEmail)) {
+              router.replace('/student/dashboard');
+              return;
+          }
+          if (allStudents.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
+              router.replace('/guardian/dashboard');
+              return;
+          }
+           // If none of the above, they are pending
+          const allDbUsers = await getUsers();
+          setAllUsers(allDbUsers as AuthUser[]);
           const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
           setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
           setLoadingState('Idle');
           return;
         }
 
+        // --- Role-based Redirects ---
+        if (currentUserRole === 'Teacher') {
+            router.replace('/teacher/dashboard');
+            return;
+        }
+        
+        // --- Set up permissions for authorized staff ---
         const savedPermissions = await getPermissions();
         const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
         APP_MODULES.forEach(module => {
@@ -262,23 +292,8 @@ export default function DashboardPage() {
         });
         setPermissions(completePermissions);
         
-        // Once role and permissions are set, trigger the main data fetch
+        // Once role and permissions are set, trigger the main data fetch for the dashboard
         fetchData();
-
-        // Check for redirects after setting up the role and permissions
-        const allStudents = await getStudents();
-        if (allStudents.some(s => s.studentEmail === loggedInUserEmail)) {
-            router.replace('/student/dashboard');
-            return;
-        }
-        if (allStudents.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
-            router.replace('/guardian/dashboard');
-            return;
-        }
-        if (currentUserRole === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-        }
 
       } catch (error) {
         console.error("Error checking user role:", error);

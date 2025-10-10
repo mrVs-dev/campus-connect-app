@@ -72,7 +72,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   
-  // This check now happens right at the top of the component.
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
@@ -90,7 +89,7 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       await getOrCreateUser(result.user);
-      // The onAuthStateChanged listener in useAuth will handle the redirect.
+      // The useAuth hook and dashboard page will handle routing.
     } catch (error: any) {
       console.error("Authentication failed:", error);
       if (error.code === 'auth/popup-blocked') {
@@ -107,12 +106,11 @@ export default function LoginPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || user) {
     return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
   }
 
-  if (!user) {
-    return (
+  return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
@@ -144,11 +142,4 @@ export default function LoginPage() {
         </Card>
       </div>
     );
-  }
-
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-        Redirecting to dashboard...
-    </div>
-  );
 }
