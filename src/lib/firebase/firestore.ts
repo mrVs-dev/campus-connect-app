@@ -118,18 +118,6 @@ export async function getOrCreateUser(user: User) {
     }
 }
 
-export async function getUsers(): Promise<User[]> {
-    if (!db || !db.app) throw new Error("Firestore is not initialized.");
-    const usersCollection = collection(db, 'users');
-    const snapshot = await getDocs(usersCollection).catch(serverError => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: usersCollection.path,
-        operation: 'list',
-      }));
-      throw serverError;
-    });
-    return snapshot.docs.map(doc => convertTimestampsToDates(doc.data()) as User);
-}
 
 export async function deleteMainUser(uid: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");

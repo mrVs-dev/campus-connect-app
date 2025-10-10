@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getUsers, getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, saveGradeScale, swapLegacyStudentNames } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, saveGradeScale, swapLegacyStudentNames } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -156,7 +156,7 @@ export default function DashboardPage() {
         feesData,
         invoicesData,
         inventoryData,
-        allDbUsers,
+        teachersData,
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -168,7 +168,7 @@ export default function DashboardPage() {
         getFees(),
         getInvoices(),
         getInventoryItems(),
-        getUsers(),
+        getTeachers(),
       ]);
 
       setStudents(studentsData);
@@ -181,10 +181,7 @@ export default function DashboardPage() {
       setFees(feesData);
       setInvoices(invoicesData);
       setInventory(inventoryData);
-      setAllUsers(allDbUsers as AuthUser[]);
-      
-      const teacherEmails = new Set(teachers.map(t => t.email).filter(Boolean));
-      setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
+      setTeachers(teachersData);
       
       if (showToast) {
         toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
@@ -200,7 +197,7 @@ export default function DashboardPage() {
       });
       setLoadingState('Error');
     }
-  }, [user, userRole, toast, teachers]);
+  }, [user, userRole, toast]);
   
   React.useEffect(() => {
     if (authLoading) {
@@ -222,10 +219,9 @@ export default function DashboardPage() {
         const loggedInUserEmail = user.email;
 
         // Fetch essential role/permission data first
-        const [allRolesFromDb, allTeachersFromDb, allUsersFromDb, savedPermissions] = await Promise.all([
+        const [allRolesFromDb, allTeachersFromDb, savedPermissions] = await Promise.all([
           getRoles(),
           getTeachers(),
-          getUsers(),
           getPermissions(),
         ]);
         
@@ -264,10 +260,6 @@ export default function DashboardPage() {
           });
           setPermissions(completePermissions);
           
-          // Now set pending users
-          setAllUsers(allUsersFromDb as AuthUser[]);
-          const teacherEmails = new Set(allTeachersFromDb.map(t => t.email).filter(Boolean));
-          setPendingUsers(allUsersFromDb.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
 
         } else {
           const allStudentsFromDb = await getStudents();
@@ -295,57 +287,9 @@ export default function DashboardPage() {
   // This separate effect triggers the main data fetch once the userRole is confirmed.
   React.useEffect(() => {
     if (userRole) {
-      const fetchRestOfData = async () => {
-        setLoadingState('Fetching Main Data');
-        try {
-           const [
-            studentsData,
-            admissionsData, 
-            assessmentsData, 
-            statusHistoryData, 
-            subjectsData,
-            categoriesData,
-            gradeScaleData,
-            feesData,
-            invoicesData,
-            inventoryData,
-          ] = await Promise.all([
-            getStudents(),
-            getAdmissions(),
-            getAssessments(),
-            getStudentStatusHistory(),
-            getSubjects(),
-            getAssessmentCategories(),
-            getGradeScale(),
-            getFees(),
-            getInvoices(),
-            getInventoryItems(),
-          ]);
-
-          setStudents(studentsData);
-          setAdmissions(admissionsData);
-          setAssessments(assessmentsData);
-          setStatusHistory(statusHistoryData);
-          setSubjects(subjectsData);
-          setAssessmentCategories(categoriesData);
-          setGradeScale(gradeScaleData);
-          setFees(feesData);
-          setInvoices(invoicesData);
-          setInventory(inventoryData);
-          setLoadingState('Idle');
-        } catch (error: any) {
-           console.error("Error fetching main data:", error);
-           toast({
-             title: "Error Loading Data",
-             description: error.message || "Failed to load all application data. Please try again.",
-             variant: "destructive",
-           });
-           setLoadingState('Error');
-        }
-      };
-      fetchRestOfData();
+      fetchData();
     }
-  }, [userRole, toast]);
+  }, [userRole, fetchData]);
   
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
     await updateStudent(studentId, updatedData);

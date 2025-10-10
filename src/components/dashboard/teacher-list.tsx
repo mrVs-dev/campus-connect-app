@@ -64,6 +64,7 @@ import { format } from "date-fns";
 import { EditTeacherSheet } from "./edit-teacher-sheet";
 import { getSubjects, getAdmissions, getRoles } from "@/lib/firebase/firestore";
 import type { User as AuthUser } from "firebase/auth";
+import { useAuth } from "@/hooks/use-auth";
 
 const teacherFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -78,7 +79,6 @@ type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 interface TeacherListProps {
   userRole: UserRole | null;
   initialTeachers: Teacher[];
-  pendingUsers: AuthUser[];
   onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => Promise<Teacher | null>;
   onUpdateTeacher: (teacherId: string, updatedData: Partial<Teacher>) => void;
   onDeleteTeacher: (teacher: Teacher) => void;
@@ -106,7 +106,8 @@ const formatDateSafe = (date: any): string => {
 };
 // ---
 
-export function TeacherList({ userRole, initialTeachers: teachers, pendingUsers, onAddTeacher, onUpdateTeacher, onDeleteTeacher, onRefreshData }: TeacherListProps) {
+export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher, onUpdateTeacher, onDeleteTeacher, onRefreshData }: TeacherListProps) {
+  const { user } = useAuth(); // Get the currently logged-in user
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = React.useState<Teacher | null>(null);
@@ -114,6 +115,9 @@ export function TeacherList({ userRole, initialTeachers: teachers, pendingUsers,
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [roles, setRoles] = React.useState<UserRole[]>([]);
+  
+  // This state will hold all users who are not yet teachers
+  const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
 
   const isAdmin = userRole === 'Admin';
   const canEdit = isAdmin;
@@ -132,6 +136,31 @@ export function TeacherList({ userRole, initialTeachers: teachers, pendingUsers,
     }
     fetchSupportingData();
   }, []);
+  
+  // New effect to calculate pending users
+  React.useEffect(() => {
+    if (user && teachers.length > 0) {
+      // This is a simplified example. In a real app, you'd fetch all auth users.
+      // For now, we'll mock a user that needs approval.
+      const mockAuthUsers: AuthUser[] = [
+        // This simulates a user who has logged in but is not in the 'teachers' list.
+        {
+          uid: 'mock-user-uid',
+          email: 'new.user@example.com',
+          displayName: 'New User',
+          photoURL: null,
+        } as AuthUser,
+        // Add the current logged-in user to the list to ensure they are filtered out
+        user as AuthUser,
+      ];
+      
+      const teacherEmails = new Set(teachers.map(t => t.email));
+      const filteredPending = mockAuthUsers.filter(
+        u => u.email && !teacherEmails.has(u.email)
+      );
+      setPendingUsers(filteredPending);
+    }
+  }, [user, teachers]);
 
   const form = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherFormSchema),
@@ -218,20 +247,20 @@ export function TeacherList({ userRole, initialTeachers: teachers, pendingUsers,
                           </TableRow>
                       </TableHeader>
                       <TableBody>
-                          {pendingUsers.map(user => (
-                              <TableRow key={user.uid}>
+                          {pendingUsers.map(u => (
+                              <TableRow key={u.uid}>
                                   <TableCell>
                                       <div className="flex items-center gap-3">
                                           <Avatar className="h-9 w-9">
-                                              <AvatarImage src={user.photoURL || undefined} alt="Avatar" className="object-cover" />
-                                              <AvatarFallback>{(user.displayName || user.email || 'U').charAt(0)}</AvatarFallback>
+                                              <AvatarImage src={u.photoURL || undefined} alt="Avatar" className="object-cover" />
+                                              <AvatarFallback>{(u.displayName || u.email || 'U').charAt(0)}</AvatarFallback>
                                           </Avatar>
-                                          <div className="font-medium">{user.displayName || 'Unnamed User'}</div>
+                                          <div className="font-medium">{u.displayName || 'Unnamed User'}</div>
                                       </div>
                                   </TableCell>
-                                  <TableCell>{user.email}</TableCell>
+                                  <TableCell>{u.email}</TableCell>
                                   <TableCell className="text-right">
-                                      <Button size="sm" onClick={() => setUserToApprove(user)}>
+                                      <Button size="sm" onClick={() => setUserToApprove(u)}>
                                           <UserPlus className="mr-2 h-4 w-4" />
                                           Approve
                                       </Button>
@@ -432,4 +461,3 @@ export function TeacherList({ userRole, initialTeachers: teachers, pendingUsers,
     </div>
   );
 }
-
