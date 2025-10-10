@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -220,7 +219,9 @@ export default function DashboardPage() {
       if (!user || loadingState !== 'Checking Role') return;
 
       try {
-        const [allTeachersFromDb, allRolesFromDb] = await Promise.all([getTeachers(), getRoles()]);
+        // Fetch teachers first, then roles, to avoid race conditions.
+        const allTeachersFromDb = await getTeachers();
+        const allRolesFromDb = await getRoles();
         
         setTeachers(allTeachersFromDb);
         setAllSystemRoles(allRolesFromDb);
@@ -541,3 +542,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
