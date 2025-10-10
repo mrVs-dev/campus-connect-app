@@ -153,6 +153,35 @@ export default function DashboardPage() {
       ]);
       setAllSystemRoles(allRolesFromDb);
       
+      // --- Special check for Admin user to bypass approval ---
+      if (loggedInUserEmail === ADMIN_EMAIL) {
+          setUserRole('Admin');
+      } else {
+        const loggedInStaffMember = allTeachersForCheck.find(t => t.email === loggedInUserEmail);
+        if (loggedInStaffMember && loggedInStaffMember.role) {
+            setUserRole(loggedInStaffMember.role);
+        } else {
+            // Not admin and not found in staff, show pending.
+             setAllUsers(allDbUsers as AuthUser[]);
+             setTeachers(allTeachersForCheck);
+             const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
+             setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
+             setUserRole(null);
+             setIsDataLoading(false);
+             return;
+        }
+      }
+      
+      const currentRole = loggedInUserEmail === ADMIN_EMAIL ? 'Admin' : (allTeachersForCheck.find(t => t.email === loggedInUserEmail)?.role || null);
+      
+      if (!currentRole) {
+          // This should ideally not be reached if the above logic is correct, but as a safeguard.
+           setUserRole(null);
+           setIsDataLoading(false);
+           return;
+      }
+      setUserRole(currentRole);
+
       if (allStudentsForCheck.some(s => s.studentEmail === loggedInUserEmail)) {
           router.replace('/student/dashboard');
           return;
@@ -161,30 +190,7 @@ export default function DashboardPage() {
           router.replace('/guardian/dashboard');
           return;
       }
-
-      let finalRole: UserRole | null = null;
-      if (loggedInUserEmail === ADMIN_EMAIL) {
-        finalRole = 'Admin';
-      } else {
-        const loggedInStaffMember = allTeachersForCheck.find(t => t.email === loggedInUserEmail);
-        if (loggedInStaffMember && loggedInStaffMember.role) {
-          finalRole = loggedInStaffMember.role;
-        }
-      }
-      
-      if (!finalRole) {
-        setAllUsers(allDbUsers as AuthUser[]);
-        setTeachers(allTeachersForCheck);
-        const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
-        setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email)) as AuthUser[]);
-        setUserRole(null);
-        setIsDataLoading(false);
-        return;
-      }
-      
-      setUserRole(finalRole);
-      
-      if (finalRole === 'Teacher') {
+      if (currentRole === 'Teacher') {
           router.replace('/teacher/dashboard');
           return;
       }
@@ -536,7 +542,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
-
-    
