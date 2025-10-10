@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, InventoryItem, Permissions, LetterGrade } from "@/lib/types";
+import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, Permissions, LetterGrade } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/app/dashboard/overview";
@@ -14,14 +14,13 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, swapLegacyStudentNames, saveGradeScale } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, swapLegacyStudentNames, saveGradeScale } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FeesList } from "@/components/dashboard/fees-list";
 import { InvoicingList } from "@/components/dashboard/invoicing-list";
-import { InventoryList } from "@/components/dashboard/inventory-list";
 import type { User as AuthUser } from "firebase/auth";
 import { AppModule, initialPermissions, APP_MODULES } from "@/lib/modules";
 
@@ -82,7 +81,6 @@ const TABS_CONFIG: { value: string, label: string, module: AppModule }[] = [
   { value: "assessments", label: "Assessments", module: "Assessments" },
   { value: "fees", label: "Fees", module: "Fees" },
   { value: "invoicing", label: "Invoicing", module: "Invoicing" },
-  { value: "inventory", label: "Inventory", module: "Inventory" },
   { value: "admissions", label: "Admissions", module: "Admissions" },
   { value: "enrollment", label: "Enrollment", module: "Enrollment" }, 
   { value: "statusHistory", label: "Status History", module: "Status History" },
@@ -107,7 +105,6 @@ export default function DashboardPage() {
   const [gradeScale, setGradeScale] = React.useState<LetterGrade[]>([]);
   const [fees, setFees] = React.useState<Fee[]>([]);
   const [invoices, setInvoices] = React.useState<Invoice[]>([]);
-  const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
   
   const [allSystemRoles, setAllSystemRoles] = React.useState<UserRole[]>([]);
   const [userRole, setUserRole] = React.useState<UserRole | null>(null);
@@ -161,7 +158,6 @@ export default function DashboardPage() {
         gradeScaleData,
         feesData,
         invoicesData,
-        inventoryData,
         rolesData,
         permissionsData
       ] = await Promise.all([
@@ -175,7 +171,6 @@ export default function DashboardPage() {
         getGradeScale(),
         getFees(),
         getInvoices(),
-        getInventoryItems(),
         getRoles(),
         getPermissions()
       ]);
@@ -190,7 +185,6 @@ export default function DashboardPage() {
       setGradeScale(gradeScaleData);
       setFees(feesData);
       setInvoices(invoicesData);
-      setInventory(inventoryData);
       setAllSystemRoles(rolesData);
       
       let currentUserRole: UserRole | null = null;
@@ -455,14 +449,6 @@ export default function DashboardPage() {
                     fees={fees}
                     onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) await fetchData(true); return success; }}
                     onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); await fetchData(true); }}
-                    hasPermission={hasPermission}
-                    />
-                </TabsContent>
-                 <TabsContent value="inventory" className="space-y-4">
-                  <InventoryList
-                    inventoryItems={inventory}
-                    onSaveItem={async (item) => { const success = await saveInventoryItem(item); if (success) await fetchData(true); return success; }}
-                    onDeleteItem={async (itemId) => { await deleteInventoryItem(itemId); await fetchData(true); }}
                     hasPermission={hasPermission}
                     />
                 </TabsContent>

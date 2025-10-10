@@ -6,7 +6,6 @@ export const APP_MODULES = [
   'Assessments',
   'Fees',
   'Invoicing',
-  'Inventory',
   'Admissions',
   'Enrollment',
   'Status History',
