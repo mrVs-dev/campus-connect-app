@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -76,7 +77,7 @@ type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 interface TeacherListProps {
   userRole: UserRole | null;
   initialTeachers: Teacher[];
-  onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => Promise<Teacher | null>;
+  onAddTeacher: (teacherData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'>) => Promise<void>;
   onUpdateTeacher: (teacherId: string, updatedData: Partial<Teacher>) => void;
   onDeleteTeacher: (teacher: Teacher) => void;
   onRefreshData: () => void;

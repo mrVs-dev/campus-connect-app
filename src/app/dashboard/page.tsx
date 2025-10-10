@@ -15,7 +15,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, swapLegacyStudentNames } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, getInventoryItems, saveInventoryItem, deleteInventoryItem, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, swapLegacyStudentNames, saveGradeScale } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -118,6 +118,7 @@ export default function DashboardPage() {
   const [permissions, setPermissions] = React.useState<Permissions | null>(null);
 
   const [loadingState, setLoadingState] = React.useState<LoadingState>('Authenticating');
+  const [dataLoaded, setDataLoaded] = React.useState(false);
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -179,6 +180,7 @@ export default function DashboardPage() {
       setFees(feesData);
       setInvoices(invoicesData);
       setInventory(inventoryData);
+      setDataLoaded(true);
       
       if (showToast) {
         toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
@@ -196,80 +198,83 @@ export default function DashboardPage() {
     }
   }, [user, toast]);
   
+  // Effect 1: Check user authentication status and redirect if necessary
   React.useEffect(() => {
     if (authLoading) {
       setLoadingState('Authenticating');
-      return;
-    }
-    if (!user) {
-      router.replace('/login');
       return;
     }
     if (!isFirebaseConfigured) {
       setLoadingState('Error');
       return;
     }
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    setLoadingState('Checking Role'); // Ready to check role
+  }, [user, authLoading, router]);
 
+  // Effect 2: Fetch initial user role and permissions
+  React.useEffect(() => {
     const checkUserRoleAndPermissions = async () => {
-      setLoadingState('Checking Role');
+      if (!user || loadingState !== 'Checking Role') return;
+
       try {
-        await sleep(1000); // Wait 1 second to ensure Firebase auth state propagates
-        const loggedInUserEmail = user.email;
-        
-        const allTeachersFromDb = await getTeachers();
+        await sleep(1000); // Critical delay to allow Firebase auth state to propagate
+
+        const [allTeachersFromDb, allRolesFromDb, allStudentsFromDb] = await Promise.all([
+          getTeachers(),
+          getRoles(),
+          getStudents() // Fetch students here to check for student/guardian roles
+        ]);
+
         setTeachers(allTeachersFromDb);
-        
+        setAllSystemRoles(allRolesFromDb);
+
         let currentUserRole: UserRole | null = null;
-        if (loggedInUserEmail === ADMIN_EMAIL) {
+        if (user.email === ADMIN_EMAIL) {
           currentUserRole = 'Admin';
         } else {
-          const loggedInStaffMember = allTeachersFromDb.find(t => t.email === loggedInUserEmail);
+          const loggedInStaffMember = allTeachersFromDb.find(t => t.email === user.email);
           if (loggedInStaffMember?.role) {
             currentUserRole = loggedInStaffMember.role;
           }
         }
         
         if (currentUserRole) {
-            setUserRole(currentUserRole);
+          setUserRole(currentUserRole);
 
-            if (currentUserRole === 'Teacher') {
-                router.replace('/teacher/dashboard');
-                return;
-            }
-            
-            const [allRolesFromDb, savedPermissions] = await Promise.all([
-                getRoles(),
-                getPermissions()
-            ]);
-            setAllSystemRoles(allRolesFromDb);
-
-            const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-            APP_MODULES.forEach(module => {
-                if (!completePermissions[module]) completePermissions[module] = {};
-                allRolesFromDb.forEach(role => {
-                    if (!completePermissions[module][role]) {
-                    completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-                    }
-                    if (savedPermissions[module]?.[role]) {
-                        completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
-                    }
-                });
-            });
-            setPermissions(completePermissions);
-            fetchData(); 
-
-        } else {
-            const allStudentsFromDb = await getStudents();
-            if (allStudentsFromDb.some(s => s.studentEmail === loggedInUserEmail)) {
-                router.replace('/student/dashboard');
-                return;
-            }
-            if (allStudentsFromDb.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
-                router.replace('/guardian/dashboard');
-                return;
-            }
-            setLoadingState('Idle');
+          if (currentUserRole === 'Teacher') {
+            router.replace('/teacher/dashboard');
             return;
+          }
+          
+          const savedPermissions = await getPermissions();
+          const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+          APP_MODULES.forEach(module => {
+            if (!completePermissions[module]) completePermissions[module] = {};
+            allRolesFromDb.forEach(role => {
+              if (!completePermissions[module][role]) {
+                completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+              }
+              if (savedPermissions[module]?.[role]) {
+                completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
+              }
+            });
+          });
+          setPermissions(completePermissions);
+        } else {
+          if (allStudentsFromDb.some(s => s.studentEmail === user.email)) {
+            router.replace('/student/dashboard');
+            return;
+          }
+          if (allStudentsFromDb.some(s => s.guardians?.some(g => g.email === user.email))) {
+            router.replace('/guardian/dashboard');
+            return;
+          }
+          // If no role found, they are pending approval
+          setLoadingState('Idle'); 
         }
       } catch (error) {
         console.error("Error checking user role:", error);
@@ -279,7 +284,15 @@ export default function DashboardPage() {
     
     checkUserRoleAndPermissions();
     
-  }, [user, authLoading, router, fetchData]);
+  }, [user, loadingState, router]);
+
+  // Effect 3: Fetch main data only after a user role has been established
+  React.useEffect(() => {
+    if (userRole && !dataLoaded) {
+      fetchData();
+    }
+  }, [userRole, dataLoaded, fetchData]);
+
 
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
     await updateStudent(studentId, updatedData);
@@ -292,7 +305,8 @@ export default function DashboardPage() {
 
   const handleSaveRoles = async (newRoles: UserRole[]) => {
     await saveRoles(newRoles);
-    await fetchData(); 
+    const updatedRoles = await getRoles();
+    setAllSystemRoles(updatedRoles);
     toast({ title: "Roles updated", description: "The list of system roles has been saved." });
   };
   
@@ -435,10 +449,10 @@ export default function DashboardPage() {
                     assessmentCategories={assessmentCategories}
                     onUpdateStudent={handleUpdateStudent}
                     onUpdateStudentStatus={handleUpdateStudentStatus}
-                    onImportStudents={(importedStudents) => { importStudents(importedStudents); fetchData(true); }}
-                    onDeleteStudent={(studentId) => { deleteStudent(studentId); fetchData(true); }}
-                    onDeleteSelectedStudents={(studentIds) => { deleteSelectedStudents(studentIds); fetchData(true); }}
-                    onMoveStudents={(studentIds, schoolYear, fromClass, toClass) => { moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); fetchData(true); }}
+                    onImportStudents={async (importedStudents) => { await importStudents(importedStudents); await fetchData(true); }}
+                    onDeleteStudent={async (studentId) => { await deleteStudent(studentId); await fetchData(true); }}
+                    onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); await fetchData(true); }}
+                    onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); await fetchData(true); }}
                     gradeScale={gradeScale}
                     />
                 </TabsContent>
@@ -446,7 +460,7 @@ export default function DashboardPage() {
                   <TeacherList 
                       userRole={userRole}
                       initialTeachers={teachers}
-                      onAddTeacher={addTeacher}
+                      onAddTeacher={async (teacher) => { await addTeacher(teacher); }}
                       onDeleteTeacher={handleDeleteTeacher}
                       onUpdateTeacher={handleUpdateTeacher}
                       onRefreshData={() => fetchData(true)}
@@ -467,8 +481,8 @@ export default function DashboardPage() {
                 <TabsContent value="fees" className="space-y-4">
                   <FeesList
                     fees={fees}
-                    onSaveFee={(fee) => { const success = saveFee(fee); if (success) fetchData(true); return success; }}
-                    onDeleteFee={(feeId) => { deleteFee(feeId); fetchData(true); }}
+                    onSaveFee={async (fee) => { const success = await saveFee(fee); if (success) await fetchData(true); return success; }}
+                    onDeleteFee={async (feeId) => { await deleteFee(feeId); await fetchData(true); }}
                     />
                 </TabsContent>
                  <TabsContent value="invoicing" className="space-y-4">
@@ -476,15 +490,15 @@ export default function DashboardPage() {
                     invoices={invoices}
                     students={students}
                     fees={fees}
-                    onSaveInvoice={(invoice) => { const success = saveInvoice(invoice); if (success) fetchData(true); return success; }}
-                    onDeleteInvoice={(invoiceId) => { deleteInvoice(invoiceId); fetchData(true); }}
+                    onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) await fetchData(true); return success; }}
+                    onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); await fetchData(true); }}
                     />
                 </TabsContent>
                  <TabsContent value="inventory" className="space-y-4">
                   <InventoryList
                     inventoryItems={inventory}
-                    onSaveItem={(item) => { const success = saveInventoryItem(item); if (success) fetchData(true); return success; }}
-                    onDeleteItem={(itemId) => { deleteInventoryItem(itemId); fetchData(true); }}
+                    onSaveItem={async (item) => { const success = await saveInventoryItem(item); if (success) await fetchData(true); return success; }}
+                    onDeleteItem={async (itemId) => { await deleteInventoryItem(itemId); await fetchData(true); }}
                     />
                 </TabsContent>
                 <TabsContent value="admissions" className="space-y-4">
@@ -493,13 +507,13 @@ export default function DashboardPage() {
                     students={students}
                     teachers={teachers}
                     onSave={handleSaveAdmission}
-                    onImport={(data) => { importAdmissions(data); fetchData(true); }}
+                    onImport={async (data) => { await importAdmissions(data); await fetchData(true); }}
                     activeAccordion={activeAdmissionsAccordion}
                     onAccordionChange={setActiveAdmissionsAccordion}
                     />
                 </TabsContent>
                 <TabsContent value="enrollment" className="space-y-4">
-                  <EnrollmentForm onEnroll={(student) => { addStudent(student); fetchData(true); }} />
+                  <EnrollmentForm onEnroll={async (student) => { await addStudent(student); await fetchData(true); }} />
                 </TabsContent>
                 <TabsContent value="statusHistory" className="space-y-4">
                   <StatusHistoryList
@@ -514,13 +528,13 @@ export default function DashboardPage() {
                     userRole={userRole}
                     subjects={subjects}
                     assessmentCategories={assessmentCategories}
-                    onSaveSubjects={(s) => { saveSubjects(s); fetchData(true); }}
-                    onSaveCategories={(c) => { saveAssessmentCategories(c); fetchData(true); }}
+                    onSaveSubjects={async (s) => { await saveSubjects(s); await fetchData(true); }}
+                    onSaveCategories={async (c) => { await saveAssessmentCategories(c); await fetchData(true); }}
                     allRoles={allSystemRoles}
                     onSaveRoles={handleSaveRoles}
                     initialPermissions={permissions}
                     gradeScale={gradeScale}
-                    onSaveGradeScale={(g) => { saveGradeScale(g); fetchData(true); }}
+                    onSaveGradeScale={async (g) => { await saveGradeScale(g); await fetchData(true); }}
                     onSwapLegacyNames={handleSwapLegacyNames}
                   />
                 </TabsContent>
