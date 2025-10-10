@@ -1,79 +1,68 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isSuperAdmin() {
-      return request.auth.token.email == "vannak@api-school.com";
-    }
-
+    // Allow read access to essential collections for any authenticated user
+    // This helps prevent race conditions on initial app load.
     function isAuthenticated() {
       return request.auth != null;
     }
+
+    match /teachers/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
     
-    // Catch-all for most collections: Deny by default
+    match /students/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+
+    match /admissions/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+    
+    match /assessments/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+    
+    match /student_status_history/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+
+    match /fees/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+    
+    match /invoices/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+    
+    match /inventory/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+    
+    match /users/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Simplified for now
+    }
+
+    // Default deny for any other collections
     match /{document=**} {
       allow read, write: if false;
-    }
-
-    // Allow any authenticated user to read initial app data to prevent race conditions.
-    // Write access is still protected.
-    match /teachers/{teacherId} {
-      allow read: if isAuthenticated();
-      allow write: if isSuperAdmin(); // Or more specific rules
-    }
-
-    match /settings/{settingId} {
-        allow read: if isAuthenticated();
-        allow write: if isSuperAdmin(); // Or more specific rules
-    }
-
-    match /students/{studentId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated(); // More granular rules can be added
-    }
-
-    match /admissions/{admissionId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
-    }
-    
-    // Other collections can have more specific rules
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-
-    match /student_status_history/{historyId} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    match /assessments/{assessmentId} {
-       allow read, write: if isAuthenticated();
-    }
-
-    match /attendance/{attendanceId} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    match /fees/{feeId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    match /invoices/{invoiceId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    match /inventory/{itemId} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    match /fcmTokens/{token} {
-      allow read, write: if isAuthenticated();
-    }
-
-    match /metadata/{docId} {
-      allow read, write: if isAuthenticated();
     }
   }
 }
