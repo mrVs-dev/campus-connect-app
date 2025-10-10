@@ -221,12 +221,9 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
 
-        // STEP 1: Fetch only the critical data to determine role
-        const [allRolesFromDb, allTeachersFromDb, savedPermissions] = await Promise.all([
-          getRoles(),
-          getTeachers(),
-          getPermissions(),
-        ]);
+        // Fetch critical data sequentially to avoid race conditions
+        const allRolesFromDb = await getRoles();
+        const allTeachersFromDb = await getTeachers();
         
         setAllSystemRoles(allRolesFromDb);
         setTeachers(allTeachersFromDb);
@@ -249,6 +246,8 @@ export default function DashboardPage() {
               return;
           }
           
+          // Now fetch permissions
+          const savedPermissions = await getPermissions();
           const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
           APP_MODULES.forEach(module => {
             if (!completePermissions[module]) completePermissions[module] = {};
@@ -549,3 +548,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
