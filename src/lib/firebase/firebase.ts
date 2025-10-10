@@ -34,32 +34,36 @@ let auth: Auth;
 let db: Firestore;
 let messaging: Messaging | undefined;
 
-if (isFirebaseConfigured) {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
-  }
-  auth = getAuth(app);
-  db = getFirestore(app);
-  
-  // Check if window is defined (i.e., we are on the client-side)
-  if (typeof window !== 'undefined') {
-    // This will run in the browser console
-    console.log(
-      "[Firebase/client] NEXT_PUBLIC_FIREBASE_PROJECT_ID:",
-      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    );
-    messaging = getMessaging(app);
-  }
+function initializeFirebase() {
+    if (!isFirebaseConfigured) {
+        console.warn("Firebase configuration is missing or incomplete. The application will run in a limited mode.");
+        app = {} as FirebaseApp;
+        auth = {} as Auth;
+        db = {} as Firestore;
+        messaging = undefined;
+        return;
+    }
 
-} else {
-  console.warn("Firebase configuration is missing or incomplete. The application will run in a limited mode.");
-  // Provide mock objects if Firebase is not configured to avoid runtime errors
-  app = {} as FirebaseApp;
-  auth = {} as Auth;
-  db = {} as Firestore;
-  messaging = undefined;
+    if (!getApps().length) {
+        app = initializeApp(firebaseConfig);
+    } else {
+        app = getApp();
+    }
+    auth = getAuth(app);
+    db = getFirestore(app);
+    
+    // Check if window is defined (i.e., we are on the client-side)
+    if (typeof window !== 'undefined') {
+        // This will run in the browser console
+        console.log(
+        "[Firebase/client] NEXT_PUBLIC_FIREBASE_PROJECT_ID:",
+        process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        );
+        messaging = getMessaging(app);
+    }
 }
+
+// Call the function to initialize Firebase
+initializeFirebase();
 
 export { app, auth, db, messaging };
