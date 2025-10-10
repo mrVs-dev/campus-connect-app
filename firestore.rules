@@ -1,10 +1,8 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all users, authenticated or not, to read and write to all collections.
-    // This is for debugging purposes and should be secured before production.
+    // Allow all reads and writes to all documents for everyone.
+    // This is for debugging purposes and should be secured.
     match /{document=**} {
       allow read, write: if true;
     }
