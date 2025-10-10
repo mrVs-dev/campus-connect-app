@@ -103,7 +103,6 @@ export default function DashboardPage() {
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
   const [teachers, setTeachers] = React.useState<Teacher[]>([]);
-  const [allUsers, setAllUsers] = React.useState<AuthUser[]>([]);
   const [statusHistory, setStatusHistory] = React.useState<StudentStatusHistory[]>([]);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
@@ -145,6 +144,7 @@ export default function DashboardPage() {
     
     setLoadingState('Fetching Main Data');
     try {
+      // Fetch all non-essential data after role has been confirmed.
       const [
         studentsData,
         admissionsData, 
@@ -156,7 +156,6 @@ export default function DashboardPage() {
         feesData,
         invoicesData,
         inventoryData,
-        teachersData,
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -168,7 +167,6 @@ export default function DashboardPage() {
         getFees(),
         getInvoices(),
         getInventoryItems(),
-        getTeachers(),
       ]);
 
       setStudents(studentsData);
@@ -181,7 +179,6 @@ export default function DashboardPage() {
       setFees(feesData);
       setInvoices(invoicesData);
       setInventory(inventoryData);
-      setTeachers(teachersData);
       
       if (showToast) {
         toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
@@ -213,16 +210,16 @@ export default function DashboardPage() {
       return;
     }
 
+    // This effect runs once to check the user's role and set up permissions.
     const checkUserRoleAndPermissions = async () => {
       setLoadingState('Checking Role');
       try {
         const loggedInUserEmail = user.email;
 
-        // Fetch essential role/permission data first
-        const [allRolesFromDb, allTeachersFromDb, savedPermissions] = await Promise.all([
+        // Fetch only the data needed to determine the role first.
+        const [allRolesFromDb, allTeachersFromDb] = await Promise.all([
           getRoles(),
           getTeachers(),
-          getPermissions(),
         ]);
         
         setAllSystemRoles(allRolesFromDb);
@@ -239,13 +236,14 @@ export default function DashboardPage() {
         }
         
         if (currentUserRole) {
-          setUserRole(currentUserRole);
+          setUserRole(currentUserRole); // This will trigger the next useEffect
 
           if (currentUserRole === 'Teacher') {
               router.replace('/teacher/dashboard');
               return;
           }
           
+          const savedPermissions = await getPermissions();
           const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
           APP_MODULES.forEach(module => {
             if (!completePermissions[module]) completePermissions[module] = {};
@@ -259,7 +257,6 @@ export default function DashboardPage() {
             });
           });
           setPermissions(completePermissions);
-          
 
         } else {
           const allStudentsFromDb = await getStudents();
@@ -284,7 +281,7 @@ export default function DashboardPage() {
     
   }, [user, authLoading, router]);
 
-  // This separate effect triggers the main data fetch once the userRole is confirmed.
+  // This separate effect triggers the main data fetch ONLY once the userRole is confirmed.
   React.useEffect(() => {
     if (userRole) {
       fetchData();
@@ -320,10 +317,12 @@ export default function DashboardPage() {
     if (!user) return;
     try {
         await deleteTeacher(teacher.teacherId);
-        const userToDelete = allUsers.find(u => u.email === teacher.email);
-        if (userToDelete) {
-            await deleteMainUser(userToDelete.uid);
-        }
+        // This is a placeholder for a real implementation of deleting the auth user
+        // In a real app, this would require admin privileges and a backend function.
+        // const userToDelete = allUsers.find(u => u.email === teacher.email);
+        // if (userToDelete) {
+        //     await deleteMainUser(userToDelete.uid);
+        // }
         
         await fetchData(true);
 
@@ -463,7 +462,6 @@ export default function DashboardPage() {
                       onAddTeacher={addTeacher}
                       onDeleteTeacher={handleDeleteTeacher}
                       onUpdateTeacher={handleUpdateTeacher}
-                      pendingUsers={pendingUsers}
                       onRefreshData={() => fetchData(true)}
                     />
                 </TabsContent>
