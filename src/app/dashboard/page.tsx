@@ -420,7 +420,7 @@ export default function DashboardPage() {
                   <TeacherList 
                       userRole={userRole}
                       initialTeachers={teachers}
-                      onAddTeacher={async (teacher) => { await addTeacher(teacher); }}
+                      onAddTeacher={async (teacher) => { await addTeacher(teacher); await fetchData(true); }}
                       onDeleteTeacher={handleDeleteTeacher}
                       onUpdateTeacher={handleUpdateTeacher}
                       onRefreshData={() => fetchData(true)}
