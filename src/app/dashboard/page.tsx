@@ -75,7 +75,6 @@ function PendingApproval() {
   );
 }
 
-
 const TABS_CONFIG: { value: string, label: string, module: AppModule }[] = [
   { value: "dashboard", label: "Dashboard", module: "Dashboard" },
   { value: "students", label: "Students", module: "Students" },
@@ -90,6 +89,8 @@ const TABS_CONFIG: { value: string, label: string, module: AppModule }[] = [
   { value: "settings", label: "Settings", module: "Settings" },
 ];
 
+type LoadingState = 'Authenticating' | 'Checking Role' | 'Fetching Data' | 'Idle' | 'Error';
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -97,6 +98,7 @@ export default function DashboardPage() {
 
   const [activeTab, setActiveTab] = React.useState("dashboard");
   const [activeAdmissionsAccordion, setActiveAdmissionsAccordion] = React.useState<string | undefined>(undefined);
+  
   const [students, setStudents] = React.useState<Student[]>([]);
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [assessments, setAssessments] = React.useState<Assessment[]>([]);
@@ -114,12 +116,11 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = React.useState<UserRole | null>(null);
   const [permissions, setPermissions] = React.useState<Permissions | null>(null);
 
-  const [isDataLoading, setIsDataLoading] = React.useState(true);
+  const [loadingState, setLoadingState] = React.useState<LoadingState>('Authenticating');
   const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
-        // If no admissions data, ensure students don't have stale enrollment data
         return students.map(s => ({ ...s, enrollments: [] }));
     }
 
@@ -129,101 +130,23 @@ export default function DashboardPage() {
         for (const admission of sortedAdmissions) {
             const studentAdmission = admission.students.find(sa => sa.studentId === student.studentId);
             if (studentAdmission && studentAdmission.enrollments.length > 0) {
-                // Found the most recent year with enrollments, so use these and stop.
                 return { ...student, enrollments: studentAdmission.enrollments };
             }
         }
-        // If no enrollments were found for the student in any year, ensure their enrollments are cleared.
         return { ...student, enrollments: [] };
     });
-}, [students, admissions]);
+  }, [students, admissions]);
   
   const fetchData = React.useCallback(async (showToast = false) => {
-    if (!user) return;
-    setIsDataLoading(true);
+    if (!user || !userRole) {
+      console.warn("FetchData called without user or userRole.");
+      return;
+    };
+    
+    setLoadingState('Fetching Data');
     try {
-      const loggedInUserEmail = user.email;
-
-      const [allStudentsForCheck, allTeachersForCheck, allDbUsers, allRolesFromDb, savedPermissions] = await Promise.all([
-        getStudents(), 
-        getTeachers(), 
-        getUsers(),
-        getRoles(),
-        getPermissions(),
-      ]);
-      setAllSystemRoles(allRolesFromDb);
-      
-      // --- Special check for Admin user to bypass approval ---
-      if (loggedInUserEmail === ADMIN_EMAIL) {
-          setUserRole('Admin');
-      } else {
-        const loggedInStaffMember = allTeachersForCheck.find(t => t.email === loggedInUserEmail);
-        if (loggedInStaffMember && loggedInStaffMember.role) {
-            setUserRole(loggedInStaffMember.role);
-        } else {
-            // Not admin and not found in staff, show pending.
-             setAllUsers(allDbUsers as AuthUser[]);
-             setTeachers(allTeachersForCheck);
-             const teacherEmails = new Set(allTeachersForCheck.map(t => t.email).filter(Boolean));
-             setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
-             setUserRole(null);
-             setIsDataLoading(false);
-             return;
-        }
-      }
-      
-      const currentRole = loggedInUserEmail === ADMIN_EMAIL ? 'Admin' : (allTeachersForCheck.find(t => t.email === loggedInUserEmail)?.role || null);
-      
-      if (!currentRole) {
-          // This should ideally not be reached if the above logic is correct, but as a safeguard.
-           setUserRole(null);
-           setIsDataLoading(false);
-           return;
-      }
-      setUserRole(currentRole);
-
-      if (allStudentsForCheck.some(s => s.studentEmail === loggedInUserEmail)) {
-          router.replace('/student/dashboard');
-          return;
-      }
-      if (allStudentsForCheck.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
-          router.replace('/guardian/dashboard');
-          return;
-      }
-      if (currentRole === 'Teacher') {
-          router.replace('/teacher/dashboard');
-          return;
-      }
-      
-      let currentRoles = [...allRolesFromDb];
-      const rolesToAdd: UserRole[] = ["Office Manager", "Finance Officer"];
-      let madeRoleChanges = false;
-      rolesToAdd.forEach(role => {
-          if (!currentRoles.some(r => r.toLowerCase() === role.toLowerCase())) {
-              currentRoles.push(role);
-              madeRoleChanges = true;
-          }
-      });
-      if (madeRoleChanges) {
-        await saveRoles(currentRoles);
-        setAllSystemRoles(currentRoles);
-      }
-
-      const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-      APP_MODULES.forEach(module => {
-         if (!completePermissions[module]) completePermissions[module] = {};
-         currentRoles.forEach(role => {
-             if (!completePermissions[module][role]) {
-                completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-             }
-             if (savedPermissions[module]?.[role]) {
-                 completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
-             }
-         });
-      });
-      setPermissions(completePermissions);
-      
       const [
+        studentsData,
         admissionsData, 
         assessmentsData, 
         statusHistoryData, 
@@ -233,7 +156,10 @@ export default function DashboardPage() {
         feesData,
         invoicesData,
         inventoryData,
+        teachersData,
+        allUsersData,
       ] = await Promise.all([
+        getStudents(),
         getAdmissions(),
         getAssessments(),
         getStudentStatusHistory(),
@@ -243,13 +169,15 @@ export default function DashboardPage() {
         getFees(),
         getInvoices(),
         getInventoryItems(),
+        getTeachers(),
+        getUsers(),
       ]);
 
-      setStudents(allStudentsForCheck);
+      setStudents(studentsData);
       setAdmissions(admissionsData);
       setAssessments(assessmentsData);
-      setTeachers(allTeachersForCheck);
-      setAllUsers(allDbUsers as AuthUser[]);
+      setTeachers(teachersData);
+      setAllUsers(allUsersData as AuthUser[]);
       setStatusHistory(statusHistoryData);
       setSubjects(subjectsData);
       setAssessmentCategories(categoriesData);
@@ -269,27 +197,103 @@ export default function DashboardPage() {
         description: error.message || "Failed to load data. Please try again.",
         variant: "destructive",
       });
+      setLoadingState('Error');
     } finally {
-      setIsDataLoading(false);
+      setLoadingState('Idle');
     }
-  }, [user, router, toast]);
-
+  }, [user, userRole, toast]);
+  
   React.useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) {
+      setLoadingState('Authenticating');
+      return;
+    }
     if (!user) {
       router.replace('/login');
       return;
     }
     if (!isFirebaseConfigured) {
-      setIsDataLoading(false);
+      setLoadingState('Error');
       return;
     }
-    fetchData();
+
+    setLoadingState('Checking Role');
+
+    const checkUserRoleAndPermissions = async () => {
+      try {
+        const loggedInUserEmail = user.email;
+
+        const [allTeachers, allDbUsers, allRolesFromDb, savedPermissions] = await Promise.all([
+          getTeachers(), 
+          getUsers(),
+          getRoles(),
+          getPermissions(),
+        ]);
+        setAllSystemRoles(allRolesFromDb);
+
+        let currentUserRole: UserRole | null = null;
+        if (loggedInUserEmail === ADMIN_EMAIL) {
+          currentUserRole = 'Admin';
+        } else {
+          const loggedInStaffMember = allTeachers.find(t => t.email === loggedInUserEmail);
+          if (loggedInStaffMember?.role) {
+            currentUserRole = loggedInStaffMember.role;
+          }
+        }
+        
+        setUserRole(currentUserRole);
+
+        if (!currentUserRole) {
+          const teacherEmails = new Set(allTeachers.map(t => t.email).filter(Boolean));
+          setPendingUsers(allDbUsers.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
+          setLoadingState('Idle');
+          return;
+        }
+
+        const allStudents = await getStudents();
+        if (allStudents.some(s => s.studentEmail === loggedInUserEmail)) {
+            router.replace('/student/dashboard');
+            return;
+        }
+        if (allStudents.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
+            router.replace('/guardian/dashboard');
+            return;
+        }
+        if (currentUserRole === 'Teacher') {
+            router.replace('/teacher/dashboard');
+            return;
+        }
+        
+        const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+        APP_MODULES.forEach(module => {
+           if (!completePermissions[module]) completePermissions[module] = {};
+           allRolesFromDb.forEach(role => {
+               if (!completePermissions[module][role]) {
+                  completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+               }
+               if (savedPermissions[module]?.[role]) {
+                   completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
+               }
+           });
+        });
+        setPermissions(completePermissions);
+        
+        // Once role and permissions are set, trigger data fetch
+        fetchData();
+
+      } catch (error) {
+        console.error("Error checking user role:", error);
+        setLoadingState('Error');
+      }
+    };
+    
+    checkUserRoleAndPermissions();
+    
   }, [user, authLoading, router, fetchData]);
   
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
     await updateStudent(studentId, updatedData);
-    await fetchData(true); // Refetch data and show a success toast.
+    await fetchData(true);
     toast({
         title: "Student Updated",
         description: "The student's profile has been saved.",
@@ -406,14 +410,14 @@ export default function DashboardPage() {
     return permissions[module]?.[userRole]?.[action] ?? false;
   };
 
-  if (authLoading || isDataLoading) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
-  }
-
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
 
+  if (loadingState !== 'Idle') {
+    return <div className="flex min-h-screen items-center justify-center">{loadingState}...</div>;
+  }
+  
   if (!userRole) {
     return <PendingApproval />;
   }
@@ -542,3 +546,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    

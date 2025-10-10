@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { BarChart, Users, User, Calendar as CalendarIcon, XIcon, BookOpenCheck } from "lucide-react";
@@ -121,7 +120,7 @@ const getSortValue = (level: string): number => {
     return 999;
 };
 
-const sortLevels = (levels: { level: string }[]): { level: string }[] => {
+const sortLevels = (levels: { level: string; students: number }[]): { level: string; students: number }[] => {
     return [...levels].sort((a, b) => getSortValue(a.level) - getSortValue(b.level));
 };
 
@@ -206,7 +205,6 @@ export function Overview({ students, admissions }: OverviewProps) {
     
     admissionsToConsider.forEach(admission => {
       admission.students.forEach(studentAdmission => {
-        // Only count enrollments for students who exist in the main 'students' list
         if (students.some(s => s.studentId === studentAdmission.studentId)) {
             studentAdmission.enrollments.forEach(enrollment => {
                 const programInfo = programs.find(p => p.id === enrollment.programId);
@@ -427,3 +425,5 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
+
+    
