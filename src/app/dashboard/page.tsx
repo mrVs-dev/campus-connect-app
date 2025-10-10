@@ -28,6 +28,7 @@ import { AppModule, initialPermissions, APP_MODULES } from "@/lib/modules";
 
 // --- IMPORTANT: Admin Exception ---
 const ADMIN_EMAIL = "vannak@api-school.com"; 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function MissingFirebaseConfig() {
   return (
@@ -212,6 +213,7 @@ export default function DashboardPage() {
     const checkUserRoleAndPermissions = async () => {
       setLoadingState('Checking Role');
       try {
+        await sleep(1000); // Wait 1 second to ensure Firebase auth state propagates
         const loggedInUserEmail = user.email;
         
         const allTeachersFromDb = await getTeachers();
@@ -529,3 +531,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
