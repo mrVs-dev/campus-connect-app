@@ -221,9 +221,9 @@ export default function DashboardPage() {
       try {
         // Fetch teachers first, then roles, to avoid race conditions.
         const allTeachersFromDb = await getTeachers();
-        const allRolesFromDb = await getRoles();
-        
         setTeachers(allTeachersFromDb);
+
+        const allRolesFromDb = await getRoles();
         setAllSystemRoles(allRolesFromDb);
 
         let currentUserRole: UserRole | null = null;
@@ -542,5 +542,7 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
 
     
