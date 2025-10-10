@@ -137,14 +137,13 @@ export default function DashboardPage() {
   }, [students, admissions]);
   
   const fetchData = React.useCallback(async (showToast = false) => {
-    if (!user || !userRole) {
-      console.warn("FetchData called without user or role.");
+    if (!user) {
+      console.warn("FetchData called without user.");
       return;
     };
     
     setLoadingState('Fetching Main Data');
     try {
-      // Fetch all non-essential data after role has been confirmed.
       const [
         studentsData,
         admissionsData, 
@@ -194,7 +193,7 @@ export default function DashboardPage() {
       });
       setLoadingState('Error');
     }
-  }, [user, userRole, toast]);
+  }, [user, toast]);
   
   React.useEffect(() => {
     if (authLoading) {
@@ -210,21 +209,19 @@ export default function DashboardPage() {
       return;
     }
 
-    // This effect runs once to check the user's role and set up permissions.
     const checkUserRoleAndPermissions = async () => {
       setLoadingState('Checking Role');
       try {
         const loggedInUserEmail = user.email;
-
-        // Fetch only the data needed to determine the role first.
+        
         const [allRolesFromDb, allTeachersFromDb] = await Promise.all([
-          getRoles(),
-          getTeachers(),
+            getRoles(),
+            getTeachers()
         ]);
         
         setAllSystemRoles(allRolesFromDb);
         setTeachers(allTeachersFromDb);
-
+        
         let currentUserRole: UserRole | null = null;
         if (loggedInUserEmail === ADMIN_EMAIL) {
           currentUserRole = 'Admin';
@@ -234,15 +231,15 @@ export default function DashboardPage() {
             currentUserRole = loggedInStaffMember.role;
           }
         }
-        
+
         if (currentUserRole) {
-          setUserRole(currentUserRole); // This will trigger the next useEffect
+          setUserRole(currentUserRole);
 
           if (currentUserRole === 'Teacher') {
               router.replace('/teacher/dashboard');
               return;
           }
-          
+
           const savedPermissions = await getPermissions();
           const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
           APP_MODULES.forEach(module => {
@@ -257,19 +254,20 @@ export default function DashboardPage() {
             });
           });
           setPermissions(completePermissions);
+          await fetchData(); // Fetch all other data after role is set
 
         } else {
-          const allStudentsFromDb = await getStudents();
-          if (allStudentsFromDb.some(s => s.studentEmail === loggedInUserEmail)) {
-              router.replace('/student/dashboard');
-              return;
-          }
-          if (allStudentsFromDb.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
-              router.replace('/guardian/dashboard');
-              return;
-          }
-          setLoadingState('Idle'); // Stay on the page but show pending approval
-          return;
+            const allStudentsFromDb = await getStudents();
+            if (allStudentsFromDb.some(s => s.studentEmail === loggedInUserEmail)) {
+                router.replace('/student/dashboard');
+                return;
+            }
+            if (allStudentsFromDb.some(s => s.guardians?.some(g => g.email === loggedInUserEmail))) {
+                router.replace('/guardian/dashboard');
+                return;
+            }
+            setLoadingState('Idle');
+            return;
         }
       } catch (error) {
         console.error("Error checking user role:", error);
@@ -279,15 +277,8 @@ export default function DashboardPage() {
     
     checkUserRoleAndPermissions();
     
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, fetchData]);
 
-  // This separate effect triggers the main data fetch ONLY once the userRole is confirmed.
-  React.useEffect(() => {
-    if (userRole) {
-      fetchData();
-    }
-  }, [userRole, fetchData]);
-  
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
     await updateStudent(studentId, updatedData);
     await fetchData(true);
