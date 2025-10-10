@@ -1,15 +1,18 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Open access for all collections.
-    
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
     match /users/{userId} {
       allow read, write: if true;
     }
-    
+
     match /metadata/{docId} {
-        allow read, write: if true;
+      allow read, write: if true;
     }
 
     match /students/{studentId} {
@@ -31,13 +34,13 @@ service cloud.firestore {
     match /teachers/{teacherId} {
       allow read, write: if true;
     }
-    
+
     match /attendance/{attendanceId} {
-        allow read, write: if true;
+      allow read, write: if true;
     }
 
     match /fcmTokens/{tokenId} {
-        allow read, write: if true;
+      allow read, write: if true;
     }
 
     match /fees/{feeId} {
@@ -47,17 +50,12 @@ service cloud.firestore {
     match /invoices/{invoiceId} {
       allow read, write: if true;
     }
-    
-    match /inventory/{itemId} {
-        allow read, write: if true;
-    }
 
-    match /settings/{settingId} {
+    match /inventory/{itemId} {
       allow read, write: if true;
     }
 
-    // A wildcard match for any other collections that might be created.
-    match /{path=**}/documents/{id} {
+    match /settings/{settingId} {
       allow read, write: if true;
     }
   }
