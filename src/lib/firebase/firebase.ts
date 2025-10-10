@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { getAuth, connectAuthEmulator, type Auth } from "firebase/auth";
+import { getFirestore, connectFirestoreEmulator, type Firestore } from "firebase/firestore";
 import { getMessaging, type Messaging } from "firebase/messaging";
 
 // This will run on the server when the app builds
@@ -42,6 +42,13 @@ if (isFirebaseConfigured) {
   }
   auth = getAuth(app);
   db = getFirestore(app);
+  
+  if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+    console.log("Connecting to Firebase Emulators");
+    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableCors: true });
+    connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  }
+
   // Check if window is defined (i.e., we are on the client-side)
   if (typeof window !== 'undefined') {
     // This will run in the browser console
