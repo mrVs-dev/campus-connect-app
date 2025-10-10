@@ -256,7 +256,7 @@ export function Overview({ students, admissions }: OverviewProps) {
     },
     female: {
       label: "Female",
-      color: "hsl(182 82% 44%)", // Previous accent
+      color: "hsl(282 29% 53%)", // Periwinkle
     },
   };
 
@@ -297,7 +297,7 @@ export function Overview({ students, admissions }: OverviewProps) {
                         <span>{genderDistribution['Male'] || 0} Male</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <User className="h-4 w-4" style={{ color: "hsl(182 82% 44%)" }}/>
+                        <User className="h-4 w-4" style={{ color: "hsl(282 29% 53%)" }}/>
                         <span>{genderDistribution['Female'] || 0} Female</span>
                     </div>
                 </div>
@@ -339,7 +339,7 @@ export function Overview({ students, admissions }: OverviewProps) {
                         <span>{enrollmentGenderDistribution['Male'] || 0} Male</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <User className="h-4 w-4" style={{ color: "hsl(182 82% 44%)" }} />
+                        <User className="h-4 w-4" style={{ color: "hsl(282 29% 53%)" }} />
                         <span>{enrollmentGenderDistribution['Female'] || 0} Female</span>
                     </div>
                 </div>
@@ -425,5 +425,3 @@ export function Overview({ students, admissions }: OverviewProps) {
     </div>
   );
 }
-
-    
