@@ -63,6 +63,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { format } from "date-fns";
 import { EditTeacherSheet } from "./edit-teacher-sheet";
 import { getSubjects, getAdmissions, getRoles } from "@/lib/firebase/firestore";
+import type { AppModule } from "@/lib/modules";
 
 const teacherFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -81,6 +82,7 @@ interface TeacherListProps {
   onUpdateTeacher: (teacherId: string, updatedData: Partial<Teacher>) => void;
   onDeleteTeacher: (teacher: Teacher) => void;
   onRefreshData: () => void;
+  hasPermission: (module: AppModule, action: 'Create' | 'Read' | 'Update' | 'Delete') => boolean;
 }
 
 // --- Helper functions for robust date handling ---
@@ -104,7 +106,7 @@ const formatDateSafe = (date: any): string => {
 };
 // ---
 
-export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher, onUpdateTeacher, onDeleteTeacher, onRefreshData }: TeacherListProps) {
+export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher, onUpdateTeacher, onDeleteTeacher, onRefreshData, hasPermission }: TeacherListProps) {
   const [isNewTeacherDialogOpen, setIsNewTeacherDialogOpen] = React.useState(false);
   const [teacherToEdit, setTeacherToEdit] = React.useState<Teacher | null>(null);
   const [teacherToDelete, setTeacherToDelete] = React.useState<Teacher | null>(null);
@@ -112,9 +114,9 @@ export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher,
   const [admissions, setAdmissions] = React.useState<Admission[]>([]);
   const [roles, setRoles] = React.useState<UserRole[]>([]);
 
-  const isAdmin = userRole === 'Admin';
-  const canEdit = isAdmin;
-  const canDelete = isAdmin;
+  const canCreate = hasPermission('Users', 'Create');
+  const canUpdate = hasPermission('Users', 'Update');
+  const canDelete = hasPermission('Users', 'Delete');
   
   React.useEffect(() => {
     async function fetchSupportingData() {
@@ -142,7 +144,7 @@ export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher,
   });
 
   const handleAddTeacher = async (values: TeacherFormValues) => {
-    if (!canEdit) return;
+    if (!canCreate) return;
 
     if (teachers.some(teacher => teacher.email.toLowerCase() === values.email.toLowerCase())) {
         form.setError("email", { message: "A staff member with this email already exists." });
@@ -178,7 +180,7 @@ export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher,
                 Manage your school's teaching and administrative staff.
               </CardDescription>
             </div>
-            {canEdit && (
+            {canCreate && (
                 <Dialog open={isNewTeacherDialogOpen} onOpenChange={setIsNewTeacherDialogOpen}>
                 <DialogTrigger asChild>
                     <Button size="sm" className="gap-1" onClick={() => form.reset({
@@ -277,7 +279,7 @@ export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher,
                 <TableHead>Role</TableHead>
                 <TableHead>Joined Date</TableHead>
                 <TableHead>Status</TableHead>
-                {canEdit && <TableHead><span className="sr-only">Actions</span></TableHead>}
+                {(canUpdate || canDelete) && <TableHead><span className="sr-only">Actions</span></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -304,7 +306,7 @@ export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher,
                       {teacher.status}
                     </Badge>
                   </TableCell>
-                  {canEdit && (
+                  {(canUpdate || canDelete) && (
                     <TableCell>
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -314,14 +316,18 @@ export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher,
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => setTeacherToEdit(teacher)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleDeleteClick(teacher)} className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                            </DropdownMenuItem>
+                            {canUpdate && (
+                              <DropdownMenuItem onSelect={() => setTeacherToEdit(teacher)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete && (
+                              <DropdownMenuItem onSelect={() => handleDeleteClick(teacher)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                         </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -332,28 +338,32 @@ export function TeacherList({ userRole, initialTeachers: teachers, onAddTeacher,
           </Table>
         </CardContent>
       </Card>
-      <EditTeacherSheet
-        teacher={teacherToEdit}
-        open={!!teacherToEdit}
-        onOpenChange={(isOpen) => !isOpen && setTeacherToEdit(null)}
-        onSave={onUpdateTeacher}
-        subjects={subjects}
-        admissions={admissions}
-      />
-      <AlertDialog open={!!teacherToDelete} onOpenChange={(isOpen) => !isOpen && setTeacherToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the staff member "{teacherToDelete?.firstName} {teacherToDelete?.lastName}".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canUpdate && (
+        <EditTeacherSheet
+          teacher={teacherToEdit}
+          open={!!teacherToEdit}
+          onOpenChange={(isOpen) => !isOpen && setTeacherToEdit(null)}
+          onSave={onUpdateTeacher}
+          subjects={subjects}
+          admissions={admissions}
+        />
+      )}
+      {canDelete && (
+        <AlertDialog open={!!teacherToDelete} onOpenChange={(isOpen) => !isOpen && setTeacherToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the staff member "{teacherToDelete?.firstName} {teacherToDelete?.lastName}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmDelete}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

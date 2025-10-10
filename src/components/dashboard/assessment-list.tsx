@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -23,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { NewAssessmentDialog } from "./new-assessment-dialog";
 import { GradeEntrySheet } from "./grade-entry-sheet";
 import { programs } from "@/lib/program-data";
+import type { AppModule } from "@/lib/modules";
 
 interface ClassWithAssessments {
   classId: string;
@@ -46,6 +48,7 @@ export function AssessmentList({
   teachers,
   onSaveAssessment,
   userRole,
+  hasPermission,
 }: {
   assessments: Assessment[];
   students: Student[];
@@ -55,13 +58,15 @@ export function AssessmentList({
   teachers: Teacher[];
   onSaveAssessment: (assessment: Omit<Assessment, 'assessmentId' | 'teacherId'> | Assessment) => Promise<Assessment | null>;
   userRole: UserRole;
+  hasPermission: (module: AppModule, action: 'Create' | 'Read' | 'Update' | 'Delete') => boolean;
 }) {
   const [isNewAssessmentOpen, setIsNewAssessmentOpen] = React.useState(false);
   const [assessmentToGrade, setAssessmentToGrade] = React.useState<Assessment | null>(null);
   const [assessmentToEdit, setAssessmentToEdit] = React.useState<Assessment | null>(null);
   const [classForNewAssessment, setClassForNewAssessment] = React.useState<string | undefined>(undefined);
 
-  const canCreate = userRole === 'Admin' || userRole === 'Head of Department' || userRole === 'Teacher';
+  const canCreate = hasPermission('Assessments', 'Create');
+  const canUpdate = hasPermission('Assessments', 'Update');
 
   const getSubjectName = (subjectId: string) => {
     return subjects.find((s) => s.subjectId === subjectId)?.englishTitle || "Unknown";
@@ -73,7 +78,7 @@ export function AssessmentList({
   }
 
   const handleEdit = (assessment: Assessment) => {
-    if (!canCreate) return;
+    if (!canUpdate) return;
     setAssessmentToEdit(assessment);
     setIsNewAssessmentOpen(true);
   };
@@ -246,7 +251,7 @@ export function AssessmentList({
           classId={classForNewAssessment}
         />
       )}
-      {canCreate && (
+      {canUpdate && (
         <GradeEntrySheet
           assessment={assessmentToGrade}
           students={students}

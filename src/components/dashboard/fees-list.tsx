@@ -58,6 +58,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import type { AppModule } from "@/lib/modules";
 
 const feeTypes: FeeType[] = ['Tuition', 'Registration', 'Material', 'Admin', 'Exams', 'Other'];
 const feeFrequencies: FeeFrequency[] = ['One-Time', 'Monthly', 'Termly', 'Semesterly', 'Yearly'];
@@ -169,15 +170,20 @@ interface FeesListProps {
   fees: Fee[];
   onSaveFee: (fee: Omit<Fee, 'feeId'> | Fee) => Promise<boolean>;
   onDeleteFee: (feeId: string) => void;
+  hasPermission: (module: AppModule, action: 'Create' | 'Read' | 'Update' | 'Delete') => boolean;
 }
 
 type SortableKey = 'name' | 'type' | 'frequency' | 'amount';
 
-export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
+export function FeesList({ fees, onSaveFee, onDeleteFee, hasPermission }: FeesListProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [feeToEdit, setFeeToEdit] = React.useState<Fee | null>(null);
   const [feeToDelete, setFeeToDelete] = React.useState<Fee | null>(null);
   const [sortConfig, setSortConfig] = React.useState<{ key: SortableKey; direction: 'asc' | 'desc' } | null>({ key: 'name', direction: 'asc' });
+
+  const canCreate = hasPermission('Fees', 'Create');
+  const canUpdate = hasPermission('Fees', 'Update');
+  const canDelete = hasPermission('Fees', 'Delete');
 
   const handleEdit = (fee: Fee) => {
     setFeeToEdit(fee);
@@ -239,10 +245,12 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
               <CardTitle>Fees & Charges</CardTitle>
               <CardDescription>Manage all billable items for the school.</CardDescription>
             </div>
-            <Button size="sm" className="gap-1" onClick={() => setIsDialogOpen(true)}>
-              <PlusCircle className="h-3.5 w-3.5" />
-              New Fee
-            </Button>
+            {canCreate && (
+              <Button size="sm" className="gap-1" onClick={() => setIsDialogOpen(true)}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                New Fee
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -284,18 +292,20 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
                   <TableCell>{fee.frequency}</TableCell>
                   <TableCell className="text-right">${fee.amount.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleEdit(fee)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleDelete(fee)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {(canUpdate || canDelete) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canUpdate && <DropdownMenuItem onSelect={() => handleEdit(fee)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
+                          {canDelete && <DropdownMenuItem onSelect={() => handleDelete(fee)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -303,26 +313,30 @@ export function FeesList({ fees, onSaveFee, onDeleteFee }: FeesListProps) {
           </Table>
         </CardContent>
       </Card>
-      <FeeDialog
-        open={isDialogOpen}
-        onOpenChange={handleOpenDialog}
-        onSave={onSaveFee}
-        existingFee={feeToEdit}
-      />
-      <AlertDialog open={!!feeToDelete} onOpenChange={(isOpen) => !isOpen && setFeeToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the fee "{feeToDelete?.name}". This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canCreate && (
+        <FeeDialog
+          open={isDialogOpen}
+          onOpenChange={handleOpenDialog}
+          onSave={onSaveFee}
+          existingFee={feeToEdit}
+        />
+      )}
+      {canDelete && (
+        <AlertDialog open={!!feeToDelete} onOpenChange={(isOpen) => !isOpen && setFeeToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the fee "{feeToDelete?.name}". This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }

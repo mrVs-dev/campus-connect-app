@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { InvoiceDialog } from "./invoice-dialog";
+import type { AppModule } from "@/lib/modules";
 
 interface InvoicingListProps {
   invoices: Invoice[];
@@ -47,12 +48,17 @@ interface InvoicingListProps {
   onSaveInvoice: (invoice: Omit<Invoice, 'invoiceId'> | Invoice) => Promise<boolean>;
   onDeleteInvoice: (invoiceId: string) => void;
   isReadOnly?: boolean;
+  hasPermission?: (module: AppModule, action: 'Create' | 'Read' | 'Update' | 'Delete') => boolean;
 }
 
-export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDeleteInvoice, isReadOnly = false }: InvoicingListProps) {
+export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDeleteInvoice, isReadOnly = false, hasPermission }: InvoicingListProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [invoiceToEdit, setInvoiceToEdit] = React.useState<Invoice | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<Invoice | null>(null);
+
+  const canCreate = !isReadOnly && hasPermission?.('Invoicing', 'Create');
+  const canUpdate = !isReadOnly && hasPermission?.('Invoicing', 'Update');
+  const canDelete = !isReadOnly && hasPermission?.('Invoicing', 'Delete');
 
   const getStudentName = (studentId: string) => {
     const student = students.find(s => s.studentId === studentId);
@@ -111,7 +117,7 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
                 {isReadOnly ? "A list of all invoices for the selected student." : "Manage all student invoices."}
               </CardDescription>
             </div>
-            {!isReadOnly && (
+            {canCreate && (
               <Button size="sm" className="gap-1" onClick={() => setIsDialogOpen(true)}>
                 <PlusCircle className="h-3.5 w-3.5" />
                 New Invoice
@@ -153,12 +159,8 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem><FileText className="mr-2 h-4 w-4" /> View/Print</DropdownMenuItem>
-                        {!isReadOnly && (
-                          <>
-                            <DropdownMenuItem onSelect={() => handleEdit(invoice)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                          </>
-                        )}
+                        {canUpdate && <DropdownMenuItem onSelect={() => handleEdit(invoice)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
+                        {canDelete && <DropdownMenuItem onSelect={() => handleDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -173,31 +175,31 @@ export function InvoicingList({ invoices, students, fees, onSaveInvoice, onDelet
           )}
         </CardContent>
       </Card>
-      {!isReadOnly && (
-        <>
-          <InvoiceDialog
-            open={isDialogOpen}
-            onOpenChange={handleOpenDialog}
-            students={students}
-            fees={fees}
-            onSave={onSaveInvoice}
-            existingInvoice={invoiceToEdit}
-          />
-          <AlertDialog open={!!invoiceToDelete} onOpenChange={(isOpen) => !isOpen && setInvoiceToDelete(null)}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete invoice {invoiceToDelete?.invoiceId.substring(0,7)}. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
+      {canCreate && (
+        <InvoiceDialog
+          open={isDialogOpen}
+          onOpenChange={handleOpenDialog}
+          students={students}
+          fees={fees}
+          onSave={onSaveInvoice}
+          existingInvoice={invoiceToEdit}
+        />
+      )}
+      {canDelete && (
+        <AlertDialog open={!!invoiceToDelete} onOpenChange={(isOpen) => !isOpen && setInvoiceToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete invoice {invoiceToDelete?.invoiceId.substring(0,7)}. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </>
   );

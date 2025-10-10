@@ -47,6 +47,7 @@ import { MoveStudentsDialog } from "./move-students-dialog";
 import { EditStudentSheet } from "./edit-student-sheet";
 import { programs } from "@/lib/program-data";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { AppModule } from "@/lib/modules";
 
 type SortableKey = 'studentId' | 'firstName' | 'status';
 
@@ -64,6 +65,7 @@ export function StudentList({
   onDeleteStudent,
   onDeleteSelectedStudents,
   onMoveStudents,
+  hasPermission,
 }: {
   userRole: UserRole;
   students: Student[];
@@ -78,6 +80,7 @@ export function StudentList({
   onDeleteStudent: (studentId: string) => void;
   onDeleteSelectedStudents: (studentIds: string[]) => void;
   onMoveStudents: (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => void;
+  hasPermission: (module: AppModule, action: 'Create' | 'Read' | 'Update' | 'Delete') => boolean;
 }) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(null);
   const [studentToEdit, setStudentToEdit] = React.useState<Student | null>(null);
@@ -89,9 +92,9 @@ export function StudentList({
   const [studentsToDelete, setStudentsToDelete] = React.useState<string[]>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
 
-  const canEdit = userRole === 'Admin' || userRole === 'Receptionist';
-  const canDelete = userRole === 'Admin';
-  const canMove = userRole === 'Admin' || userRole === 'Receptionist';
+  const canCreate = hasPermission('Students', 'Create');
+  const canUpdate = hasPermission('Students', 'Update');
+  const canDelete = hasPermission('Students', 'Delete');
 
   const filteredStudents = React.useMemo(() => {
     if (!searchQuery) {
@@ -143,7 +146,7 @@ export function StudentList({
   
   const handleEditClick = (e: React.MouseEvent, student: Student) => {
     e.stopPropagation();
-    if (!canEdit) return;
+    if (!canUpdate) return;
     setStudentToEdit(student);
   };
   
@@ -185,7 +188,7 @@ export function StudentList({
   };
 
   const handleMove = (schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => {
-    if (canMove) {
+    if (canUpdate) {
         onMoveStudents(selectedStudentIds, schoolYear, fromClass, toClass);
         setIsMoveOpen(false);
         setSelectedStudentIds([]);
@@ -227,7 +230,7 @@ export function StudentList({
            <div className="mt-4 flex items-center justify-end gap-2">
               {numSelected > 0 && (
                 <>
-                  {canMove && (
+                  {canUpdate && (
                     <Button
                         size="sm"
                         variant="outline"
@@ -251,7 +254,7 @@ export function StudentList({
                   )}
                 </>
               )}
-              {canEdit && (
+              {canCreate && (
                 <Button
                     size="sm"
                     variant="outline"
@@ -388,7 +391,7 @@ export function StudentList({
                             <DropdownMenuItem onSelect={() => setSelectedStudent(student)}>
                               View Details
                             </DropdownMenuItem>
-                            {canEdit && (
+                            {canUpdate && (
                                 <DropdownMenuItem onSelect={(e) => handleEditClick(e, student)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Profile
@@ -431,46 +434,54 @@ export function StudentList({
         onSave={handleUpdateStudent}
         onUpdateStatus={onUpdateStudentStatus}
       />
-      <StudentImportDialog
-        open={isImportOpen}
-        onOpenChange={setIsImportOpen}
-        onImport={onImportStudents}
-      />
-      <MoveStudentsDialog
-        open={isMoveOpen}
-        onOpenChange={setIsMoveOpen}
-        admissions={admissions}
-        onMove={handleMove}
-        selectedStudentCount={numSelected}
-      />
-      <AlertDialog open={!!studentToDelete} onOpenChange={(isOpen) => !isOpen && setStudentToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the student record for {studentToDelete?.firstName} {studentToDelete?.lastName}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={studentsToDelete.length > 0} onOpenChange={(isOpen) => !isOpen && setStudentsToDelete([])}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the {studentsToDelete.length} selected student records.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteSelected}>Delete Selected</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canCreate && (
+        <StudentImportDialog
+          open={isImportOpen}
+          onOpenChange={setIsImportOpen}
+          onImport={onImportStudents}
+        />
+      )}
+      {canUpdate && (
+        <MoveStudentsDialog
+          open={isMoveOpen}
+          onOpenChange={setIsMoveOpen}
+          admissions={admissions}
+          onMove={handleMove}
+          selectedStudentCount={numSelected}
+        />
+      )}
+      {canDelete && (
+        <>
+          <AlertDialog open={!!studentToDelete} onOpenChange={(isOpen) => !isOpen && setStudentToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the student record for {studentToDelete?.firstName} {studentToDelete?.lastName}.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={studentsToDelete.length > 0} onOpenChange={(isOpen) => !isOpen && setStudentsToDelete([])}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the {studentsToDelete.length} selected student records.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteSelected}>Delete Selected</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </>
   );
 }

@@ -117,6 +117,13 @@ export default function DashboardPage() {
 
   const [loadingState, setLoadingState] = React.useState<LoadingState>('Authenticating');
   const [dataLoaded, setDataLoaded] = React.useState(false);
+  
+  const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
+    if (!permissions || !userRole) return false;
+    if (userRole === 'Admin') return true;
+
+    return permissions[module]?.[userRole]?.[action] ?? false;
+  };
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -400,13 +407,6 @@ export default function DashboardPage() {
     }
   };
   
-  const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
-    if (!permissions || !userRole) return false;
-    if (userRole === 'Admin') return true;
-
-    return permissions[module]?.[userRole]?.[action] ?? false;
-  };
-
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
@@ -451,6 +451,7 @@ export default function DashboardPage() {
                     onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); await fetchData(true); }}
                     onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); await fetchData(true); }}
                     gradeScale={gradeScale}
+                    hasPermission={hasPermission}
                     />
                 </TabsContent>
                 <TabsContent value="users" className="space-y-4">
@@ -461,6 +462,7 @@ export default function DashboardPage() {
                       onDeleteTeacher={handleDeleteTeacher}
                       onUpdateTeacher={handleUpdateTeacher}
                       onRefreshData={() => fetchData(true)}
+                      hasPermission={hasPermission}
                     />
                 </TabsContent>
                 <TabsContent value="assessments" className="space-y-4">
@@ -473,6 +475,7 @@ export default function DashboardPage() {
                     admissions={admissions}
                     teachers={teachers}
                     onSaveAssessment={handleSaveAssessment}
+                    hasPermission={hasPermission}
                     />
                 </TabsContent>
                 <TabsContent value="fees" className="space-y-4">
@@ -480,6 +483,7 @@ export default function DashboardPage() {
                     fees={fees}
                     onSaveFee={async (fee) => { const success = await saveFee(fee); if (success) await fetchData(true); return success; }}
                     onDeleteFee={async (feeId) => { await deleteFee(feeId); await fetchData(true); }}
+                    hasPermission={hasPermission}
                     />
                 </TabsContent>
                  <TabsContent value="invoicing" className="space-y-4">
@@ -489,6 +493,7 @@ export default function DashboardPage() {
                     fees={fees}
                     onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) await fetchData(true); return success; }}
                     onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); await fetchData(true); }}
+                    hasPermission={hasPermission}
                     />
                 </TabsContent>
                  <TabsContent value="inventory" className="space-y-4">
@@ -496,6 +501,7 @@ export default function DashboardPage() {
                     inventoryItems={inventory}
                     onSaveItem={async (item) => { const success = await saveInventoryItem(item); if (success) await fetchData(true); return success; }}
                     onDeleteItem={async (itemId) => { await deleteInventoryItem(itemId); await fetchData(true); }}
+                    hasPermission={hasPermission}
                     />
                 </TabsContent>
                 <TabsContent value="admissions" className="space-y-4">
@@ -507,6 +513,7 @@ export default function DashboardPage() {
                     onImport={async (data) => { await importAdmissions(data); await fetchData(true); }}
                     activeAccordion={activeAdmissionsAccordion}
                     onAccordionChange={setActiveAdmissionsAccordion}
+                    hasPermission={hasPermission}
                     />
                 </TabsContent>
                 <TabsContent value="enrollment" className="space-y-4">
@@ -542,7 +549,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
-
-    

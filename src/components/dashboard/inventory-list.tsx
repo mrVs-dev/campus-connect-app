@@ -62,6 +62,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ImageCropDialog } from "./image-crop-dialog";
 import { cn } from "@/lib/utils";
+import type { AppModule } from "@/lib/modules";
 
 const inventoryCategories: InventoryCategory[] = ['Uniform', 'Book', 'Stationery', 'Other'];
 
@@ -243,13 +244,17 @@ interface InventoryListProps {
   inventoryItems: InventoryItem[];
   onSaveItem: (item: Omit<InventoryItem, 'itemId'> | InventoryItem) => Promise<boolean>;
   onDeleteItem: (itemId: string) => void;
+  hasPermission: (module: AppModule, action: 'Create' | 'Read' | 'Update' | 'Delete') => boolean;
 }
 
-export function InventoryList({ inventoryItems, onSaveItem, onDeleteItem }: InventoryListProps) {
+export function InventoryList({ inventoryItems, onSaveItem, onDeleteItem, hasPermission }: InventoryListProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [itemToEdit, setItemToEdit] = React.useState<InventoryItem | null>(null);
   const [itemToDelete, setItemToDelete] = React.useState<InventoryItem | null>(null);
 
+  const canCreate = hasPermission('Inventory', 'Create');
+  const canUpdate = hasPermission('Inventory', 'Update');
+  const canDelete = hasPermission('Inventory', 'Delete');
 
   const handleEdit = (item: InventoryItem) => {
     setItemToEdit(item);
@@ -285,10 +290,12 @@ export function InventoryList({ inventoryItems, onSaveItem, onDeleteItem }: Inve
                 Track and manage school supplies like books, uniforms, and stationery.
               </CardDescription>
             </div>
-            <Button size="sm" className="gap-1" onClick={() => setIsDialogOpen(true)}>
-              <PlusCircle className="h-3.5 w-3.5" />
-              New Item
-            </Button>
+            {canCreate && (
+              <Button size="sm" className="gap-1" onClick={() => setIsDialogOpen(true)}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                New Item
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -319,18 +326,20 @@ export function InventoryList({ inventoryItems, onSaveItem, onDeleteItem }: Inve
                   <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
                   <TableCell className="text-right">${(item.cost * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleDelete(item)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {(canUpdate || canDelete) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canUpdate && <DropdownMenuItem onSelect={() => handleEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>}
+                          {canDelete && <DropdownMenuItem onSelect={() => handleDelete(item)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -343,12 +352,15 @@ export function InventoryList({ inventoryItems, onSaveItem, onDeleteItem }: Inve
           )}
         </CardContent>
       </Card>
-      <ItemDialog
-        open={isDialogOpen}
-        onOpenChange={handleOpenDialog}
-        onSave={onSaveItem}
-        existingItem={itemToEdit}
-      />
+      {canCreate && (
+        <ItemDialog
+          open={isDialogOpen}
+          onOpenChange={handleOpenDialog}
+          onSave={onSaveItem}
+          existingItem={itemToEdit}
+        />
+      )}
+      {canDelete && (
        <AlertDialog open={!!itemToDelete} onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -363,6 +375,7 @@ export function InventoryList({ inventoryItems, onSaveItem, onDeleteItem }: Inve
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      )}
     </>
   );
 }

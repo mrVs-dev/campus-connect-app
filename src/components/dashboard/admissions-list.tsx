@@ -61,6 +61,7 @@ import { cn } from "@/lib/utils";
 import { Separator } from "../ui/separator";
 import { MultiSelectTeacher } from "./multi-select-teacher";
 import { AdmissionImportDialog } from "./admission-import-dialog";
+import type { AppModule } from "@/lib/modules";
 
 
 const enrollmentSchema = z.object({
@@ -243,6 +244,7 @@ interface AdmissionsListProps {
   onImport: (data: { studentId: string; schoolYear: string; programId: string; level: string; }[]) => void;
   activeAccordion: string | undefined;
   onAccordionChange: (value: string | undefined) => void;
+  hasPermission: (module: AppModule, action: 'Create' | 'Read' | 'Update' | 'Delete') => boolean;
 }
 
 export function AdmissionsList({
@@ -253,6 +255,7 @@ export function AdmissionsList({
   onImport,
   activeAccordion,
   onAccordionChange,
+  hasPermission,
 }: AdmissionsListProps) {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const activeStudents = React.useMemo(() => students.filter(s => s.status === 'Active'), [students]);
@@ -480,6 +483,7 @@ export function AdmissionsList({
 
   return (
     <div className="space-y-8">
+      {hasPermission('Admissions', 'Update') && (
         <Card>
           <CardHeader>
              <div className="flex justify-between items-center">
@@ -489,15 +493,17 @@ export function AdmissionsList({
                     Assign a student to one or more programs for a specific school year.
                     </CardDescription>
                 </div>
-                <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                    onClick={() => setIsImportOpen(true)}
-                >
-                    <Upload className="h-3.5 w-3.5" />
-                    Import
-                </Button>
+                {hasPermission('Admissions', 'Create') && (
+                  <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      onClick={() => setIsImportOpen(true)}
+                  >
+                      <Upload className="h-3.5 w-3.5" />
+                      Import
+                  </Button>
+                )}
             </div>
           </CardHeader>
           <CardContent>
@@ -603,6 +609,7 @@ export function AdmissionsList({
             </Form>
           </CardContent>
         </Card>
+      )}
         
         <Card>
             <CardHeader>
@@ -613,9 +620,11 @@ export function AdmissionsList({
                             Review all student admissions and manage class assignments for each school year.
                         </CardDescription>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setIsNewYearOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> New School Year
-                    </Button>
+                    {hasPermission('Admissions', 'Create') && (
+                      <Button variant="outline" size="sm" onClick={() => setIsNewYearOpen(true)}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> New School Year
+                      </Button>
+                    )}
                 </div>
             </CardHeader>
             <CardContent>
@@ -625,11 +634,13 @@ export function AdmissionsList({
                             <AccordionTrigger>{admission.schoolYear}</AccordionTrigger>
                             <AccordionContent>
                                <div className="space-y-6">
-                                   <div className="flex justify-end">
+                                   {hasPermission('Admissions', 'Create') && (
+                                    <div className="flex justify-end">
                                       <Button variant="outline" size="sm" onClick={() => handleOpenClassDialog(admission.schoolYear)}>
                                           <PlusCircle className="mr-2 h-4 w-4" /> New Class
                                       </Button>
-                                   </div>
+                                    </div>
+                                   )}
                                     {admission.programs.map((program, progIndex) => (
                                         <div key={progIndex} className="space-y-4 rounded-lg border p-4">
                                             <h3 className="font-semibold text-lg">{program.programName}</h3>
@@ -645,9 +656,11 @@ export function AdmissionsList({
                                                                 }
                                                             </p>
                                                         </div>
-                                                         <Button variant="ghost" size="icon" onClick={() => handleOpenClassDialog(admission.schoolYear, classDef)}>
-                                                            <PenSquare className="h-4 w-4" />
-                                                        </Button>
+                                                        {hasPermission('Admissions', 'Update') && (
+                                                          <Button variant="ghost" size="icon" onClick={() => handleOpenClassDialog(admission.schoolYear, classDef)}>
+                                                              <PenSquare className="h-4 w-4" />
+                                                          </Button>
+                                                        )}
                                                     </div>
                                                     <div className="pl-4 space-y-2">
                                                         {classDef.students.map(student => (
@@ -685,25 +698,29 @@ export function AdmissionsList({
             </CardContent>
         </Card>
         
-        <ClassDialog 
-            open={isClassDialogOpen}
-            onOpenChange={setIsClassDialogOpen}
-            schoolYear={activeSchoolYear}
-            teachers={teachers}
-            onSave={handleClassSave}
-            existingClass={classToEdit}
-        />
-        <NewSchoolYearDialog
-          open={isNewYearOpen}
-          onOpenChange={setIsNewYearOpen}
-          onSave={handleNewSchoolYear}
-          existingYears={admissionYears}
-        />
-        <AdmissionImportDialog
-            open={isImportOpen}
-            onOpenChange={setIsImportOpen}
-            onImport={onImport}
-        />
+        {hasPermission('Admissions', 'Create') && (
+          <>
+            <ClassDialog 
+                open={isClassDialogOpen}
+                onOpenChange={setIsClassDialogOpen}
+                schoolYear={activeSchoolYear}
+                teachers={teachers}
+                onSave={handleClassSave}
+                existingClass={classToEdit}
+            />
+            <NewSchoolYearDialog
+              open={isNewYearOpen}
+              onOpenChange={setIsNewYearOpen}
+              onSave={handleNewSchoolYear}
+              existingYears={admissionYears}
+            />
+            <AdmissionImportDialog
+                open={isImportOpen}
+                onOpenChange={setIsImportOpen}
+                onImport={onImport}
+            />
+          </>
+        )}
     </div>
   );
 }
