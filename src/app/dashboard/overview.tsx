@@ -252,11 +252,11 @@ export function Overview({ students, admissions }: OverviewProps) {
     },
      male: {
       label: "Male",
-      color: "hsl(var(--primary))",
+      color: "hsl(208 69% 34%)", // Previous primary
     },
     female: {
       label: "Female",
-      color: "hsl(var(--accent))",
+      color: "hsl(182 82% 44%)", // Previous accent
     },
   };
 
@@ -293,11 +293,11 @@ export function Overview({ students, admissions }: OverviewProps) {
                 <p className="text-xs text-muted-foreground">Total students (headcount)</p>
                 <div className="flex items-center gap-4 text-sm pt-2">
                     <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-primary" />
+                        <User className="h-4 w-4" style={{ color: "hsl(208 69% 34%)" }} />
                         <span>{genderDistribution['Male'] || 0} Male</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-accent" />
+                        <User className="h-4 w-4" style={{ color: "hsl(182 82% 44%)" }}/>
                         <span>{genderDistribution['Female'] || 0} Female</span>
                     </div>
                 </div>
@@ -335,11 +335,11 @@ export function Overview({ students, admissions }: OverviewProps) {
                 <p className="text-xs text-muted-foreground">New students in period</p>
                 <div className="flex items-center gap-4 text-sm pt-2">
                     <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-primary" />
+                         <User className="h-4 w-4" style={{ color: "hsl(208 69% 34%)" }} />
                         <span>{enrollmentGenderDistribution['Male'] || 0} Male</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <User className="h-4 w-4 text-accent" />
+                        <User className="h-4 w-4" style={{ color: "hsl(182 82% 44%)" }} />
                         <span>{enrollmentGenderDistribution['Female'] || 0} Female</span>
                     </div>
                 </div>
