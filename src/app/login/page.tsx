@@ -71,6 +71,11 @@ export default function LoginPage() {
   const [isSigningIn, setIsSigningIn] = React.useState(false);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  
+  // This check now happens right at the top of the component.
+  if (!isFirebaseConfigured) {
+    return <MissingFirebaseConfig />;
+  }
 
   React.useEffect(() => {
     if (!authLoading && user) {
@@ -79,10 +84,6 @@ export default function LoginPage() {
   }, [user, authLoading, router]);
 
   const handleSignIn = async () => {
-    if (!isFirebaseConfigured) {
-      setError("Firebase is not configured. Please check your .env.local file.");
-      return;
-    }
     setError(null);
     setIsSigningIn(true);
     try {
@@ -105,10 +106,6 @@ export default function LoginPage() {
         setIsSigningIn(false);
     }
   };
-
-  if (!isFirebaseConfigured) {
-    return <MissingFirebaseConfig />;
-  }
 
   if (authLoading) {
     return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
@@ -155,5 +152,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
