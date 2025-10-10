@@ -19,7 +19,15 @@ export const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-export const isFirebaseConfigured = !!firebaseConfig.projectId;
+// More robust check to ensure all necessary keys are present
+export const isFirebaseConfigured = 
+    !!firebaseConfig.apiKey &&
+    !!firebaseConfig.authDomain &&
+    !!firebaseConfig.projectId &&
+    !!firebaseConfig.storageBucket &&
+    !!firebaseConfig.messagingSenderId &&
+    !!firebaseConfig.appId;
+
 
 let app: FirebaseApp;
 let auth: Auth;
@@ -45,7 +53,7 @@ if (isFirebaseConfigured) {
   }
 
 } else {
-  console.warn("Firebase configuration is missing. The application will run in a limited mode.");
+  console.warn("Firebase configuration is missing or incomplete. The application will run in a limited mode.");
   // Provide mock objects if Firebase is not configured to avoid runtime errors
   app = {} as FirebaseApp;
   auth = {} as Auth;
@@ -54,5 +62,3 @@ if (isFirebaseConfigured) {
 }
 
 export { app, auth, db, messaging };
-
-    
