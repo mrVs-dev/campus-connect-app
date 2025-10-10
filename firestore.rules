@@ -1,84 +1,30 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Super admin rule: Grants the specified user full read/write access to EVERYTHING.
+    // Super admin rule: Grants the owner full access to everything.
     function isSuperAdmin() {
       return request.auth.token.email == 'vannak@api-school.com';
     }
 
-    // Allow super admin to do anything.
+    // This rule gives the super admin unconditional access to all documents.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
-    
-    // --- General Authenticated Access ---
-    // Logged-in users can read from collections needed for the UI to function.
-    // This prevents race conditions on initial load.
-    match /students/{studentId} {
+
+    // Allow authenticated users to read essential collections for app startup.
+    // This helps prevent race conditions for regular users.
+    match /(students|admissions|assessments|teachers|student_status_history|fees|invoices|inventory|users)/{docId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null; // Further restricted in app logic
     }
     
-    match /admissions/{admissionId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-    }
-
-    match /teachers/{teacherId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-    }
-
-    match /assessments/{assessmentId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-    }
-    
-    match /student_status_history/{historyId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null;
-    }
-    
-    match /fees/{feeId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-    }
-    
-    match /invoices/{invoiceId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-    }
-    
-    match /inventory/{itemId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-    }
-
-    match /settings/{settingId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
-    }
-    
-    match /attendance/{attendanceId} {
+    // Allow read access to the settings documents for any authenticated user.
+    match /settings/{setting} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
     }
 
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth.uid == userId;
-      allow update, delete: if request.auth.uid == userId;
-    }
-
-    match /fcmTokens/{token} {
-        allow read, write: if request.auth != null;
-    }
-    
-    match /metadata/{docId} {
-      allow read, write: if request.auth != null;
-    }
+    // More granular rules can be added below for other users.
+    // The isSuperAdmin check will always take precedence for the owner.
   }
 }
