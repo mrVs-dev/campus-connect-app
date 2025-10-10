@@ -1,63 +1,10 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Default catch-all for any path - wide open
+    // Allow read and write access to all documents
     match /{document=**} {
-      allow read, write: if true;
-    }
-
-    // Explicit open rules for all known collections
-    match /users/{userId} {
-      allow read, write: if true;
-    }
-
-    match /metadata/{docId} {
-      allow read, write: if true;
-    }
-
-    match /students/{studentId} {
-      allow read, write: if true;
-    }
-
-    match /student_status_history/{historyId} {
-      allow read, write: if true;
-    }
-
-    match /admissions/{admissionId} {
-      allow read, write: if true;
-    }
-
-    match /assessments/{assessmentId} {
-      allow read, write: if true;
-    }
-
-    match /teachers/{teacherId} {
-      allow read, write: if true;
-    }
-    
-    match /attendance/{attendanceId} {
-      allow read, write: if true;
-    }
-
-    match /fcmTokens/{tokenId} {
-        allow read, write: if true;
-    }
-    
-    match /fees/{feeId} {
-        allow read, write: if true;
-    }
-
-    match /invoices/{invoiceId} {
-        allow read, write: if true;
-    }
-
-    match /inventory/{itemId} {
-        allow read, write: if true;
-    }
-
-    match /settings/{settingId} {
       allow read, write: if true;
     }
   }
