@@ -3,28 +3,52 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Super admin rule: Grants the owner full access to everything.
+    // Super Admin: The user with this email has unconditional read/write access to everything.
     function isSuperAdmin() {
       return request.auth.token.email == 'vannak@api-school.com';
     }
 
-    // This rule gives the super admin unconditional access to all documents.
+    // Default authenticated users can read most collections to allow the app to load.
+    // Write access is more restricted.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
 
-    // Allow authenticated users to read essential collections for app startup.
-    // This helps prevent race conditions for regular users.
-    match /(students|admissions|assessments|teachers|student_status_history|fees|invoices|inventory|users)/{docId} {
+    // Allow any authenticated user to read from these collections.
+    // This prevents race-condition errors on initial app load.
+    match /students/{studentId} {
       allow read: if request.auth != null;
     }
-    
-    // Allow read access to the settings documents for any authenticated user.
-    match /settings/{setting} {
+    match /admissions/{admissionId} {
       allow read: if request.auth != null;
+    }
+    match /assessments/{assessmentId} {
+      allow read: if request.auth != null;
+    }
+    match /teachers/{teacherId} {
+        allow read: if request.auth != null;
+    }
+     match /student_status_history/{historyId} {
+      allow read: if request.auth != null;
+    }
+    match /fees/{feeId} {
+        allow read: if request.auth != null;
+    }
+    match /invoices/{invoiceId} {
+        allow read: if request.auth != null;
+    }
+    match /inventory/{itemId} {
+        allow read: if request.auth != null;
+    }
+    match /users/{userId} {
+        allow read: if request.auth != null;
+    }
+    match /settings/{settingId} {
+      allow read: if request.auth != null;
+    }
+    match /metadata/{docId} {
+      allow read, write: if request.auth != null;
     }
 
-    // More granular rules can be added below for other users.
-    // The isSuperAdmin check will always take precedence for the owner.
   }
 }
