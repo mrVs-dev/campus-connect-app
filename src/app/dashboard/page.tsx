@@ -89,7 +89,7 @@ const TABS_CONFIG: { value: string, label: string, module: AppModule }[] = [
   { value: "settings", label: "Settings", module: "Settings" },
 ];
 
-type LoadingState = 'Authenticating' | 'Checking Role' | 'Fetching Data' | 'Idle' | 'Error';
+type LoadingState = 'Authenticating' | 'Checking Role' | 'Fetching Initial Data' | 'Fetching Main Data' | 'Idle' | 'Error';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -138,12 +138,12 @@ export default function DashboardPage() {
   }, [students, admissions]);
   
   const fetchData = React.useCallback(async (showToast = false) => {
-    if (!user) {
-      console.warn("FetchData called without user.");
+    if (!user || !userRole) {
+      console.warn("FetchData called without user or role.");
       return;
     };
     
-    setLoadingState('Fetching Data');
+    setLoadingState('Fetching Main Data');
     try {
       const [
         studentsData,
@@ -189,19 +189,18 @@ export default function DashboardPage() {
       if (showToast) {
         toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
       }
+      setLoadingState('Idle');
 
     } catch (error: any) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching main data:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to load data. Please try again.",
+        title: "Error Loading Data",
+        description: error.message || "Failed to load all application data. Please try again.",
         variant: "destructive",
       });
       setLoadingState('Error');
-    } finally {
-      if(userRole) setLoadingState('Idle');
     }
-  }, [user, toast, teachers, userRole]);
+  }, [user, userRole, toast, teachers]);
   
   React.useEffect(() => {
     if (authLoading) {
@@ -217,17 +216,15 @@ export default function DashboardPage() {
       return;
     }
 
-    setLoadingState('Checking Role');
-
     const checkUserRoleAndPermissions = async () => {
+      setLoadingState('Checking Role');
       try {
         const loggedInUserEmail = user.email;
 
-        // Fetch these first as they are needed to determine roles and permissions
-        const [allRolesFromDb, allTeachersFromDb, allStudentsFromDb, savedPermissions] = await Promise.all([
+        // STEP 1: Fetch only the critical data to determine role
+        const [allRolesFromDb, allTeachersFromDb, savedPermissions] = await Promise.all([
           getRoles(),
           getTeachers(),
-          getStudents(),
           getPermissions(),
         ]);
         
@@ -244,10 +241,32 @@ export default function DashboardPage() {
           }
         }
         
-        setUserRole(currentUserRole);
+        if (currentUserRole) {
+          setUserRole(currentUserRole);
 
-        if (!currentUserRole) {
-           if (allStudentsFromDb.some(s => s.studentEmail === loggedInUserEmail)) {
+          if (currentUserRole === 'Teacher') {
+              router.replace('/teacher/dashboard');
+              return;
+          }
+          
+          const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+          APP_MODULES.forEach(module => {
+            if (!completePermissions[module]) completePermissions[module] = {};
+            allRolesFromDb.forEach(role => {
+                if (!completePermissions[module][role]) {
+                  completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+                }
+                if (savedPermissions[module]?.[role]) {
+                    completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
+                }
+            });
+          });
+          setPermissions(completePermissions);
+          // Role is set, now we can fetch the rest of the data.
+        } else {
+          // If no role, check if they are a student or guardian before showing pending approval.
+          const allStudentsFromDb = await getStudents();
+          if (allStudentsFromDb.some(s => s.studentEmail === loggedInUserEmail)) {
               router.replace('/student/dashboard');
               return;
           }
@@ -258,28 +277,6 @@ export default function DashboardPage() {
           setLoadingState('Idle');
           return;
         }
-
-        if (currentUserRole === 'Teacher') {
-            router.replace('/teacher/dashboard');
-            return;
-        }
-        
-        const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-        APP_MODULES.forEach(module => {
-           if (!completePermissions[module]) completePermissions[module] = {};
-           allRolesFromDb.forEach(role => {
-               if (!completePermissions[module][role]) {
-                  completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-               }
-               if (savedPermissions[module]?.[role]) {
-                   completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
-               }
-           });
-        });
-        setPermissions(completePermissions);
-        
-        await fetchData();
-
       } catch (error) {
         console.error("Error checking user role:", error);
         setLoadingState('Error');
@@ -288,7 +285,14 @@ export default function DashboardPage() {
     
     checkUserRoleAndPermissions();
     
-  }, [user, authLoading, router, fetchData]);
+  }, [user, authLoading, router]);
+
+  // This separate effect triggers the main data fetch once the userRole is confirmed.
+  React.useEffect(() => {
+    if (userRole) {
+      fetchData();
+    }
+  }, [userRole, fetchData]);
   
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
     await updateStudent(studentId, updatedData);
