@@ -21,6 +21,8 @@ import type { User } from "firebase/auth";
 import { db } from "./firebase";
 import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole, Permissions, LetterGrade } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
+import { errorEmitter } from './error-emitter';
+import { FirestorePermissionError } from './errors';
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -88,16 +90,30 @@ const convertDatesToTimestamps = (data: any): any => {
 export async function getOrCreateUser(user: User) {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const userRef = doc(db, 'users', user.uid);
-    const userDoc = await getDoc(userRef);
+    
+    const userDoc = await getDoc(userRef).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'get',
+      }));
+      throw serverError; // Re-throw to stop execution
+    });
 
     if (!userDoc.exists()) {
-        await setDoc(userRef, {
+        const userData = {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
             approved: false, // Default to not approved
             createdAt: serverTimestamp(),
+        };
+        setDoc(userRef, userData).catch(serverError => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userRef.path,
+                operation: 'create',
+                requestResourceData: userData,
+            }));
         });
     }
 }
@@ -105,14 +121,25 @@ export async function getOrCreateUser(user: User) {
 export async function getUsers(): Promise<User[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const usersCollection = collection(db, 'users');
-    const snapshot = await getDocs(usersCollection);
+    const snapshot = await getDocs(usersCollection).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: usersCollection.path,
+        operation: 'list',
+      }));
+      throw serverError;
+    });
     return snapshot.docs.map(doc => convertTimestampsToDates(doc.data()) as User);
 }
 
 export async function deleteMainUser(uid: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const userDoc = doc(db, 'users', uid);
-    await deleteDoc(userDoc);
+    deleteDoc(userDoc).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userDoc.path,
+        operation: 'delete',
+      }));
+    });
 }
 
 
@@ -159,7 +186,13 @@ export const getNextStudentId = async (): Promise<string> => {
             return newId;
         });
         return `STU${newIdNumber}`;
-    } catch (e) {
+    } catch (e: any) {
+        if (e.code === 'permission-denied') {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: metadataRef.path,
+                operation: 'update',
+            }));
+        }
         console.error("Transaction failed to get next student ID: ", e);
         throw new Error("Could not generate a new student ID.");
     }
@@ -171,7 +204,13 @@ export const getNextStudentId = async (): Promise<string> => {
 export async function getStudents(): Promise<Student[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const studentsCollection = collection(db, 'students');
-    const snapshot = await getDocs(studentsCollection);
+    const snapshot = await getDocs(studentsCollection).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: studentsCollection.path,
+            operation: 'list',
+        }));
+        throw serverError;
+    });
     return snapshot.docs.map(doc => {
         const data = doc.data();
         const studentDataWithDates = convertTimestampsToDates(data);
@@ -200,7 +239,14 @@ export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrol
     }
 
     const dataWithTimestamps = convertDatesToTimestamps(studentForFirestore);
-    await setDoc(studentDocRef, dataWithTimestamps);
+    
+    setDoc(studentDocRef, dataWithTimestamps).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: studentDocRef.path,
+            operation: 'create',
+            requestResourceData: dataWithTimestamps,
+        }));
+    });
     
     const newStudent: Student = {
         ...(studentData as Omit<Student, 'studentId' | 'status'>),
@@ -247,7 +293,12 @@ export async function importStudents(studentsData: Partial<Student>[]): Promise<
     });
   }
   
-  await batch.commit();
+  batch.commit().catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: studentsCollection.path,
+          operation: 'create', // Batch write can be 'create' or 'update'
+      }));
+  });
   return newStudents;
 }
 
@@ -256,7 +307,13 @@ export async function updateStudent(studentId: string, dataToUpdate: Partial<Stu
     const studentDoc = doc(db, 'students', studentId);
     
     const dataWithTimestamps = convertDatesToTimestamps(dataToUpdate);
-    await updateDoc(studentDoc, dataWithTimestamps);
+    updateDoc(studentDoc, dataWithTimestamps).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: studentDoc.path,
+            operation: 'update',
+            requestResourceData: dataWithTimestamps,
+        }));
+    });
 }
 
 
@@ -309,14 +366,24 @@ export async function updateStudentStatus(
     batch.update(studentDocRef, convertDatesToTimestamps(cleanedStudentUpdateData));
     batch.set(historyDocRef, historyEntry);
 
-    await batch.commit();
+    batch.commit().catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: studentDocRef.path, // Path of one of the docs in batch
+            operation: 'update', 
+        }));
+    });
 }
 
 
 export async function deleteStudent(studentId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const studentDoc = doc(db, 'students', studentId);
-    await deleteDoc(studentDoc);
+    deleteDoc(studentDoc).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: studentDoc.path,
+            operation: 'delete',
+        }));
+    });
 }
 
 export async function deleteSelectedStudents(studentIds: string[]): Promise<void> {
@@ -329,7 +396,12 @@ export async function deleteSelectedStudents(studentIds: string[]): Promise<void
         batch.delete(studentDoc);
     });
 
-    await batch.commit();
+    batch.commit().catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'students', // Path of the collection
+            operation: 'delete', 
+        }));
+    });
 }
 
 export async function deleteAllStudents(): Promise<void> {
@@ -346,7 +418,12 @@ export async function deleteAllStudents(): Promise<void> {
         batch.delete(doc.ref);
     });
 
-    await batch.commit();
+    batch.commit().catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: studentsCollection.path,
+            operation: 'delete', 
+        }));
+    });
 }
 
 export async function swapLegacyStudentNames(): Promise<number> {
@@ -380,7 +457,12 @@ export async function swapLegacyStudentNames(): Promise<number> {
     });
 
     if (updatedCount > 0) {
-        await batch.commit();
+        await batch.commit().catch(serverError => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: studentsCollection.path,
+                operation: 'update', 
+            }));
+        });
     }
 
     return updatedCount;
@@ -392,7 +474,13 @@ export async function getStudentStatusHistory(): Promise<StudentStatusHistory[]>
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const historyCollection = collection(db, 'student_status_history');
     const q = query(historyCollection, orderBy("changeDate", "desc"));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: historyCollection.path,
+            operation: 'list',
+        }));
+        throw serverError;
+    });
     return snapshot.docs.map(doc => {
         const data = doc.data();
         const historyDataWithDates = convertTimestampsToDates(data);
@@ -409,7 +497,13 @@ export async function getStudentStatusHistory(): Promise<StudentStatusHistory[]>
 export async function getAdmissions(): Promise<Admission[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     const admissionsCollection = collection(db, 'admissions');
-    const snapshot = await getDocs(admissionsCollection);
+    const snapshot = await getDocs(admissionsCollection).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: admissionsCollection.path,
+            operation: 'list',
+        }));
+        throw serverError;
+    });
     return snapshot.docs.map(doc => {
         return {
             ...doc.data(),
@@ -425,19 +519,22 @@ export async function saveAdmission(admissionData: Admission, isNewClass: boolea
     const cleanedData = JSON.parse(JSON.stringify(admissionData));
     const admissionDocRef = doc(db, 'admissions', cleanedData.schoolYear);
 
-    try {
-        // When adding a new class, we must merge to avoid overwriting the whole year.
-        // When editing a roster (not a new class), we overwrite the whole document.
-        if (isNewClass) {
-            await setDoc(admissionDocRef, cleanedData, { merge: true });
-        } else {
-            await setDoc(admissionDocRef, cleanedData);
-        }
-        return true;
-    } catch(e) {
-        console.error("Error saving admission: ", e);
-        return false;
-    }
+    const operation = isNewClass ? 'update' : 'create';
+
+    const promise = isNewClass 
+        ? setDoc(admissionDocRef, cleanedData, { merge: true })
+        : setDoc(admissionDocRef, cleanedData);
+
+    promise.catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: admissionDocRef.path,
+            operation: operation,
+            requestResourceData: cleanedData
+        }));
+    });
+    
+    // Assuming success unless an error is thrown
+    return true;
 }
 
 
@@ -476,7 +573,12 @@ export async function importAdmissions(importedData: { studentId: string; school
         batch.set(admissionDocRef, admissionsByYear[schoolYear], { merge: true });
     }
 
-    await batch.commit();
+    await batch.commit().catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'admissions',
+            operation: 'update',
+        }));
+    });
 }
 
 
@@ -485,58 +587,65 @@ export async function moveStudentsToClass(studentIds: string[], schoolYear: stri
     
     const admissionRef = doc(db, 'admissions', schoolYear);
 
-    await runTransaction(db, async (transaction) => {
-        const admissionDoc = await transaction.get(admissionRef);
-        let admissionData: Admission;
+    try {
+        await runTransaction(db, async (transaction) => {
+            const admissionDoc = await transaction.get(admissionRef);
+            let admissionData: Admission;
 
-        if (!admissionDoc.exists()) {
-            admissionData = {
-                admissionId: schoolYear,
-                schoolYear: schoolYear,
-                students: [],
-                classes: [],
-            };
-        } else {
-            admissionData = { admissionId: admissionDoc.id, ...admissionDoc.data() } as Admission;
-        }
-
-        const studentSet = new Set(studentIds);
-        
-        // Update existing student admissions
-        admissionData.students.forEach(studentAdmission => {
-            if (studentSet.has(studentAdmission.studentId)) {
-                let enrollments = studentAdmission.enrollments || [];
-                
-                // 1. Remove from the 'from' class if specified
-                if (fromClass) {
-                    enrollments = enrollments.filter(e => 
-                        !(e.programId === fromClass.programId && e.level === fromClass.level)
-                    );
-                }
-
-                // 2. Add to the 'to' class if not already there
-                const alreadyEnrolled = enrollments.some(e => 
-                    e.programId === toClass.programId && e.level === toClass.level
-                );
-                if (!alreadyEnrolled) {
-                    enrollments.push(toClass);
-                }
-                
-                studentAdmission.enrollments = enrollments;
-                studentSet.delete(studentAdmission.studentId); // Mark as processed
+            if (!admissionDoc.exists()) {
+                admissionData = {
+                    admissionId: schoolYear,
+                    schoolYear: schoolYear,
+                    students: [],
+                    classes: [],
+                };
+            } else {
+                admissionData = { admissionId: admissionDoc.id, ...admissionDoc.data() } as Admission;
             }
-        });
 
-        // Add students who were not in the admission year at all
-        studentSet.forEach(studentId => {
-            admissionData.students.push({
-                studentId: studentId,
-                enrollments: [toClass]
+            const studentSet = new Set(studentIds);
+            
+            // Update existing student admissions
+            admissionData.students.forEach(studentAdmission => {
+                if (studentSet.has(studentAdmission.studentId)) {
+                    let enrollments = studentAdmission.enrollments || [];
+                    
+                    if (fromClass) {
+                        enrollments = enrollments.filter(e => 
+                            !(e.programId === fromClass.programId && e.level === fromClass.level)
+                        );
+                    }
+
+                    const alreadyEnrolled = enrollments.some(e => 
+                        e.programId === toClass.programId && e.level === toClass.level
+                    );
+                    if (!alreadyEnrolled) {
+                        enrollments.push(toClass);
+                    }
+                    
+                    studentAdmission.enrollments = enrollments;
+                    studentSet.delete(studentAdmission.studentId);
+                }
             });
-        });
 
-        transaction.set(admissionRef, admissionData);
-    });
+            studentSet.forEach(studentId => {
+                admissionData.students.push({
+                    studentId: studentId,
+                    enrollments: [toClass]
+                });
+            });
+
+            transaction.set(admissionRef, admissionData);
+        });
+    } catch (e: any) {
+        if (e.code === 'permission-denied') {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: admissionRef.path,
+                operation: 'update',
+            }));
+        }
+        throw e;
+    }
 }
 
 // --- Assessments Collection ---
@@ -544,7 +653,13 @@ export async function moveStudentsToClass(studentIds: string[], schoolYear: stri
 export async function getAssessments(): Promise<Assessment[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const assessmentsCollection = collection(db, 'assessments');
-    const snapshot = await getDocs(assessmentsCollection);
+    const snapshot = await getDocs(assessmentsCollection).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: assessmentsCollection.path,
+            operation: 'list',
+        }));
+        throw serverError;
+    });
     return snapshot.docs.map(doc => {
         const data = doc.data();
         const dataWithDates = convertTimestampsToDates(data);
@@ -558,35 +673,38 @@ export async function getAssessments(): Promise<Assessment[]> {
 export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmentId'> | Assessment): Promise<Assessment | null> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
-    try {
-        if ('assessmentId' in assessmentData) {
-            // Update existing assessment
-            const assessmentDoc = doc(db, 'assessments', assessmentData.assessmentId);
-            // When updating, we replace the entire document to handle score removals.
-            await setDoc(assessmentDoc, assessmentData);
-            return assessmentData;
-        } else {
-            // Create new assessment
-            const assessmentsCollection = collection(db, 'assessments');
-            const dataToSave = {
-                ...assessmentData,
-                creationDate: serverTimestamp(),
-            };
-            const newDocRef = await addDoc(assessmentsCollection, dataToSave);
-            const docSnapshot = await getDoc(newDocRef);
-            const newAssessmentData = docSnapshot.data();
+    let promise: Promise<any>;
+    const operation: 'create' | 'update' = 'assessmentId' in assessmentData ? 'update' : 'create';
 
-            const newAssessment: Assessment = {
-                ...convertTimestampsToDates(newAssessmentData),
-                assessmentId: newDocRef.id,
-            } as Assessment;
-            
-            return newAssessment;
-        }
-    } catch (e) {
-        console.error("Error saving assessment: ", e);
-        return null;
+    if (operation === 'update') {
+        const assessmentDoc = doc(db, 'assessments', (assessmentData as Assessment).assessmentId);
+        promise = setDoc(assessmentDoc, assessmentData);
+    } else {
+        const assessmentsCollection = collection(db, 'assessments');
+        const dataToSave = {
+            ...assessmentData,
+            creationDate: serverTimestamp(),
+        };
+        promise = addDoc(assessmentsCollection, dataToSave).then(docRef => getDoc(docRef));
     }
+    
+    return promise.then(result => {
+        if (operation === 'create') {
+            return {
+                ...convertTimestampsToDates(result.data()),
+                assessmentId: result.id,
+            } as Assessment;
+        }
+        return assessmentData as Assessment;
+    }).catch(serverError => {
+        const path = operation === 'update' ? `assessments/${(assessmentData as Assessment).assessmentId}` : 'assessments';
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: path,
+            operation: operation,
+            requestResourceData: assessmentData
+        }));
+        return null;
+    });
 }
 
 // --- Teachers Collection ---
@@ -594,7 +712,13 @@ export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmen
 export async function getTeachers(): Promise<Teacher[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teachersCollection = collection(db, 'teachers');
-    const snapshot = await getDocs(teachersCollection);
+    const snapshot = await getDocs(teachersCollection).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: teachersCollection.path,
+            operation: 'list',
+        }));
+        throw serverError;
+    });
     return snapshot.docs.map(doc => {
         const data = doc.data();
         const dataWithDates = convertTimestampsToDates(data);
@@ -608,47 +732,44 @@ export async function getTeachers(): Promise<Teacher[]> {
 export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher | null> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
-    try {
-        const teachersCollection = collection(db, 'teachers');
-        const q = query(teachersCollection, where("email", "==", teacherData.email));
-        const existingTeacherSnapshot = await getDocs(q);
+    const teachersCollection = collection(db, 'teachers');
+    const q = query(teachersCollection, where("email", "==", teacherData.email));
+    
+    const existingTeacherSnapshot = await getDocs(q).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: teachersCollection.path,
+            operation: 'list' // Query involves reading
+        }));
+        throw serverError;
+    });
 
-        if (!existingTeacherSnapshot.empty) {
-            // Teacher with this email already exists, update them instead.
-            const existingTeacherDoc = existingTeacherSnapshot.docs[0];
-            const teacherId = existingTeacherDoc.id;
-            
-            const dataToUpdate = {
-                ...teacherData,
-                status: 'Active' as const,
-            }
+    if (!existingTeacherSnapshot.empty) {
+        const existingTeacherDoc = existingTeacherSnapshot.docs[0];
+        const teacherId = existingTeacherDoc.id;
+        const dataToUpdate = { ...teacherData, status: 'Active' as const };
+        const cleanedData = Object.fromEntries(Object.entries(dataToUpdate).filter(([_, v]) => v !== undefined));
 
-            const cleanedData = Object.fromEntries(Object.entries(dataToUpdate).filter(([_, v]) => v !== undefined));
-
-            await updateDoc(existingTeacherDoc.ref, cleanedData);
-            
-            return {
-                ...existingTeacherDoc.data(),
-                ...cleanedData,
-                teacherId: teacherId,
-            } as Teacher;
-        } else {
-            // No existing teacher, create a new one.
-            const teacherForFirestore = {
-                ...teacherData,
-                status: 'Active' as const,
-                joinedDate: serverTimestamp(),
-            };
-            const docRef = await addDoc(teachersCollection, teacherForFirestore);
-            const newDoc = await getDoc(docRef);
-            return {
-                ...newDoc.data(),
-                teacherId: docRef.id,
-            } as Teacher;
-        }
-    } catch(e) {
-        console.error("Error adding/updating teacher: ", e);
-        return null;
+        await updateDoc(existingTeacherDoc.ref, cleanedData).catch(serverError => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: existingTeacherDoc.ref.path,
+                operation: 'update',
+                requestResourceData: cleanedData
+            }));
+        });
+        
+        return { ...existingTeacherDoc.data(), ...cleanedData, teacherId } as Teacher;
+    } else {
+        const teacherForFirestore = { ...teacherData, status: 'Active' as const, joinedDate: serverTimestamp() };
+        const docRef = await addDoc(teachersCollection, teacherForFirestore).catch(serverError => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: teachersCollection.path,
+                operation: 'create',
+                requestResourceData: teacherForFirestore
+            }));
+            throw serverError;
+        });
+        const newDoc = await getDoc(docRef);
+        return { ...newDoc.data(), teacherId: docRef.id } as Teacher;
     }
 }
 
@@ -660,13 +781,24 @@ export async function updateTeacher(teacherId: string, dataToUpdate: Partial<Tea
     const cleanedData = Object.fromEntries(Object.entries(dataToUpdate).filter(([_, v]) => v !== undefined));
 
     const dataWithTimestamps = convertDatesToTimestamps(cleanedData);
-    await updateDoc(teacherDoc, dataWithTimestamps);
+    updateDoc(teacherDoc, dataWithTimestamps).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: teacherDoc.path,
+            operation: 'update',
+            requestResourceData: dataWithTimestamps
+        }));
+    });
 }
 
 export async function deleteTeacher(teacherId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teacherDoc = doc(db, 'teachers', teacherId);
-    await deleteDoc(teacherDoc);
+    deleteDoc(teacherDoc).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: teacherDoc.path,
+            operation: 'delete',
+        }));
+    });
 }
 
 // --- Attendance Collection ---
@@ -680,7 +812,14 @@ export async function getAttendanceForClass(classId: string, date: Date): Promis
         where("classId", "==", classId)
     );
 
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: attendanceCollection.path,
+            operation: 'list'
+        }));
+        throw serverError;
+    });
+
     const allRecords = snapshot.docs.map(doc => {
         const data = doc.data();
         const dataWithDates = convertTimestampsToDates(data);
@@ -689,8 +828,7 @@ export async function getAttendanceForClass(classId: string, date: Date): Promis
             attendanceId: doc.id,
         } as AttendanceRecord;
     });
-
-    // Filter by date on the client
+    
     const targetDateStart = startOfDay(date);
     return allRecords.filter(record => isEqual(startOfDay(record.date), targetDateStart));
 }
@@ -703,44 +841,57 @@ export async function saveAttendance(records: Omit<AttendanceRecord, 'attendance
     const attendanceCollection = collection(db, 'attendance');
 
     for (const record of records) {
-        // Find existing record for this student, class, and day to update it
-        const startOfDay = new Date(record.date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(record.date);
-        endOfDay.setHours(23, 59, 59, 999);
+        const startOfDayDate = startOfDay(record.date);
+        const endOfDayDate = endOfDay(record.date);
 
         const q = query(
             attendanceCollection,
             where("classId", "==", record.classId),
             where("studentId", "==", record.studentId),
-            where("date", ">=", Timestamp.fromDate(startOfDay)),
-            where("date", "<=", Timestamp.fromDate(endOfDay))
+            where("date", ">=", Timestamp.fromDate(startOfDayDate)),
+            where("date", "<=", Timestamp.fromDate(endOfDayDate))
         );
-        const snapshot = await getDocs(q);
+        const snapshot = await getDocs(q).catch(serverError => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: attendanceCollection.path,
+                operation: 'list'
+            }));
+            throw serverError;
+        });
 
         if (snapshot.empty) {
-            // No existing record, create a new one
             const newDocRef = doc(attendanceCollection);
             batch.set(newDocRef, convertDatesToTimestamps(record));
         } else {
-            // Existing record found, update it
             const docToUpdate = snapshot.docs[0].ref;
             batch.update(docToUpdate, convertDatesToTimestamps(record));
         }
     }
 
-    await batch.commit();
+    batch.commit().catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: attendanceCollection.path,
+            operation: 'update'
+        }));
+    });
 }
 
 // --- FCM Tokens ---
 export async function saveFcmToken(userId: string, token: string): Promise<void> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const tokenRef = doc(db, 'fcmTokens', token);
-  await setDoc(tokenRef, {
+  const data = {
     userId: userId,
     token: token,
     createdAt: serverTimestamp(),
-  }, { merge: true });
+  };
+  setDoc(tokenRef, data, { merge: true }).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: tokenRef.path,
+          operation: 'create',
+          requestResourceData: data,
+      }));
+  });
 }
 
 
@@ -749,7 +900,13 @@ export async function saveFcmToken(userId: string, token: string): Promise<void>
 export async function getFees(): Promise<Fee[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const feesCollection = collection(db, 'fees');
-    const snapshot = await getDocs(feesCollection);
+    const snapshot = await getDocs(feesCollection).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: feesCollection.path,
+            operation: 'list'
+        }));
+        throw serverError;
+    });
     return snapshot.docs.map(doc => ({
         ...(doc.data() as Omit<Fee, 'feeId'>),
         feeId: doc.id,
@@ -758,25 +915,32 @@ export async function getFees(): Promise<Fee[]> {
 
 export async function saveFee(feeData: Omit<Fee, 'feeId'> | Fee): Promise<boolean> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
-    try {
-        if ('feeId' in feeData) {
-            const feeDoc = doc(db, 'fees', feeData.feeId);
-            await setDoc(feeDoc, feeData, { merge: true });
-        } else {
-            const feesCollection = collection(db, 'fees');
-            await addDoc(feesCollection, feeData);
-        }
-        return true;
-    } catch(e) {
-        console.error("Error saving fee: ", e);
-        return false;
-    }
+    const operation = 'feeId' in feeData ? 'update' : 'create';
+    const collectionRef = collection(db, 'fees');
+    const docRef = 'feeId' in feeData ? doc(collectionRef, feeData.feeId) : doc(collectionRef);
+    
+    const promise = setDoc(docRef, feeData, { merge: true });
+    
+    promise.catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: operation,
+        requestResourceData: feeData,
+      }));
+    });
+
+    return promise.then(() => true).catch(() => false);
 }
 
 export async function deleteFee(feeId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const feeDoc = doc(db, 'fees', feeId);
-    await deleteDoc(feeDoc);
+    deleteDoc(feeDoc).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: feeDoc.path,
+            operation: 'delete',
+        }));
+    });
 }
 
 // --- Invoicing Collection ---
@@ -785,7 +949,13 @@ export async function getInvoices(): Promise<Invoice[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const invoicesCollection = collection(db, 'invoices');
     const q = query(invoicesCollection, orderBy("issueDate", "desc"));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: invoicesCollection.path,
+            operation: 'list',
+        }));
+        throw serverError;
+    });
     return snapshot.docs.map(doc => {
         const data = doc.data();
         return convertTimestampsToDates({
@@ -799,26 +969,32 @@ export async function saveInvoice(invoiceData: Omit<Invoice, 'invoiceId'> | Invo
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
     const dataWithTimestamps = convertDatesToTimestamps(invoiceData);
+    const operation = 'invoiceId' in invoiceData ? 'update' : 'create';
+    const collectionRef = collection(db, 'invoices');
+    const docRef = 'invoiceId' in invoiceData ? doc(collectionRef, invoiceData.invoiceId) : doc(collectionRef);
 
-    try {
-        if ('invoiceId' in invoiceData) {
-            const invoiceDoc = doc(db, 'invoices', invoiceData.invoiceId);
-            await setDoc(invoiceDoc, dataWithTimestamps, { merge: true });
-        } else {
-            const invoicesCollection = collection(db, 'invoices');
-            await addDoc(invoicesCollection, dataWithTimestamps);
-        }
-        return true;
-    } catch(e) {
-        console.error("Error saving invoice: ", e);
-        return false;
-    }
+    const promise = setDoc(docRef, dataWithTimestamps, { merge: true });
+    
+    promise.catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: operation,
+        requestResourceData: dataWithTimestamps,
+      }));
+    });
+
+    return promise.then(() => true).catch(() => false);
 }
 
 export async function deleteInvoice(invoiceId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const invoiceDoc = doc(db, 'invoices', invoiceId);
-    await deleteDoc(invoiceDoc);
+    deleteDoc(invoiceDoc).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: invoiceDoc.path,
+            operation: 'delete',
+        }));
+    });
 }
 
 // --- Inventory Collection ---
@@ -826,7 +1002,13 @@ export async function deleteInvoice(invoiceId: string): Promise<void> {
 export async function getInventoryItems(): Promise<InventoryItem[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const inventoryCollection = collection(db, 'inventory');
-    const snapshot = await getDocs(inventoryCollection);
+    const snapshot = await getDocs(inventoryCollection).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: inventoryCollection.path,
+            operation: 'list',
+        }));
+        throw serverError;
+    });
     return snapshot.docs.map(doc => ({
         ...(doc.data() as Omit<InventoryItem, 'itemId'>),
         itemId: doc.id,
@@ -837,26 +1019,32 @@ export async function saveInventoryItem(itemData: Omit<InventoryItem, 'itemId'> 
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     
     const dataWithTimestamps = convertDatesToTimestamps(itemData);
+    const operation = 'itemId' in itemData ? 'update' : 'create';
+    const collectionRef = collection(db, 'inventory');
+    const docRef = 'itemId' in itemData ? doc(collectionRef, itemData.itemId) : doc(collectionRef);
 
-    try {
-        if ('itemId' in itemData) {
-            const itemDoc = doc(db, 'inventory', itemData.itemId);
-            await setDoc(itemDoc, dataWithTimestamps, { merge: true });
-        } else {
-            const inventoryCollection = collection(db, 'inventory');
-            await addDoc(inventoryCollection, dataWithTimestamps);
-        }
-        return true;
-    } catch(e) {
-        console.error("Error saving inventory item: ", e);
-        return false;
-    }
+    const promise = setDoc(docRef, dataWithTimestamps, { merge: true });
+
+    promise.catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: docRef.path,
+            operation: operation,
+            requestResourceData: dataWithTimestamps,
+        }));
+    });
+
+    return promise.then(() => true).catch(() => false);
 }
 
 export async function deleteInventoryItem(itemId: string): Promise<void> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const itemDoc = doc(db, 'inventory', itemId);
-await deleteDoc(itemDoc);
+    deleteDoc(itemDoc).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: itemDoc.path,
+            operation: 'delete',
+        }));
+    });
 }
 
 // --- Settings Collections ---
@@ -864,111 +1052,149 @@ await deleteDoc(itemDoc);
 export async function getSubjects(): Promise<Subject[]> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'subjects');
-  const docSnap = await getDoc(settingsDocRef);
+  const docSnap = await getDoc(settingsDocRef).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'get'
+      }));
+      throw serverError;
+  });
   
   if (docSnap.exists() && docSnap.data().list) {
     return docSnap.data().list;
-  } else {
-    // If no subjects in DB, return mock data
-    return [
-        { subjectId: 'SUB001', englishTitle: 'Mathematics', khmerTitle: 'គណិតវិទ្យា' },
-        { subjectId: 'SUB002', englishTitle: 'Physics', khmerTitle: 'រូបវិទ្យា' },
-        { subjectId: 'SUB003', englishTitle: 'English Literature', khmerTitle: 'អក្សរសាស្ត្រអង់គ្លេស' },
-        { subjectId: 'SUB004', englishTitle: 'History', khmerTitle: 'ប្រវត្តិវិទ្យា' },
-    ];
   }
+  return [];
 }
 
 export async function saveSubjects(subjects: Subject[]): Promise<void> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'subjects');
-  await setDoc(settingsDocRef, { list: subjects });
+  const data = { list: subjects };
+  setDoc(settingsDocRef, data).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      }));
+  });
 }
 
 export async function getAssessmentCategories(): Promise<AssessmentCategory[]> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'assessmentCategories');
-  const docSnap = await getDoc(settingsDocRef);
+  const docSnap = await getDoc(settingsDocRef).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'get'
+      }));
+      throw serverError;
+  });
 
   if (docSnap.exists() && docSnap.data().list) {
     return docSnap.data().list;
-  } else {
-    // Default values if not set
-    return [
-      { englishTitle: 'Classwork', khmerTitle: 'កិច្ចការក្នុងថ្នាក់', weight: 25 },
-      { englishTitle: 'Participation', khmerTitle: 'ការចូលរួម', weight: 5 },
-      { englishTitle: 'Homework', khmerTitle: 'កិច្ចការផ្ទះ', weight: 5 },
-      { englishTitle: 'Unit Assessment', khmerTitle: 'ការវាយតម្លៃประจำหน่วย', weight: 30 },
-      { englishTitle: 'End-Semester', khmerTitle: 'ប្រឡងឆមាស', weight: 35 },
-    ];
   }
+  return [];
 }
 
 export async function saveAssessmentCategories(categories: AssessmentCategory[]): Promise<void> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'assessmentCategories');
-  await setDoc(settingsDocRef, { list: categories });
+  const data = { list: categories };
+  setDoc(settingsDocRef, data).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      }));
+  });
 }
 
 export async function getRoles(): Promise<UserRole[]> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'roles');
-  const docSnap = await getDoc(settingsDocRef);
+  const docSnap = await getDoc(settingsDocRef).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'get'
+      }));
+      throw serverError;
+  });
   
   if (docSnap.exists() && docSnap.data().list) {
     return docSnap.data().list;
-  } else {
-    // Default roles if none are set in the database
-    return ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
   }
+  return ['Admin', 'Receptionist', 'Head of Department', 'Teacher'];
 }
 
 export async function saveRoles(roles: UserRole[]): Promise<void> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'roles');
-  await setDoc(settingsDocRef, { list: roles });
+  const data = { list: roles };
+  setDoc(settingsDocRef, data).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      }));
+  });
 }
 
 export async function getPermissions(): Promise<Permissions> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'permissions');
-  const docSnap = await getDoc(settingsDocRef);
+  const docSnap = await getDoc(settingsDocRef).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'get'
+      }));
+      throw serverError;
+  });
   
   if (docSnap.exists() && docSnap.data().config) {
     return docSnap.data().config;
   }
-  // Return a default if not found, we can define this elsewhere
   return {} as Permissions;
 }
 
 export async function savePermissions(permissions: Permissions): Promise<void> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'permissions');
-  await setDoc(settingsDocRef, { config: permissions });
+  const data = { config: permissions };
+  setDoc(settingsDocRef, data).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      }));
+  });
 }
 
 export async function getGradeScale(): Promise<LetterGrade[]> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'gradeScale');
-  const docSnap = await getDoc(settingsDocRef);
+  const docSnap = await getDoc(settingsDocRef).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'get'
+      }));
+      throw serverError;
+  });
   
   if (docSnap.exists() && docSnap.data().grades) {
     return docSnap.data().grades;
   }
-  // Default values if not set
-  return [
-    { grade: 'A+', minScore: 97 },
-    { grade: 'A', minScore: 90 },
-    { grade: 'B', minScore: 80 },
-    { grade: 'C', minScore: 70 },
-    { grade: 'D', minScore: 60 },
-    { grade: 'E', minScore: 50 },
-    { grade: 'F', minScore: 0 },
-  ];
+  return [];
 }
 
 export async function saveGradeScale(grades: LetterGrade[]): Promise<void> {
   if (!db || !db.app) throw new Error("Firestore is not initialized.");
   const settingsDocRef = doc(db, 'settings', 'gradeScale');
-  await setDoc(settingsDocRef, { grades: grades });
+  const data = { grades: grades };
+  setDoc(settingsDocRef, data).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'update',
+        requestResourceData: data,
+      }));
+  });
 }
