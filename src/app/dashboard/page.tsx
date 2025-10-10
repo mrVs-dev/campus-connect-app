@@ -221,9 +221,12 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
 
-        const [allRolesFromDb, allTeachersFromDb] = await Promise.all([
+        // Fetch essential role/permission data first
+        const [allRolesFromDb, allTeachersFromDb, allUsersFromDb, savedPermissions] = await Promise.all([
           getRoles(),
-          getTeachers()
+          getTeachers(),
+          getUsers(),
+          getPermissions(),
         ]);
         
         setAllSystemRoles(allRolesFromDb);
@@ -247,7 +250,6 @@ export default function DashboardPage() {
               return;
           }
           
-          const savedPermissions = await getPermissions();
           const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
           APP_MODULES.forEach(module => {
             if (!completePermissions[module]) completePermissions[module] = {};
@@ -261,6 +263,12 @@ export default function DashboardPage() {
             });
           });
           setPermissions(completePermissions);
+          
+          // Now set pending users
+          setAllUsers(allUsersFromDb as AuthUser[]);
+          const teacherEmails = new Set(allTeachersFromDb.map(t => t.email).filter(Boolean));
+          setPendingUsers(allUsersFromDb.filter(u => u.email && !teacherEmails.has(u.email) && u.email !== ADMIN_EMAIL) as AuthUser[]);
+
         } else {
           const allStudentsFromDb = await getStudents();
           if (allStudentsFromDb.some(s => s.studentEmail === loggedInUserEmail)) {
@@ -287,9 +295,57 @@ export default function DashboardPage() {
   // This separate effect triggers the main data fetch once the userRole is confirmed.
   React.useEffect(() => {
     if (userRole) {
-      fetchData();
+      const fetchRestOfData = async () => {
+        setLoadingState('Fetching Main Data');
+        try {
+           const [
+            studentsData,
+            admissionsData, 
+            assessmentsData, 
+            statusHistoryData, 
+            subjectsData,
+            categoriesData,
+            gradeScaleData,
+            feesData,
+            invoicesData,
+            inventoryData,
+          ] = await Promise.all([
+            getStudents(),
+            getAdmissions(),
+            getAssessments(),
+            getStudentStatusHistory(),
+            getSubjects(),
+            getAssessmentCategories(),
+            getGradeScale(),
+            getFees(),
+            getInvoices(),
+            getInventoryItems(),
+          ]);
+
+          setStudents(studentsData);
+          setAdmissions(admissionsData);
+          setAssessments(assessmentsData);
+          setStatusHistory(statusHistoryData);
+          setSubjects(subjectsData);
+          setAssessmentCategories(categoriesData);
+          setGradeScale(gradeScaleData);
+          setFees(feesData);
+          setInvoices(invoicesData);
+          setInventory(inventoryData);
+          setLoadingState('Idle');
+        } catch (error: any) {
+           console.error("Error fetching main data:", error);
+           toast({
+             title: "Error Loading Data",
+             description: error.message || "Failed to load all application data. Please try again.",
+             variant: "destructive",
+           });
+           setLoadingState('Error');
+        }
+      };
+      fetchRestOfData();
     }
-  }, [userRole, fetchData]);
+  }, [userRole, toast]);
   
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
     await updateStudent(studentId, updatedData);
