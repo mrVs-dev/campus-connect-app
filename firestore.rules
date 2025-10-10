@@ -1,11 +1,15 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to authenticated users
-    match /{document=**} {
+    // Allow reading from the users collection for any authenticated user.
+    // This is needed to check for user approval status.
+    match /users/{userId} {
       allow read, write: if request.auth != null;
+    }
+
+    // Default deny all other reads and writes
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
