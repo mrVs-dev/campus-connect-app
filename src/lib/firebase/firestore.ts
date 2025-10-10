@@ -696,14 +696,15 @@ export async function saveAssessment(assessmentData: Omit<Assessment, 'assessmen
 }
 
 // --- Teachers Collection ---
-// Helper function to introduce a delay
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function getTeachers(retryCount = 1, delay = 250): Promise<Teacher[]> {
+export async function getTeachers(retryCount = 1, initialDelay = 100): Promise<Teacher[]> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
     const teachersCollection = collection(db, 'teachers');
-    
+
     try {
+        // Start with an initial delay before the first attempt
+        await sleep(initialDelay);
         const snapshot = await getDocs(teachersCollection);
         return snapshot.docs.map(doc => {
             const data = doc.data();
@@ -712,15 +713,16 @@ export async function getTeachers(retryCount = 1, delay = 250): Promise<Teacher[
         });
     } catch (error: any) {
         if (error.code === 'permission-denied' && retryCount > 0) {
-            console.warn(`Permission denied for getTeachers. Retrying in ${delay}ms... (${retryCount} retries left)`);
-            await sleep(delay);
-            return getTeachers(retryCount - 1, delay * 2); // Exponential backoff
+            const nextDelay = initialDelay * 2; // Exponential backoff
+            console.warn(`Permission denied for getTeachers. Retrying in ${nextDelay}ms... (${retryCount} retries left)`);
+            return getTeachers(retryCount - 1, nextDelay);
         }
         
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: teachersCollection.path,
             operation: 'list',
         }));
+        // If all retries fail, throw the last error
         throw error;
     }
 }
@@ -1195,3 +1197,4 @@ export async function saveGradeScale(grades: LetterGrade[]): Promise<void> {
       }));
   });
 }
+

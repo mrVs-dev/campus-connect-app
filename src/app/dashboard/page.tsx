@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -116,7 +117,6 @@ export default function DashboardPage() {
   const [permissions, setPermissions] = React.useState<Permissions | null>(null);
 
   const [loadingState, setLoadingState] = React.useState<LoadingState>('Authenticating');
-  const [pendingUsers, setPendingUsers] = React.useState<AuthUser[]>([]);
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
     if (!admissions || admissions.length === 0) {
@@ -216,7 +216,7 @@ export default function DashboardPage() {
         
         const allTeachersFromDb = await getTeachers();
         setTeachers(allTeachersFromDb);
-
+        
         let currentUserRole: UserRole | null = null;
         if (loggedInUserEmail === ADMIN_EMAIL) {
           currentUserRole = 'Admin';
