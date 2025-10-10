@@ -214,14 +214,10 @@ export default function DashboardPage() {
       try {
         const loggedInUserEmail = user.email;
         
-        const [allRolesFromDb, allTeachersFromDb] = await Promise.all([
-            getRoles(),
-            getTeachers()
-        ]);
-        
-        setAllSystemRoles(allRolesFromDb);
+        // Fetch teachers first to determine roles
+        const allTeachersFromDb = await getTeachers();
         setTeachers(allTeachersFromDb);
-        
+
         let currentUserRole: UserRole | null = null;
         if (loggedInUserEmail === ADMIN_EMAIL) {
           currentUserRole = 'Admin';
@@ -231,30 +227,36 @@ export default function DashboardPage() {
             currentUserRole = loggedInStaffMember.role;
           }
         }
-
+        
         if (currentUserRole) {
-          setUserRole(currentUserRole);
+            setUserRole(currentUserRole);
 
-          if (currentUserRole === 'Teacher') {
-              router.replace('/teacher/dashboard');
-              return;
-          }
+            if (currentUserRole === 'Teacher') {
+                router.replace('/teacher/dashboard');
+                return;
+            }
+            
+            // Now fetch roles and permissions since we have a privileged user
+            const [allRolesFromDb, savedPermissions] = await Promise.all([
+                getRoles(),
+                getPermissions()
+            ]);
+            setAllSystemRoles(allRolesFromDb);
 
-          const savedPermissions = await getPermissions();
-          const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-          APP_MODULES.forEach(module => {
-            if (!completePermissions[module]) completePermissions[module] = {};
-            allRolesFromDb.forEach(role => {
-                if (!completePermissions[module][role]) {
-                  completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-                }
-                if (savedPermissions[module]?.[role]) {
-                    completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
-                }
+            const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+            APP_MODULES.forEach(module => {
+                if (!completePermissions[module]) completePermissions[module] = {};
+                allRolesFromDb.forEach(role => {
+                    if (!completePermissions[module][role]) {
+                    completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+                    }
+                    if (savedPermissions[module]?.[role]) {
+                        completePermissions[module][role] = { ...completePermissions[module][role], ...savedPermissions[module][role] };
+                    }
+                });
             });
-          });
-          setPermissions(completePermissions);
-          await fetchData(); // Fetch all other data after role is set
+            setPermissions(completePermissions);
+            await fetchData(); // Fetch all other data after role is set
 
         } else {
             const allStudentsFromDb = await getStudents();
