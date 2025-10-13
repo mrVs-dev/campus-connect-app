@@ -114,12 +114,10 @@ export default function DashboardPage() {
   const [error, setError] = React.useState<string | null>(null);
   
   const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
-    // For testing, always return true
-    return true;
-    // if (!permissions || !userRole) return false;
-    // if (user?.email === ADMIN_EMAIL) return true;
+    if (!permissions || !userRole) return false;
+    if (user?.email === ADMIN_EMAIL) return true;
 
-    // return permissions[module]?.[userRole]?.[action] ?? false;
+    return permissions[module]?.[userRole]?.[action] ?? false;
   };
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -141,11 +139,10 @@ export default function DashboardPage() {
   }, [students, admissions]);
   
   const fetchData = React.useCallback(async (showToast = false) => {
-    // For testing, bypass user check
-    // if (!user) {
-    //   console.warn("FetchData called without user.");
-    //   return;
-    // };
+    if (!user) {
+      console.warn("FetchData called without user.");
+      return;
+    };
     
     setLoading(true);
     setError(null);
@@ -190,8 +187,8 @@ export default function DashboardPage() {
       setInvoices(invoicesData);
       setAllSystemRoles(rolesData);
       
-      // For testing, default to Admin
-      const currentUserRole: UserRole | null = 'Admin';
+      const currentTeacher = teachersData.find(t => t.email === user.email);
+      const currentUserRole: UserRole | null = currentTeacher ? currentTeacher.role : null;
       setUserRole(currentUserRole);
 
       const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
@@ -218,18 +215,16 @@ export default function DashboardPage() {
     } finally {
         setLoading(false);
     }
-  }, [toast, router]);
+  }, [user, toast, router]);
   
   React.useEffect(() => {
-    // For testing, fetch data immediately
+    if (authLoading) return;
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
     fetchData();
-    // if (authLoading) return;
-    // if (!user) {
-    //   router.replace('/login');
-    //   return;
-    // }
-    // fetchData();
-  }, [fetchData]);
+  }, [user, authLoading, fetchData]);
 
 
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
@@ -352,10 +347,9 @@ export default function DashboardPage() {
       return <div className="flex min-h-screen items-center justify-center text-red-500">{error}</div>;
   }
   
-  // For testing, always show the dashboard
-  // if (!userRole) {
-  //   return <PendingApproval />;
-  // }
+  if (!userRole) {
+    return <PendingApproval />;
+  }
 
   return (
     <>
