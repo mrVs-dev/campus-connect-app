@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, User } from "firebase/auth";
+import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, User, getAuth } from "firebase/auth";
 import { auth, firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { getOrCreateUser } from "@/lib/firebase/firestore";
 import { useAuth } from "@/hooks/use-auth";
@@ -86,7 +86,8 @@ export default function LoginPage() {
   React.useEffect(() => {
     const handleRedirectResult = async () => {
       try {
-        const result = await getRedirectResult(auth);
+        const authInstance = getAuth();
+        const result = await getRedirectResult(authInstance);
         if (result && result.user) {
           // A user was successfully signed in on redirect.
           // The useAuth hook will now pick up the new user and redirect to the dashboard.
@@ -95,7 +96,9 @@ export default function LoginPage() {
       } catch (error: any) {
         console.error("Authentication failed during redirect:", error);
         if (error.code === 'auth/unauthorized-domain') {
-          setError(`Authentication Error: ${error.message}. Please make sure this domain is authorized in your Firebase project's settings.`);
+          setError(`Authentication Error: This domain is not authorized for sign-in. Please add it to your Firebase project's settings.`);
+        } else if (error.code === 'auth/popup-closed-by-user') {
+          setError('The sign-in window was closed before completing. Please try again.');
         } else {
           setError(`Failed to sign in after redirect. Error: ${error.message || error.code}`);
         }

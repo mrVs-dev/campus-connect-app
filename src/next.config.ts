@@ -31,11 +31,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  devIndicators: {
-    allowedDevOrigins: [
-      'https://6000-firebase-studio-1758175001543.cluster-nle52mxuvfhlkrzyrq6g2cwb52.cloudworkstations.dev',
-    ],
-  },
   // Explicitly load environment variables from .env files
   env: {
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
