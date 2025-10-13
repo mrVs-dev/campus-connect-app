@@ -6,9 +6,13 @@ import { getMessaging, type Messaging } from "firebase/messaging";
 
 // This will run on the server when the app builds
 console.log(
-  "[Firebase/server] NEXT_PUBLIC_FIREBASE_PROJECT_ID:",
-  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+  "--- SERVER-SIDE FIREBASE CONFIG ---"
 );
+console.log("process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+console.log("process.env.NEXT_PUBLIC_FIREBASE_API_KEY:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? "Loaded" : "MISSING");
+console.log("process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ? "Loaded" : "MISSING");
+console.log("---------------------------------");
+
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

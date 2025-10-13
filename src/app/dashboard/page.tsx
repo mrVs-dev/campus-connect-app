@@ -215,7 +215,7 @@ export default function DashboardPage() {
     } finally {
         setLoading(false);
     }
-  }, [user, toast, router]);
+  }, [user, toast]);
   
   React.useEffect(() => {
     if (authLoading) return;
@@ -224,7 +224,7 @@ export default function DashboardPage() {
       return;
     }
     fetchData();
-  }, [user, authLoading, fetchData]);
+  }, [user, authLoading, fetchData, router]);
 
 
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
