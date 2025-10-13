@@ -114,10 +114,12 @@ export default function DashboardPage() {
   const [error, setError] = React.useState<string | null>(null);
   
   const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
-    if (!permissions || !userRole) return false;
-    if (user?.email === ADMIN_EMAIL) return true;
+    // For testing, always return true
+    return true;
+    // if (!permissions || !userRole) return false;
+    // if (user?.email === ADMIN_EMAIL) return true;
 
-    return permissions[module]?.[userRole]?.[action] ?? false;
+    // return permissions[module]?.[userRole]?.[action] ?? false;
   };
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
@@ -139,10 +141,11 @@ export default function DashboardPage() {
   }, [students, admissions]);
   
   const fetchData = React.useCallback(async (showToast = false) => {
-    if (!user) {
-      console.warn("FetchData called without user.");
-      return;
-    };
+    // For testing, bypass user check
+    // if (!user) {
+    //   console.warn("FetchData called without user.");
+    //   return;
+    // };
     
     setLoading(true);
     setError(null);
@@ -187,47 +190,23 @@ export default function DashboardPage() {
       setInvoices(invoicesData);
       setAllSystemRoles(rolesData);
       
-      let currentUserRole: UserRole | null = null;
-      if (user.email === ADMIN_EMAIL) {
-        currentUserRole = 'Admin';
-      } else {
-        const loggedInStaffMember = teachersData.find(t => t.email === user.email);
-        if (loggedInStaffMember?.role) {
-          currentUserRole = loggedInStaffMember.role;
-        }
-      }
-      
-      if (currentUserRole) {
-        setUserRole(currentUserRole);
+      // For testing, default to Admin
+      const currentUserRole: UserRole | null = 'Admin';
+      setUserRole(currentUserRole);
 
-        if (currentUserRole === 'Teacher') {
-          router.replace('/teacher/dashboard');
-          return;
-        }
-        
-        const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-        APP_MODULES.forEach(module => {
-          if (!completePermissions[module]) completePermissions[module] = {};
-          rolesData.forEach(role => {
-            if (!completePermissions[module][role]) {
-              completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-            }
-            if (permissionsData[module]?.[role]) {
-              completePermissions[module][role] = { ...completePermissions[module][role], ...permissionsData[module][role] };
-            }
-          });
+      const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+      APP_MODULES.forEach(module => {
+        if (!completePermissions[module]) completePermissions[module] = {};
+        rolesData.forEach(role => {
+          if (!completePermissions[module][role]) {
+            completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+          }
+          if (permissionsData[module]?.[role]) {
+            completePermissions[module][role] = { ...completePermissions[module][role], ...permissionsData[module][role] };
+          }
         });
-        setPermissions(completePermissions);
-      } else {
-         if (studentsData.some(s => s.studentEmail === user.email)) {
-            router.replace('/student/dashboard');
-            return;
-          }
-          if (studentsData.some(s => s.guardians?.some(g => g.email === user.email))) {
-            router.replace('/guardian/dashboard');
-            return;
-          }
-      }
+      });
+      setPermissions(completePermissions);
       
       if (showToast) {
         toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
@@ -239,16 +218,18 @@ export default function DashboardPage() {
     } finally {
         setLoading(false);
     }
-  }, [user, toast, router]);
+  }, [toast, router]);
   
   React.useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
+    // For testing, fetch data immediately
     fetchData();
-  }, [user, authLoading, router, fetchData]);
+    // if (authLoading) return;
+    // if (!user) {
+    //   router.replace('/login');
+    //   return;
+    // }
+    // fetchData();
+  }, [fetchData]);
 
 
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
@@ -371,9 +352,10 @@ export default function DashboardPage() {
       return <div className="flex min-h-screen items-center justify-center text-red-500">{error}</div>;
   }
   
-  if (!userRole) {
-    return <PendingApproval />;
-  }
+  // For testing, always show the dashboard
+  // if (!userRole) {
+  //   return <PendingApproval />;
+  // }
 
   return (
     <>
@@ -394,7 +376,7 @@ export default function DashboardPage() {
                 </TabsContent>
                 <TabsContent value="students" className="space-y-4">
                   <StudentList 
-                    userRole={userRole}
+                    userRole={userRole as UserRole}
                     students={studentsWithLatestEnrollments}
                     assessments={assessments}
                     admissions={admissions}
@@ -412,7 +394,7 @@ export default function DashboardPage() {
                 </TabsContent>
                 <TabsContent value="users" className="space-y-4">
                   <TeacherList 
-                      userRole={userRole}
+                      userRole={userRole as UserRole}
                       initialTeachers={teachers}
                       onAddTeacher={async (teacher) => { await addTeacher(teacher); await fetchData(true); }}
                       onDeleteTeacher={handleDeleteTeacher}
@@ -423,7 +405,7 @@ export default function DashboardPage() {
                 </TabsContent>
                 <TabsContent value="assessments" className="space-y-4">
                   <AssessmentList 
-                    userRole={userRole}
+                    userRole={userRole as UserRole}
                     assessments={assessments}
                     students={students}
                     subjects={subjects}
