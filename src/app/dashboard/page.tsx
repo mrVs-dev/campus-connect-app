@@ -184,9 +184,14 @@ export default function DashboardPage() {
       setInvoices(invoicesData);
       setAllSystemRoles(rolesData);
       
-      const currentTeacher = teachersData.find(t => t.email === user.email);
-      const currentUserRole: UserRole | null = currentTeacher ? currentTeacher.role : null;
-      setUserRole(currentUserRole);
+      // Hardcode Admin role for specific user, otherwise lookup role.
+      if (user.email === 'vannak@api-school.com') {
+        setUserRole('Admin');
+      } else {
+        const currentTeacher = teachersData.find(t => t.email === user.email);
+        const currentUserRole: UserRole | null = currentTeacher ? currentTeacher.role : null;
+        setUserRole(currentUserRole);
+      }
 
       const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
       APP_MODULES.forEach(module => {
