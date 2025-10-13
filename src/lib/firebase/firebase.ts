@@ -4,16 +4,6 @@ import { getAuth, connectAuthEmulator, type Auth } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator, type Firestore } from "firebase/firestore";
 import { getMessaging, type Messaging } from "firebase/messaging";
 
-// This will run on the server when the app builds
-console.log(
-  "--- SERVER-SIDE FIREBASE CONFIG ---"
-);
-console.log("process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
-console.log("process.env.NEXT_PUBLIC_FIREBASE_API_KEY:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? "Loaded" : "MISSING");
-console.log("process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ? "Loaded" : "MISSING");
-console.log("---------------------------------");
-
-
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -58,11 +48,6 @@ function initializeFirebase() {
     
     // Check if window is defined (i.e., we are on the client-side)
     if (typeof window !== 'undefined') {
-        // This will run in the browser console
-        console.log(
-        "[Firebase/client] NEXT_PUBLIC_FIREBASE_PROJECT_ID:",
-        process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-        );
         messaging = getMessaging(app);
     }
 }

@@ -24,9 +24,6 @@ import { InvoicingList } from "@/components/dashboard/invoicing-list";
 import type { User as AuthUser } from "firebase/auth";
 import { AppModule, initialPermissions, APP_MODULES } from "@/lib/modules";
 
-// --- IMPORTANT: Admin Exception ---
-const ADMIN_EMAIL = "vannak@api-school.com"; 
-
 function MissingFirebaseConfig() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
@@ -115,7 +112,7 @@ export default function DashboardPage() {
   
   const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
     if (!permissions || !userRole) return false;
-    if (user?.email === ADMIN_EMAIL) return true;
+    if (userRole === 'Admin') return true;
 
     return permissions[module]?.[userRole]?.[action] ?? false;
   };
