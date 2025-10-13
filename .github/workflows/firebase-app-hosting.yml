@@ -20,7 +20,7 @@ jobs:
 
       - name: Create .env.production file
         run: |
-          echo "NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.SECRET_NEXT_PUBLIC_FIREBASE_API_KEY }}" >> .env.production
+          echo "NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}" >> .env.production
           echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.SECRET_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}" >> .env.production
           echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.SECRET_NEXT_PUBLIC_FIREBASE_PROJECT_ID }}" >> .env.production
           echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.SECRET_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}" >> .env.production
