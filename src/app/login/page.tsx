@@ -68,68 +68,60 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = React.useState(true); // Start as true to handle redirect
+  const [isProcessing, setIsProcessing] = React.useState(true); 
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  
+  React.useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setIsProcessing(false);
+      return;
+    }
+
+    const handleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          // User signed in via redirect. The useAuth hook will handle navigation.
+        }
+      } catch (error: any) {
+        console.error("Authentication failed during redirect:", error);
+        setError(`Failed to sign in after redirect. Error: ${error.message || error.code}`);
+      } finally {
+        // This is crucial: we are done processing the redirect attempt.
+        setIsProcessing(false);
+      }
+    };
+
+    handleRedirect();
+  }, []);
+
+
+  React.useEffect(() => {
+    // If auth state is determined and a user exists, go to dashboard.
+    if (!authLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, authLoading, router]);
+
+  const handleSignIn = async () => {
+    setError(null);
+    const provider = new GoogleAuthProvider();
+    await signInWithRedirect(auth, provider);
+  };
   
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
 
-  React.useEffect(() => {
-    if (!authLoading && user) {
-      router.replace('/dashboard');
-    }
-  }, [user, authLoading, router]);
-  
-  // This effect runs on page load to check for a redirect result.
-  React.useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const authInstance = getAuth();
-        const result = await getRedirectResult(authInstance);
-        if (result && result.user) {
-          // A user was successfully signed in on redirect.
-          // The useAuth hook will now pick up the new user and redirect to the dashboard.
-          // We can stop the loading indicator on this page.
-        }
-      } catch (error: any) {
-        console.error("Authentication failed during redirect:", error);
-        if (error.code === 'auth/unauthorized-domain') {
-          setError(`Authentication Error: This domain is not authorized for sign-in. Please add it to your Firebase project's settings.`);
-        } else if (error.code === 'auth/popup-closed-by-user') {
-          setError('The sign-in window was closed before completing. Please try again.');
-        } else {
-          setError(`Failed to sign in after redirect. Error: ${error.message || error.code}`);
-        }
-      } finally {
-        // Whether there was a redirect result or not, we are no longer in a "signing in" state.
-        setIsSigningIn(false);
-      }
-    };
-
-    handleRedirectResult();
-  }, []);
-
-  const handleSignIn = async () => {
-    setError(null);
-    setIsSigningIn(true);
-    const provider = new GoogleAuthProvider();
-    await signInWithRedirect(auth, provider);
-    // After this call, the browser will redirect to Google's sign-in page.
-    // The user will then be redirected back here, and the useEffect above will handle the result.
-  };
-
-  if (authLoading || isSigningIn) {
+  // Show a loading screen while processing redirect or waiting for auth state.
+  if (isProcessing || authLoading) {
     return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
   }
   
-  // Don't render the login form if we already know there's a user.
-  if (user) {
-     return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
-  }
-
-  return (
+  // If we are done processing and there's still no user, show the login form.
+  if (!user) {
+    return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
@@ -161,4 +153,8 @@ export default function LoginPage() {
         </Card>
       </div>
     );
+  }
+
+  // If there is a user, show a loading screen while redirecting.
+  return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
 }
