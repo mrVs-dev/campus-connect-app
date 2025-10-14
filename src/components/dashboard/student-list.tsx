@@ -3,7 +3,7 @@
 "use client";
 
 import * as React from "react";
-import type { Student, Assessment, Admission, Enrollment, Subject, AssessmentCategory, UserRole, LetterGrade } from "@/lib/types";
+import type { Student, Assessment, Admission, Enrollment, Subject, AssessmentCategory, UserRole, LetterGrade, AddressData } from "@/lib/types";
 import { Upload, MoreHorizontal, ArrowUpDown, Trash2, Move, Search, Edit } from "lucide-react";
 import {
   Card,
@@ -66,6 +66,7 @@ export function StudentList({
   onDeleteSelectedStudents,
   onMoveStudents,
   hasPermission,
+  addressData,
 }: {
   userRole: UserRole;
   students: Student[];
@@ -81,6 +82,7 @@ export function StudentList({
   onDeleteSelectedStudents: (studentIds: string[]) => void;
   onMoveStudents: (studentIds: string[], schoolYear: string, fromClass: Enrollment | null, toClass: Enrollment) => void;
   hasPermission: (module: AppModule, action: 'Create' | 'Read' | 'Update' | 'Delete') => boolean;
+  addressData: AddressData | null;
 }) {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(null);
   const [studentToEdit, setStudentToEdit] = React.useState<Student | null>(null);
@@ -433,6 +435,7 @@ export function StudentList({
         onOpenChange={(isOpen) => !isOpen && setStudentToEdit(null)}
         onSave={handleUpdateStudent}
         onUpdateStudentStatus={onUpdateStudentStatus}
+        addressData={addressData}
       />
       {canCreate && (
         <StudentImportDialog
@@ -485,5 +488,7 @@ export function StudentList({
     </>
   );
 }
+
+    
 
     

@@ -36,11 +36,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
-import type { Student } from "@/lib/types";
+import type { Student, AddressData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css'
-import { addressData } from "@/lib/address-data";
 
 const formSchema = z.object({
   familyId: z.string().optional(),
@@ -93,10 +92,11 @@ interface EditStudentSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (studentId: string, updatedData: Partial<Student>) => void;
-  onUpdateStatus: (student: Student, newStatus: Student['status'], reason: string) => void;
+  onUpdateStudentStatus: (student: Student, newStatus: Student['status'], reason: string) => void;
+  addressData: AddressData | null;
 }
 
-export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdateStatus }: EditStudentSheetProps) {
+export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdateStudentStatus, addressData }: EditStudentSheetProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
@@ -108,7 +108,6 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
   
   React.useEffect(() => {
     if (student && open) {
-      // Create a safe address object to avoid issues with missing nested properties
       const safeAddress = {
         district: student.address?.district || "Siem Reap",
         commune: student.address?.commune || "",
@@ -148,10 +147,12 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
   });
 
   const watchedCommune = form.watch("address.commune");
+  
   const villages = React.useMemo(() => {
+    if (!addressData) return [];
     const commune = addressData.communes.find(c => c.name === watchedCommune);
     return commune ? commune.villages : [];
-  }, [watchedCommune]);
+  }, [watchedCommune, addressData]);
   
   const studentAvatarUrl = form.watch("avatarUrl");
   const guardianAvatars = form.watch("guardians");
@@ -372,7 +373,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                                             <SelectTrigger><SelectValue placeholder="Select a commune" /></SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {addressData.communes.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                                            {addressData?.communes.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -609,5 +610,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
     </>
   );
 }
+
+    
 
     
