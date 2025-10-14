@@ -184,11 +184,10 @@ export default function DashboardPage() {
       setInvoices(invoicesData);
       setAllSystemRoles(rolesData);
       
-      // Hardcode Admin role for specific user, otherwise lookup role.
-      if (user.email === 'vannak@api-school.com') {
+      const currentTeacher = teachersData.find(t => t.email === user.email);
+      if (currentTeacher?.role === 'Admin') {
         setUserRole('Admin');
       } else {
-        const currentTeacher = teachersData.find(t => t.email === user.email);
         const currentUserRole: UserRole | null = currentTeacher ? currentTeacher.role : null;
         setUserRole(currentUserRole);
       }
@@ -478,3 +477,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
