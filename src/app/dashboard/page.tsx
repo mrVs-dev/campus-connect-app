@@ -148,7 +148,33 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      let [
+      let currentTeacher = await getTeacherForUser(user.uid);
+      let currentUserRole: UserRole | null = null;
+      
+      const adminEmail = "vannak@api-school.com";
+      if (user.email === adminEmail) {
+          currentUserRole = 'Admin';
+          // Ensure admin user exists in teachers collection
+          if (!currentTeacher) {
+              const adminData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'> = {
+                  firstName: 'Vannak',
+                  lastName: 'Admin',
+                  email: adminEmail,
+                  role: 'Admin',
+              };
+              await addTeacher(adminData);
+              currentTeacher = await getTeacherForUser(user.uid);
+          } else if (currentTeacher.role !== 'Admin') {
+              await updateTeacher(currentTeacher.teacherId, { role: 'Admin' });
+              currentTeacher.role = 'Admin';
+          }
+      } else if (currentTeacher) {
+          currentUserRole = currentTeacher.role;
+      }
+      
+      setUserRole(currentUserRole);
+
+      const [
         studentsData,
         admissionsData, 
         assessmentsData,
@@ -180,17 +206,6 @@ export default function DashboardPage() {
         getPermissions(),
       ]);
 
-      let currentStaffMember = await getTeacherForUser(user.uid);
-      let currentUserRole: UserRole | null = null;
-      
-      const adminEmail = "vannak@api-school.com";
-      if (user.email === adminEmail) {
-          currentUserRole = 'Admin';
-      } else if (currentStaffMember) {
-          currentUserRole = currentStaffMember.role;
-      }
-      
-      setUserRole(currentUserRole);
 
       setStudents(studentsData);
       setAdmissions(admissionsData);
@@ -515,3 +530,5 @@ export default function DashboardPage() {
 }
 
   
+
+    

@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -434,7 +433,7 @@ export function StudentList({
         open={!!studentToEdit}
         onOpenChange={(isOpen) => !isOpen && setStudentToEdit(null)}
         onSave={handleUpdateStudent}
-        onUpdateStatus={onUpdateStudentStatus}
+        onUpdateStudentStatus={onUpdateStudentStatus}
         addressData={addressData}
       />
       {canCreate && (
@@ -488,3 +487,5 @@ export function StudentList({
     </>
   );
 }
+
+    

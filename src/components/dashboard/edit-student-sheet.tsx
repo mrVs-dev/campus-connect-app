@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -107,7 +106,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
   });
   
   React.useEffect(() => {
-    if (student) {
+    if (student && open) {
       // Create a safe address object to avoid issues with missing nested properties
       const safeAddress = {
         district: student.address?.district || "Siem Reap",
@@ -140,7 +139,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
         mediaConsent: String(student.mediaConsent) as any,
       });
     }
-  }, [student, form, open]); // Added `open` dependency to reset form when sheet re-opens with same student
+  }, [student, form, open]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
