@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -118,12 +119,12 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
         nationality: student.nationality || "",
         nationalId: student.nationalId || "",
         previousSchool: student.previousSchool || "",
-        address: {
-          district: student.address?.district || "Siem Reap",
-          commune: student.address?.commune || "",
-          village: student.address?.village || "",
-          street: student.address?.street || "",
-          house: student.address?.house || "",
+        address: student.address || {
+          district: "Siem Reap",
+          commune: "",
+          village: "",
+          street: "",
+          house: "",
         },
         emergencyContact: {
           name: student.emergencyContact?.name || "",
@@ -363,7 +364,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                             <FormField control={form.control} name="address.commune" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Commune / Sangkat</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={(value) => { field.onChange(value); form.setValue('address.village', ''); }} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger><SelectValue placeholder="Select a commune" /></SelectTrigger>
                                         </FormControl>
@@ -546,7 +547,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Media Consent</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select onValueChange={field.onChange} value={String(field.value)}>
                                   <FormControl>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Select an option" />

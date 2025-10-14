@@ -1240,7 +1240,7 @@ export async function getAddressData(): Promise<AddressData> {
             return docSnap.data() as AddressData;
         } else {
             // If the document doesn't exist, create it with default data.
-            const defaultData = { communes: [
+            const defaultData: AddressData = { communes: [
                 { id: "1", name: 'Sla Kram', villages: ['Treang', 'Sla Kram', 'Bangkaong', 'Chong Kaosou', 'Dol Po', 'Tramneak'] },
                 { id: "2", name: 'Svay Dangkum', villages: ['Svay Dangkum', 'Mondul 1', 'Mondul 2', 'Thnol', 'Taphul', 'Vihear Chen'] },
                 { id: "3", name: 'Sala Kamreuk', villages: ['Sala Kamreuk', 'Wat Bo', 'Wat Damnak', 'Chongkaosou', 'Taphul'] },

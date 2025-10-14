@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -431,7 +432,7 @@ export function EnrollmentForm({ onEnroll, addressData }: EnrollmentFormProps) {
                     <FormField control={form.control} name="address.commune" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Commune / Sangkat</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={(value) => { field.onChange(value); form.setValue('address.village', ''); }} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger><SelectValue placeholder="Select a commune" /></SelectTrigger>
                                 </FormControl>
