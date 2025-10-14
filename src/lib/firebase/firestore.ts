@@ -720,6 +720,46 @@ export async function getTeachers(): Promise<Teacher[]> {
     }
 }
 
+export async function getTeacherForUser(userUid: string): Promise<Teacher | null> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    
+    // First, get the user's email from the 'users' collection
+    const userDocRef = doc(db, 'users', userUid);
+    const userDoc = await getDoc(userDocRef).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'get',
+      }));
+      throw serverError;
+    });
+
+    if (!userDoc.exists() || !userDoc.data()?.email) {
+        return null;
+    }
+    const userEmail = userDoc.data()?.email;
+
+    // Now, find the teacher record with that email
+    const teachersCollection = collection(db, 'teachers');
+    const q = query(teachersCollection, where("email", "==", userEmail));
+    
+    try {
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) {
+            return null;
+        }
+        const teacherDoc = snapshot.docs[0];
+        const data = teacherDoc.data();
+        const dataWithDates = convertTimestampsToDates(data);
+        return { ...dataWithDates, teacherId: teacherDoc.id } as Teacher;
+    } catch (error) {
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: teachersCollection.path,
+            operation: 'list' // Query involves reading
+        }));
+        throw error;
+    }
+}
+
 
 export async function addTeacher(teacherData: Omit<Teacher, 'teacherId' | 'status'>): Promise<Teacher | null> {
     if (!db || !db.app) throw new Error("Firestore is not initialized.");
