@@ -1,6 +1,14 @@
-<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="256" height="256" fill="black"/>
-<path d="M-23.5 256C-23.5 256 50.5 130 182 171.5C313.5 213 253 256 -23.5 256Z" fill="#2E6C9E"/>
-<path d="M-23.5 256C-23.5 256 128 190.5 220.5 221C313 251.5 301 256 -23.5 256Z" fill="#2E6C9E"/>
-<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="100" fill="#333333" dy=".3em">API</text>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+>
+  <rect width="24" height="24" fill="white"/>
+  <path 
+    d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" 
+    fill="none"
+    stroke="#2A6B9A"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
 </svg>
