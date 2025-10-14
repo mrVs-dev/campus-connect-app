@@ -220,11 +220,12 @@ export default function DashboardPage() {
   }, [user, toast]);
   
   React.useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) return; // Wait until Firebase auth state is resolved.
     if (!user) {
       router.replace('/login');
       return;
     }
+    // Only fetch data once we have a confirmed user.
     fetchData();
   }, [user, authLoading, fetchData, router]);
 
@@ -341,6 +342,7 @@ export default function DashboardPage() {
     return <MissingFirebaseConfig />;
   }
 
+  // Show a loading screen while auth state is being determined OR while data is being fetched.
   if (authLoading || loading) {
     return <div className="flex min-h-screen items-center justify-center">Loading Dashboard...</div>;
   }
@@ -349,6 +351,7 @@ export default function DashboardPage() {
       return <div className="flex min-h-screen items-center justify-center text-red-500">{error}</div>;
   }
   
+  // This check is now safe because authLoading is false and we still don't have a role.
   if (!userRole) {
     return <PendingApproval />;
   }

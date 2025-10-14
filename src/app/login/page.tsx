@@ -68,37 +68,38 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = React.useState(true); 
+  // This state tracks if we are actively processing the Firebase redirect.
+  const [isProcessingRedirect, setIsProcessingRedirect] = React.useState(true); 
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   
   React.useEffect(() => {
     if (!isFirebaseConfigured) {
-      setIsProcessing(false);
+      setIsProcessingRedirect(false);
       return;
     }
 
-    const handleRedirect = async () => {
+    const processRedirect = async () => {
       try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          // User signed in via redirect. The useAuth hook will handle navigation.
-        }
+        const authInstance = getAuth();
+        const result = await getRedirectResult(authInstance);
+        // If result is not null, a sign-in just occurred. 
+        // The useAuth hook will detect the new user and handle the redirect to the dashboard.
       } catch (error: any) {
         console.error("Authentication failed during redirect:", error);
-        setError(`Failed to sign in after redirect. Error: ${error.message || error.code}`);
+        setError(`Sign-in failed. Code: ${error.code}. Message: ${error.message}`);
       } finally {
-        // This is crucial: we are done processing the redirect attempt.
-        setIsProcessing(false);
+        // Crucially, we mark processing as complete regardless of outcome.
+        setIsProcessingRedirect(false);
       }
     };
 
-    handleRedirect();
+    processRedirect();
   }, []);
 
 
   React.useEffect(() => {
-    // If auth state is determined and a user exists, go to dashboard.
+    // If auth is no longer loading and we have a user, redirect to the dashboard.
     if (!authLoading && user) {
       router.replace('/dashboard');
     }
@@ -107,6 +108,7 @@ export default function LoginPage() {
   const handleSignIn = async () => {
     setError(null);
     const provider = new GoogleAuthProvider();
+    // Start the redirect sign-in process.
     await signInWithRedirect(auth, provider);
   };
   
@@ -114,12 +116,12 @@ export default function LoginPage() {
     return <MissingFirebaseConfig />;
   }
 
-  // Show a loading screen while processing redirect or waiting for auth state.
-  if (isProcessing || authLoading) {
+  // Show a loading screen while processing the redirect or if the auth state is still loading.
+  if (isProcessingRedirect || authLoading) {
     return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
   }
   
-  // If we are done processing and there's still no user, show the login form.
+  // If we are done with all loading and there's still no user, it's safe to show the login form.
   if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -155,6 +157,6 @@ export default function LoginPage() {
     );
   }
 
-  // If there is a user, show a loading screen while redirecting.
+  // Fallback: If there is a user, show a redirecting message.
   return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
 }
