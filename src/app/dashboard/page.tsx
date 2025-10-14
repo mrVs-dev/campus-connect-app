@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, swapLegacyStudentNames, saveGradeScale, getInventoryItems, saveInventoryItem, deleteInventoryItem, getTeacherForUser } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, saveGradeScale, getInventoryItems, saveInventoryItem, deleteInventoryItem, getTeacherForUser, getAddressData, saveAddressData } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -105,6 +105,7 @@ export default function DashboardPage() {
   const [fees, setFees] = React.useState<Fee[]>([]);
   const [invoices, setInvoices] = React.useState<Invoice[]>([]);
   const [inventoryItems, setInventoryItems] = React.useState<InventoryItem[]>([]);
+  const [addressData, setAddressData] = React.useState<AddressData | null>(null);
   
   const [allSystemRoles, setAllSystemRoles] = React.useState<UserRole[]>([]);
   const [userRole, setUserRole] = React.useState<UserRole | null>(null);
@@ -187,6 +188,7 @@ export default function DashboardPage() {
         inventoryData,
         rolesData,
         permissionsData,
+        addressData,
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -201,6 +203,7 @@ export default function DashboardPage() {
         getInventoryItems(),
         getRoles(),
         getPermissions(),
+        getAddressData(),
       ]);
 
 
@@ -216,6 +219,7 @@ export default function DashboardPage() {
       setInvoices(invoicesData);
       setInventoryItems(inventoryData);
       setAllSystemRoles(rolesData);
+      setAddressData(addressData);
       
       const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
       APP_MODULES.forEach(module => {
@@ -355,23 +359,6 @@ export default function DashboardPage() {
     await fetchData(true);
   };
   
-  const handleSwapLegacyNames = async () => {
-    try {
-      const count = await swapLegacyStudentNames();
-      toast({
-        title: "Data Correction Successful",
-        description: `${count} student records were updated. Please refresh the page to see the changes.`,
-      });
-      await fetchData(true);
-    } catch (error: any) {
-      toast({
-        title: "Data Correction Failed",
-        description: error.message || "Could not swap student names.",
-        variant: "destructive",
-      });
-    }
-  };
-  
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
@@ -421,6 +408,7 @@ export default function DashboardPage() {
                     onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); await fetchData(true); }}
                     gradeScale={gradeScale}
                     hasPermission={hasPermission}
+                    addressData={addressData}
                     />
                 </TabsContent>
                 <TabsContent value="users" className="space-y-4">
@@ -488,6 +476,7 @@ export default function DashboardPage() {
                 <TabsContent value="enrollment" className="space-y-4">
                   <EnrollmentForm 
                     onEnroll={async (student) => { await addStudent(student); await fetchData(true); }}
+                    addressData={addressData}
                   />
                 </TabsContent>
                 <TabsContent value="statusHistory" className="space-y-4">
@@ -510,7 +499,8 @@ export default function DashboardPage() {
                     initialPermissions={permissions}
                     gradeScale={gradeScale}
                     onSaveGradeScale={async (g) => { await saveGradeScale(g); await fetchData(true); }}
-                    onSwapLegacyNames={handleSwapLegacyNames}
+                    addressData={addressData}
+                    onSaveAddressData={async (a) => { await saveAddressData(a); await fetchData(true); }}
                   />
                 </TabsContent>
               </Tabs>

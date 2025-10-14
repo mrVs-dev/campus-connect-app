@@ -23,6 +23,7 @@ import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollm
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
+import { addressData as defaultAddressData } from '../address-data';
 
 // Type guards to check for Firestore Timestamps
 const isTimestamp = (value: any): value is Timestamp => {
@@ -413,49 +414,6 @@ export async function deleteAllStudents(): Promise<void> {
         }));
     });
 }
-
-export async function swapLegacyStudentNames(): Promise<number> {
-    if (!db || !db.app) throw new Error("Firestore is not initialized.");
-
-    const studentsCollection = collection(db, 'students');
-    const snapshot = await getDocs(studentsCollection);
-    
-    const batch = writeBatch(db);
-    let updatedCount = 0;
-
-    snapshot.docs.forEach(docSnap => {
-        const student = { ...docSnap.data(), studentId: docSnap.id } as Student;
-        const idNumberStr = student.studentId.replace('STU', '');
-        
-        if (idNumberStr) {
-            const idNumber = parseInt(idNumberStr, 10);
-            if (!isNaN(idNumber) && idNumber <= 1831) {
-                const tempFirstName = student.firstName;
-                const newFirstName = student.lastName;
-                const newLastName = tempFirstName;
-
-                const studentRef = doc(db, 'students', student.studentId);
-                batch.update(studentRef, {
-                    firstName: newFirstName,
-                    lastName: newLastName
-                });
-                updatedCount++;
-            }
-        }
-    });
-
-    if (updatedCount > 0) {
-        await batch.commit().catch(serverError => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: studentsCollection.path,
-                operation: 'update', 
-            }));
-        });
-    }
-
-    return updatedCount;
-}
-
 
 // --- Student Status History ---
 export async function getStudentStatusHistory(): Promise<StudentStatusHistory[]> {
@@ -1231,6 +1189,40 @@ export async function saveGradeScale(grades: LetterGrade[]): Promise<void> {
   });
 }
     
+export async function getAddressData(): Promise<AddressData> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const settingsDocRef = doc(db, 'settings', 'addresses');
+    try {
+        const docSnap = await getDoc(settingsDocRef);
+        if (docSnap.exists() && docSnap.data().data) {
+            return docSnap.data().data;
+        } else {
+            // If it doesn't exist, create it with the default data
+            console.log("No address data found in Firestore, creating with default data.");
+            await setDoc(settingsDocRef, { data: defaultAddressData });
+            return defaultAddressData;
+        }
+    } catch (error) {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: settingsDocRef.path,
+            operation: 'get'
+        }));
+        console.error("Permission error fetching address data, returning default.", error);
+        // Fallback to default data on permission error during fetch
+        return defaultAddressData;
+    }
+}
 
-    
 
+export async function saveAddressData(addressData: AddressData): Promise<void> {
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const settingsDocRef = doc(db, 'settings', 'addresses');
+    const data = { data: addressData };
+    setDoc(settingsDocRef, data).catch(serverError => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: settingsDocRef.path,
+            operation: 'update',
+            requestResourceData: data,
+        }));
+    });
+}

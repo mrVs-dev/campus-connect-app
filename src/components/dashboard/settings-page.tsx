@@ -7,7 +7,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PlusCircle, Trash2, AlertTriangle } from "lucide-react";
-import type { Subject, AssessmentCategory, UserRole, Permissions, LetterGrade } from "@/lib/types";
+import type { Subject, AssessmentCategory, UserRole, Permissions, LetterGrade, AddressData } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,8 +38,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { savePermissions, swapLegacyStudentNames } from "@/lib/firebase/firestore";
+import { savePermissions } from "@/lib/firebase/firestore";
 import { APP_MODULES } from "@/lib/modules";
+import { Textarea } from "../ui/textarea";
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
@@ -559,61 +560,132 @@ function GradeScaleSettings({ initialGradeScale, onSave }: { initialGradeScale: 
   );
 }
 
-function DataCorrectionSettings({ onSwapNames }: { onSwapNames: () => Promise<void> }) {
-  const [isConfirmOpen, setIsConfirmOpen] = React.useState(false);
-  const [isSwapping, setIsSwapping] = React.useState(false);
 
-  const handleSwap = async () => {
-    setIsSwapping(true);
-    await onSwapNames();
-    setIsSwapping(false);
-    setIsConfirmOpen(false);
+const communeSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Commune name is required."),
+  villages: z.array(z.string().min(1, "Village name cannot be empty.")),
+});
+
+const addressFormSchema = z.object({
+  communes: z.array(communeSchema),
+});
+
+type AddressFormValues = z.infer<typeof addressFormSchema>;
+
+function AddressManagementSettings({ initialAddressData, onSave }: { initialAddressData: AddressData, onSave: (data: AddressData) => Promise<void> }) {
+  const [isSaving, setIsSaving] = React.useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<AddressFormValues>({
+    resolver: zodResolver(addressFormSchema),
+    defaultValues: { communes: [] },
+  });
+
+  const { fields, append, remove, update } = useFieldArray({
+    control: form.control,
+    name: "communes",
+  });
+
+  React.useEffect(() => {
+    form.reset({ communes: initialAddressData?.communes || [] });
+  }, [initialAddressData, form]);
+
+  const handleAddCommune = () => {
+    append({ id: `commune_${Date.now()}`, name: "", villages: [""] });
+  };
+
+  const handleAddVillage = (communeIndex: number) => {
+    const villages = form.getValues(`communes.${communeIndex}.villages`);
+    form.setValue(`communes.${communeIndex}.villages`, [...villages, ""]);
+  };
+  
+  const handleRemoveVillage = (communeIndex: number, villageIndex: number) => {
+    const villages = form.getValues(`communes.${communeIndex}.villages`);
+    villages.splice(villageIndex, 1);
+    form.setValue(`communes.${communeIndex}.villages`, villages);
+  };
+
+  const onSubmit = async (data: AddressFormValues) => {
+    setIsSaving(true);
+    await onSave(data);
+    setIsSaving(false);
+    toast({
+      title: "Address Data Saved",
+      description: "The list of communes and villages has been updated.",
+    });
   };
 
   return (
-    <>
-      <Card className="border-destructive">
-        <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2">
-            <AlertTriangle /> Data Correction
-          </CardTitle>
-          <CardDescription>
-            Use these tools for one-time data fixes. Use with caution.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-semibold">Swap Legacy Student Names</h4>
-              <p className="text-sm text-muted-foreground">
-                Swaps the First and Last names for students with ID STU1831 and lower.
-              </p>
+    <Card>
+      <CardHeader>
+        <CardTitle>Address Management</CardTitle>
+        <CardDescription>Add, edit, or remove communes and villages for address dropdowns.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+              {fields.map((field, communeIndex) => (
+                <Card key={field.id} className="p-4 relative">
+                   <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6"
+                    onClick={() => remove(communeIndex)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                  <FormField
+                    control={form.control}
+                    name={`communes.${communeIndex}.name`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Commune / Sangkat</FormLabel>
+                        <FormControl><Input placeholder="e.g., Sla Kram" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="space-y-2 mt-4">
+                    <FormLabel>Villages</FormLabel>
+                     {form.getValues(`communes.${communeIndex}.villages`).map((_, villageIndex) => (
+                       <div key={villageIndex} className="flex items-center gap-2">
+                          <FormField
+                            control={form.control}
+                            name={`communes.${communeIndex}.villages.${villageIndex}`}
+                            render={({ field }) => (
+                               <FormItem className="flex-1">
+                                <FormControl><Input placeholder="Village name" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                           <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveVillage(communeIndex, villageIndex)}>
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                       </div>
+                     ))}
+                     <Button type="button" variant="outline" size="sm" onClick={() => handleAddVillage(communeIndex)}>
+                       <PlusCircle className="mr-2 h-4 w-4" /> Add Village
+                     </Button>
+                  </div>
+                </Card>
+              ))}
             </div>
-            <Button
-              variant="destructive"
-              onClick={() => setIsConfirmOpen(true)}
-              disabled={isSwapping}
-            >
-              {isSwapping ? "Running..." : "Fix Legacy Names"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently swap the first and last names for all students with an ID of STU1831 or lower. This action cannot be easily undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSwap}>Confirm and Run</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+             <Button type="button" variant="outline" onClick={handleAddCommune} className="mt-4">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Commune
+             </Button>
+             <div className="flex justify-end pt-6">
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Address Data"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -625,11 +697,12 @@ interface SettingsPageProps {
   allRoles: UserRole[];
   initialPermissions: Permissions | null;
   gradeScale: LetterGrade[];
+  addressData: AddressData | null;
   onSaveSubjects: (subjects: Subject[]) => void;
   onSaveCategories: (categories: AssessmentCategory[]) => void;
   onSaveRoles: (roles: UserRole[]) => Promise<void>;
   onSaveGradeScale: (grades: LetterGrade[]) => void;
-  onSwapLegacyNames: () => Promise<void>;
+  onSaveAddressData: (data: AddressData) => Promise<void>;
   userRole: UserRole | null;
 }
 
@@ -643,7 +716,8 @@ export function SettingsPage({
   initialPermissions,
   gradeScale,
   onSaveGradeScale,
-  onSwapLegacyNames,
+  addressData,
+  onSaveAddressData,
   userRole
 }: SettingsPageProps) {
 
@@ -658,9 +732,7 @@ export function SettingsPage({
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
       <GradeScaleSettings initialGradeScale={gradeScale} onSave={onSaveGradeScale} />
-       {userRole === 'Admin' && (
-        <DataCorrectionSettings onSwapNames={onSwapLegacyNames} />
-      )}
+      {addressData && <AddressManagementSettings initialAddressData={addressData} onSave={onSaveAddressData} />}
     </div>
   );
 }
