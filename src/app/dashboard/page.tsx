@@ -178,22 +178,17 @@ export default function DashboardPage() {
       ]);
 
       let currentStaffMember = await getTeacherForUser(user.uid);
-
-      // --- Super Admin Check ---
+      let currentUserRole: UserRole | null = null;
+      
       const adminEmail = "vannak@api-school.com";
-      if (user.email === adminEmail && !currentStaffMember) {
-        const newAdmin = await addTeacher({
-          firstName: "Super",
-          lastName: "Admin",
-          email: adminEmail,
-          role: "Admin",
-        });
-        if (newAdmin) {
-          teachersData.push(newAdmin);
-          currentStaffMember = newAdmin;
-        }
+      if (user.email === adminEmail) {
+          currentUserRole = 'Admin';
+      } else if (currentStaffMember) {
+          currentUserRole = currentStaffMember.role;
       }
       
+      setUserRole(currentUserRole);
+
       setStudents(studentsData);
       setAdmissions(admissionsData);
       setAssessments(assessmentsData);
@@ -207,9 +202,6 @@ export default function DashboardPage() {
       setInventoryItems(inventoryData);
       setAllSystemRoles(rolesData);
       
-      const currentUserRole: UserRole | null = currentStaffMember ? currentStaffMember.role : null;
-      setUserRole(currentUserRole);
-
       const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
       APP_MODULES.forEach(module => {
         if (!completePermissions[module]) completePermissions[module] = {};
@@ -511,3 +503,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+  
