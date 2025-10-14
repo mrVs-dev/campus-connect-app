@@ -161,7 +161,6 @@ export default function DashboardPage() {
         inventoryData,
         rolesData,
         permissionsData,
-        currentStaffMember
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -176,8 +175,9 @@ export default function DashboardPage() {
         getInventoryItems(),
         getRoles(),
         getPermissions(),
-        getTeacherForUser(user.uid),
       ]);
+
+      let currentStaffMember = await getTeacherForUser(user.uid);
 
       // --- Super Admin Check ---
       const adminEmail = "vannak@api-school.com";

@@ -23,17 +23,15 @@ export default function HomePage() {
 
     const determineRedirect = async () => {
       try {
-        // Check for a specific staff record associated with the logged-in user.
         const staffMember: Teacher | null = await getTeacherForUser(user.uid);
         
-        // The primary logic: check the role from the staff record.
         if (staffMember?.role === 'Admin') {
             router.replace('/dashboard');
         } else if (staffMember?.role === 'Teacher') {
             router.replace('/teacher/dashboard');
-        } else if (user.email?.includes('@guardian.campusconnect.edu')) {
+        } else if (user.email?.endsWith('@guardian.campusconnect.edu')) {
             router.replace('/guardian/dashboard');
-        } else if (user.email?.includes('@student.campusconnect.edu')) {
+        } else if (user.email?.endsWith('@student.campusconnect.edu')) {
             router.replace('/student/dashboard');
         } else {
           // Default to the main admin/staff dashboard for all other roles or if no specific role is found.
