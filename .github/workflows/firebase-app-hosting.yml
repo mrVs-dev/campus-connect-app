@@ -31,7 +31,7 @@ jobs:
           npm ci && npm run build
           
       - name: Deploy to App Hosting
-        uses: firebase/firebase-tools@v13
+        uses: firebase/firebase-tools@v13.11.2
         with:
           serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
