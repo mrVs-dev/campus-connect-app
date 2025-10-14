@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,10 +36,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
-import type { Student, AddressData } from "@/lib/types";
+import type { Student } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css'
+import { addressData } from "@/lib/address-data";
 
 const formSchema = z.object({
   familyId: z.string().optional(),
@@ -92,10 +94,9 @@ interface EditStudentSheetProps {
   onOpenChange: (open: boolean) => void;
   onSave: (studentId: string, updatedData: Partial<Student>) => void;
   onUpdateStatus: (student: Student, newStatus: Student['status'], reason: string) => void;
-  addressData: AddressData;
 }
 
-export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdateStatus, addressData }: EditStudentSheetProps) {
+export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdateStatus }: EditStudentSheetProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
@@ -148,10 +149,9 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
 
   const watchedCommune = form.watch("address.commune");
   const villages = React.useMemo(() => {
-    if (!addressData || !addressData.communes) return [];
     const commune = addressData.communes.find(c => c.name === watchedCommune);
     return commune ? commune.villages : [];
-  }, [watchedCommune, addressData]);
+  }, [watchedCommune]);
   
   const studentAvatarUrl = form.watch("avatarUrl");
   const guardianAvatars = form.watch("guardians");

@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole, Permissions, LetterGrade, Commune, AddressData } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole, Permissions, LetterGrade, AddressData } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -1230,46 +1230,7 @@ export async function saveGradeScale(grades: LetterGrade[]): Promise<void> {
       }));
   });
 }
-
-export async function getAddressData(): Promise<AddressData> {
-    if (!db || !db.app) throw new Error("Firestore is not initialized.");
-    const settingsDocRef = doc(db, 'settings', 'addresses');
-    try {
-        const docSnap = await getDoc(settingsDocRef);
-        if (docSnap.exists() && docSnap.data() && docSnap.data().communes) {
-            return docSnap.data() as AddressData;
-        } else {
-            // If the document doesn't exist, create it with default data.
-            const defaultData: AddressData = { communes: [
-                { id: "1", name: 'Sla Kram', villages: ['Treang', 'Sla Kram', 'Bangkaong', 'Chong Kaosou', 'Dol Po', 'Tramneak'] },
-                { id: "2", name: 'Svay Dangkum', villages: ['Svay Dangkum', 'Mondul 1', 'Mondul 2', 'Thnol', 'Taphul', 'Vihear Chen'] },
-                { id: "3", name: 'Sala Kamreuk', villages: ['Sala Kamreuk', 'Wat Bo', 'Wat Damnak', 'Chongkaosou', 'Taphul'] },
-                { id: "4", name: 'Chreav', villages: ['Chreav', 'Pou Banteaychey', 'Prey Kuy'] },
-                { id: "5", name: 'Nokor Thum', villages: ['Nokor Krau', 'Nokor Knong', 'Veal'] },
-            ] };
-            await setDoc(settingsDocRef, defaultData);
-            return defaultData;
-        }
-    } catch (error) {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: settingsDocRef.path,
-            operation: 'get'
-        }));
-        throw error;
-    }
-}
-
-export async function saveAddressData(addressData: AddressData): Promise<void> {
-  if (!db || !db.app) throw new Error("Firestore is not initialized.");
-  const settingsDocRef = doc(db, 'settings', 'addresses');
-  setDoc(settingsDocRef, addressData).catch(serverError => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: settingsDocRef.path,
-        operation: 'update',
-        requestResourceData: addressData,
-      }));
-  });
-}
     
 
     
+

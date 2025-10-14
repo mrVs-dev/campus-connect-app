@@ -7,7 +7,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PlusCircle, Trash2, AlertTriangle } from "lucide-react";
-import type { Subject, AssessmentCategory, UserRole, Permissions, LetterGrade, Commune, AddressData } from "@/lib/types";
+import type { Subject, AssessmentCategory, UserRole, Permissions, LetterGrade } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,127 +40,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { savePermissions, swapLegacyStudentNames } from "@/lib/firebase/firestore";
 import { APP_MODULES } from "@/lib/modules";
-
-// --- ADDRESS MANAGEMENT ---
-const communeSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, "Commune name cannot be empty."),
-  villages: z.array(z.string().min(1, "Village name cannot be empty.")),
-});
-
-const addressFormSchema = z.object({
-  communes: z.array(communeSchema),
-});
-
-type AddressFormValues = z.infer<typeof addressFormSchema>;
-
-function AddressSettings({ initialData, onSave }: { initialData: AddressData; onSave: (data: AddressData) => Promise<void> }) {
-  const { toast } = useToast();
-  const form = useForm<AddressFormValues>({
-    resolver: zodResolver(addressFormSchema),
-    defaultValues: { communes: [] },
-  });
-
-  const { fields: communeFields, append: appendCommune, remove: removeCommune } = useFieldArray({
-    control: form.control,
-    name: "communes",
-  });
-
-  React.useEffect(() => {
-    form.reset({ communes: initialData.communes || [] });
-  }, [initialData, form]);
-
-  const handleAddNewCommune = () => {
-    const newId = `COM${Date.now()}`;
-    appendCommune({ id: newId, name: "", villages: [] });
-  };
-  
-  const handleAddNewVillage = (communeIndex: number) => {
-    const newVillages = [...form.getValues(`communes.${communeIndex}.villages`), ""];
-    form.setValue(`communes.${communeIndex}.villages`, newVillages);
-  };
-
-  const handleRemoveVillage = (communeIndex: number, villageIndex: number) => {
-    const newVillages = form.getValues(`communes.${communeIndex}.villages`).filter((_, i) => i !== villageIndex);
-    form.setValue(`communes.${communeIndex}.villages`, newVillages);
-  };
-
-
-  const onSubmit = async (data: AddressFormValues) => {
-    await onSave(data);
-    toast({ title: "Address Data Saved", description: "The list of communes and villages has been updated." });
-  };
-  
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Address Management</CardTitle>
-        <CardDescription>Manage the communes and villages available for student addresses.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-4">
-              {communeFields.map((communeField, communeIndex) => (
-                <div key={communeField.id} className="p-4 border rounded-lg space-y-4">
-                  <div className="flex items-center gap-4">
-                    <FormField
-                      control={form.control}
-                      name={`communes.${communeIndex}.name`}
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Commune/Sangkat</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., Sla Kram" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeCommune(communeIndex)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                  <div className="space-y-2 pl-4">
-                    <FormLabel>Villages</FormLabel>
-                    {form.getValues(`communes.${communeIndex}.villages`).map((_, villageIndex) => (
-                        <div key={villageIndex} className="flex items-center gap-2">
-                             <FormField
-                              control={form.control}
-                              name={`communes.${communeIndex}.villages.${villageIndex}`}
-                              render={({ field }) => (
-                                <FormItem className="flex-1">
-                                    <FormControl>
-                                      <Input placeholder="e.g., Treang" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveVillage(communeIndex, villageIndex)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddNewVillage(communeIndex)}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Village
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-             <div className="flex justify-between items-center pt-4">
-              <Button type="button" variant="outline" size="sm" onClick={handleAddNewCommune}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Commune
-              </Button>
-              <Button type="submit">Save Address Data</Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
-  )
-}
 
 // --- PERMISSIONS MOCK DATA AND TYPES ---
 const actions = ['Create', 'Read', 'Update', 'Delete'] as const;
@@ -746,12 +625,10 @@ interface SettingsPageProps {
   allRoles: UserRole[];
   initialPermissions: Permissions | null;
   gradeScale: LetterGrade[];
-  addressData: AddressData;
   onSaveSubjects: (subjects: Subject[]) => void;
   onSaveCategories: (categories: AssessmentCategory[]) => void;
   onSaveRoles: (roles: UserRole[]) => Promise<void>;
   onSaveGradeScale: (grades: LetterGrade[]) => void;
-  onSaveAddressData: (data: AddressData) => Promise<void>;
   onSwapLegacyNames: () => Promise<void>;
   userRole: UserRole | null;
 }
@@ -766,8 +643,6 @@ export function SettingsPage({
   initialPermissions,
   gradeScale,
   onSaveGradeScale,
-  addressData,
-  onSaveAddressData,
   onSwapLegacyNames,
   userRole
 }: SettingsPageProps) {
@@ -780,7 +655,6 @@ export function SettingsPage({
     <div className="space-y-8">
       <RoleSettings roles={allRoles} onSaveRoles={onSaveRoles} />
       <PermissionSettings roles={allRoles} initialPermissions={initialPermissions} />
-      <AddressSettings initialData={addressData} onSave={onSaveAddressData} />
       <SubjectSettings initialSubjects={subjects} onSave={onSaveSubjects} />
       <CategorySettings initialCategories={assessmentCategories} onSave={onSaveCategories} />
       <GradeScaleSettings initialGradeScale={gradeScale} onSave={onSaveGradeScale} />

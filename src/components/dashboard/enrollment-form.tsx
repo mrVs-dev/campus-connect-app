@@ -34,12 +34,13 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import type { Student, AddressData } from "@/lib/types";
+import type { Student } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css';
 import { Avatar } from "../ui/avatar";
 import { getNextStudentIdAction } from "@/app/actions";
+import { addressData } from "@/lib/address-data";
 
 const formSchema = z.object({
   familyId: z.string().optional(),
@@ -90,10 +91,9 @@ type EnrollmentFormValues = z.infer<typeof formSchema>;
 
 type EnrollmentFormProps = {
   onEnroll: (student: Omit<Student, 'studentId' | 'status'>) => Promise<any>;
-  addressData: AddressData;
 };
 
-export function EnrollmentForm({ onEnroll, addressData }: EnrollmentFormProps) {
+export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
   const [cropTarget, setCropTarget] = React.useState<string | null>(null);
@@ -155,10 +155,9 @@ export function EnrollmentForm({ onEnroll, addressData }: EnrollmentFormProps) {
 
   const watchedCommune = form.watch("address.commune");
   const villages = React.useMemo(() => {
-    if (!addressData || !addressData.communes) return [];
     const commune = addressData.communes.find(c => c.name === watchedCommune);
     return commune ? commune.villages : [];
-  }, [watchedCommune, addressData]);
+  }, [watchedCommune]);
 
   const studentAvatarUrl = form.watch("avatarUrl");
   const guardianAvatars = form.watch("guardians");
