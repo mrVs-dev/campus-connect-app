@@ -1232,20 +1232,31 @@ export async function saveGradeScale(grades: LetterGrade[]): Promise<void> {
 }
 
 export async function getAddressData(): Promise<AddressData> {
-  if (!db || !db.app) throw new Error("Firestore is not initialized.");
-  const settingsDocRef = doc(db, 'settings', 'addresses');
-  const docSnap = await getDoc(settingsDocRef).catch(serverError => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: settingsDocRef.path,
-        operation: 'get'
-      }));
-      throw serverError;
-  });
-  
-  if (docSnap.exists() && docSnap.data()) {
-    return docSnap.data() as AddressData;
-  }
-  return { communes: [] };
+    if (!db || !db.app) throw new Error("Firestore is not initialized.");
+    const settingsDocRef = doc(db, 'settings', 'addresses');
+    try {
+        const docSnap = await getDoc(settingsDocRef);
+        if (docSnap.exists() && docSnap.data() && docSnap.data().communes) {
+            return docSnap.data() as AddressData;
+        } else {
+            // If the document doesn't exist, create it with default data.
+            const defaultData = { communes: [
+                { id: "1", name: 'Sla Kram', villages: ['Treang', 'Sla Kram', 'Bangkaong', 'Chong Kaosou', 'Dol Po', 'Tramneak'] },
+                { id: "2", name: 'Svay Dangkum', villages: ['Svay Dangkum', 'Mondul 1', 'Mondul 2', 'Thnol', 'Taphul', 'Vihear Chen'] },
+                { id: "3", name: 'Sala Kamreuk', villages: ['Sala Kamreuk', 'Wat Bo', 'Wat Damnak', 'Chongkaosou', 'Taphul'] },
+                { id: "4", name: 'Chreav', villages: ['Chreav', 'Pou Banteaychey', 'Prey Kuy'] },
+                { id: "5", name: 'Nokor Thum', villages: ['Nokor Krau', 'Nokor Knong', 'Veal'] },
+            ] };
+            await setDoc(settingsDocRef, defaultData);
+            return defaultData;
+        }
+    } catch (error) {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: settingsDocRef.path,
+            operation: 'get'
+        }));
+        throw error;
+    }
 }
 
 export async function saveAddressData(addressData: AddressData): Promise<void> {
@@ -1259,4 +1270,6 @@ export async function saveAddressData(addressData: AddressData): Promise<void> {
       }));
   });
 }
+    
+
     
