@@ -22,25 +22,21 @@ export default function HomePage() {
     }
 
     const determineRedirect = async () => {
-      // This is a simple check for a student/guardian portal based on email format.
-      // A more robust system might check for a specific student record.
-      if (user.email?.includes('@student.campusconnect.edu')) {
-         router.replace('/student/dashboard');
-         return;
-      }
-      if (user.email?.includes('@guardian.campusconnect.edu')) {
-         router.replace('/guardian/dashboard');
-         return;
-      }
-      
-      // Check if the user is a teacher and what their role is.
       try {
-        const teacher: Teacher | null = await getTeacherForUser(user.uid);
+        // Check for a specific staff record associated with the logged-in user.
+        const staffMember: Teacher | null = await getTeacherForUser(user.uid);
         
-        if (teacher?.role === 'Teacher') {
-          router.replace('/teacher/dashboard');
+        // The primary logic: check the role from the staff record.
+        if (staffMember?.role === 'Admin') {
+            router.replace('/dashboard');
+        } else if (staffMember?.role === 'Teacher') {
+            router.replace('/teacher/dashboard');
+        } else if (user.email?.includes('@guardian.campusconnect.edu')) {
+            router.replace('/guardian/dashboard');
+        } else if (user.email?.includes('@student.campusconnect.edu')) {
+            router.replace('/student/dashboard');
         } else {
-          // Default to the main admin/staff dashboard for all other roles
+          // Default to the main admin/staff dashboard for all other roles or if no specific role is found.
           router.replace('/dashboard');
         }
       } catch (error) {

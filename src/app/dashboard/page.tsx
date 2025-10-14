@@ -14,7 +14,7 @@ import { AdmissionsList } from "@/components/dashboard/admissions-list";
 import { TeacherList } from "@/components/dashboard/teacher-list";
 import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
-import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, swapLegacyStudentNames, saveGradeScale, getInventoryItems, saveInventoryItem, deleteInventoryItem } from "@/lib/firebase/firestore";
+import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, swapLegacyStudentNames, saveGradeScale, getInventoryItems, saveInventoryItem, deleteInventoryItem, getTeacherForUser } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
@@ -160,7 +160,8 @@ export default function DashboardPage() {
         invoicesData,
         inventoryData,
         rolesData,
-        permissionsData
+        permissionsData,
+        currentStaffMember
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -174,15 +175,13 @@ export default function DashboardPage() {
         getInvoices(),
         getInventoryItems(),
         getRoles(),
-        getPermissions()
+        getPermissions(),
+        getTeacherForUser(user.uid),
       ]);
 
       // --- Super Admin Check ---
       const adminEmail = "vannak@api-school.com";
-      let adminTeacherRecord = teachersData.find(t => t.email === adminEmail);
-
-      if (user.email === adminEmail && !adminTeacherRecord) {
-        // Admin record doesn't exist, so we create it.
+      if (user.email === adminEmail && !currentStaffMember) {
         const newAdmin = await addTeacher({
           firstName: "Super",
           lastName: "Admin",
@@ -191,7 +190,7 @@ export default function DashboardPage() {
         });
         if (newAdmin) {
           teachersData.push(newAdmin);
-          adminTeacherRecord = newAdmin;
+          currentStaffMember = newAdmin;
         }
       }
       
@@ -208,8 +207,7 @@ export default function DashboardPage() {
       setInventoryItems(inventoryData);
       setAllSystemRoles(rolesData);
       
-      const currentTeacher = teachersData.find(t => t.email === user.email);
-      const currentUserRole: UserRole | null = currentTeacher ? currentTeacher.role : null;
+      const currentUserRole: UserRole | null = currentStaffMember ? currentStaffMember.role : null;
       setUserRole(currentUserRole);
 
       const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
