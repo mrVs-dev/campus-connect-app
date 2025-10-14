@@ -249,6 +249,16 @@ export interface LetterGrade {
   minScore: number;
 }
 
+export type Commune = {
+  id: string;
+  name: string;
+  villages: string[];
+};
+
+export type AddressData = {
+  communes: Commune[];
+};
+
 
 // --- Settings ---
 const modules = ['Students', 'Users', 'Assessments', 'Fees', 'Invoicing', 'Inventory', 'Admissions', 'Attendance', 'Settings'] as const;

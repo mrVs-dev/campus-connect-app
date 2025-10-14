@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import { db } from "./firebase";
-import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole, Permissions, LetterGrade } from "../types";
+import type { Student, Admission, Assessment, Teacher, StudentAdmission, Enrollment, StudentStatusHistory, AttendanceRecord, Subject, AssessmentCategory, Fee, Invoice, Payment, InventoryItem, UserRole, Permissions, LetterGrade, Commune, AddressData } from "../types";
 import { startOfDay, endOfDay, isEqual } from 'date-fns';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -1231,6 +1231,32 @@ export async function saveGradeScale(grades: LetterGrade[]): Promise<void> {
   });
 }
 
+export async function getAddressData(): Promise<AddressData> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'addresses');
+  const docSnap = await getDoc(settingsDocRef).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'get'
+      }));
+      throw serverError;
+  });
+  
+  if (docSnap.exists() && docSnap.data()) {
+    return docSnap.data() as AddressData;
+  }
+  return { communes: [] };
+}
 
-
+export async function saveAddressData(addressData: AddressData): Promise<void> {
+  if (!db || !db.app) throw new Error("Firestore is not initialized.");
+  const settingsDocRef = doc(db, 'settings', 'addresses');
+  setDoc(settingsDocRef, addressData).catch(serverError => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: settingsDocRef.path,
+        operation: 'update',
+        requestResourceData: addressData,
+      }));
+  });
+}
     
