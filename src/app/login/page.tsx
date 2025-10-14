@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, User, getAuth } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, User, getAuth } from "firebase/auth";
 import { auth, firebaseConfig, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { getOrCreateUser } from "@/lib/firebase/firestore";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,35 +68,9 @@ function MissingFirebaseConfig() {
 
 export default function LoginPage() {
   const [error, setError] = React.useState<string | null>(null);
-  // This state tracks if we are actively processing the Firebase redirect.
-  const [isProcessingRedirect, setIsProcessingRedirect] = React.useState(true); 
+  const [isSigningIn, setIsSigningIn] = React.useState(false);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  
-  React.useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setIsProcessingRedirect(false);
-      return;
-    }
-
-    const processRedirect = async () => {
-      try {
-        const authInstance = getAuth();
-        const result = await getRedirectResult(authInstance);
-        // If result is not null, a sign-in just occurred. 
-        // The useAuth hook will detect the new user and handle the redirect to the dashboard.
-      } catch (error: any) {
-        console.error("Authentication failed during redirect:", error);
-        setError(`Sign-in failed. Code: ${error.code}. Message: ${error.message}`);
-      } finally {
-        // Crucially, we mark processing as complete regardless of outcome.
-        setIsProcessingRedirect(false);
-      }
-    };
-
-    processRedirect();
-  }, []);
-
 
   React.useEffect(() => {
     // If auth is no longer loading and we have a user, redirect to the dashboard.
@@ -107,17 +81,26 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     setError(null);
+    setIsSigningIn(true);
     const provider = new GoogleAuthProvider();
-    // Start the redirect sign-in process.
-    await signInWithRedirect(auth, provider);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      await getOrCreateUser(result.user);
+      // The useEffect hook will handle the redirect once the user state is updated.
+    } catch (error: any) {
+      console.error("Authentication failed:", error);
+      setError(`Sign-in failed. Code: ${error.code}. Message: ${error.message}`);
+    } finally {
+      setIsSigningIn(false);
+    }
   };
   
   if (!isFirebaseConfigured) {
     return <MissingFirebaseConfig />;
   }
 
-  // Show a loading screen while processing the redirect or if the auth state is still loading.
-  if (isProcessingRedirect || authLoading) {
+  // Show a loading screen while auth state is being determined.
+  if (authLoading) {
     return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
   }
   
@@ -140,9 +123,9 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button className="w-full" onClick={handleSignIn}>
+            <Button className="w-full" onClick={handleSignIn} disabled={isSigningIn}>
                 <GoogleIcon />
-                <span className="ml-2">Sign in with Google</span>
+                <span className="ml-2">{isSigningIn ? "Signing in..." : "Sign in with Google"}</span>
             </Button>
           </CardContent>
           <CardFooter className="flex-col items-start text-xs text-muted-foreground">
@@ -160,3 +143,5 @@ export default function LoginPage() {
   // Fallback: If there is a user, show a redirecting message.
   return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
 }
+
+    
