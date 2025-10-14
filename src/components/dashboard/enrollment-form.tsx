@@ -155,6 +155,7 @@ export function EnrollmentForm({ onEnroll, addressData }: EnrollmentFormProps) {
 
   const watchedCommune = form.watch("address.commune");
   const villages = React.useMemo(() => {
+    if (!addressData || !addressData.communes) return [];
     const commune = addressData.communes.find(c => c.name === watchedCommune);
     return commune ? commune.villages : [];
   }, [watchedCommune, addressData]);

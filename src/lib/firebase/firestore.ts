@@ -209,7 +209,7 @@ export async function getStudents(): Promise<Student[]> {
     });
 }
 
-export async function addStudent(studentData: Omit<Student, 'studentId' | 'enrollmentDate' | 'status'>): Promise<Student> {
+export async function addStudent(studentData: Omit<Student, 'studentId' | 'status'>): Promise<Student> {
     if (!db || !db.app) throw new Error("Firestore is not initialized. Check your Firebase configuration.");
     
     const newStudentId = await getNextStudentId();

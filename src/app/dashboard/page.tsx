@@ -160,7 +160,7 @@ export default function DashboardPage() {
         feesData,
         invoicesData,
         inventoryData,
-        addressData,
+        addressDataResult,
         rolesData,
         permissionsData,
       ] = await Promise.all([
@@ -203,7 +203,7 @@ export default function DashboardPage() {
       setFees(feesData);
       setInvoices(invoicesData);
       setInventoryItems(inventoryData);
-      setAddressData(addressData);
+      setAddressData(addressDataResult);
       setAllSystemRoles(rolesData);
       
       const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
