@@ -108,6 +108,15 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
   
   React.useEffect(() => {
     if (student) {
+      // Create a safe address object to avoid issues with missing nested properties
+      const safeAddress = {
+        district: student.address?.district || "Siem Reap",
+        commune: student.address?.commune || "",
+        village: student.address?.village || "",
+        street: student.address?.street || "",
+        house: student.address?.house || "",
+      };
+
       form.reset({
         ...student,
         familyId: student.familyId || "",
@@ -119,13 +128,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
         nationality: student.nationality || "",
         nationalId: student.nationalId || "",
         previousSchool: student.previousSchool || "",
-        address: student.address || {
-          district: "Siem Reap",
-          commune: "",
-          village: "",
-          street: "",
-          house: "",
-        },
+        address: safeAddress,
         emergencyContact: {
           name: student.emergencyContact?.name || "",
           phone: student.emergencyContact?.phone || "",
@@ -137,7 +140,7 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
         mediaConsent: String(student.mediaConsent) as any,
       });
     }
-  }, [student, form]);
+  }, [student, form, open]); // Added `open` dependency to reset form when sheet re-opens with same student
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -607,3 +610,5 @@ export function EditStudentSheet({ student, open, onOpenChange, onSave, onUpdate
     </>
   );
 }
+
+    
