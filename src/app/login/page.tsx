@@ -143,5 +143,3 @@ export default function LoginPage() {
   // Fallback: If there is a user, show a redirecting message.
   return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
 }
-
-    
