@@ -8,13 +8,6 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "frameworksBackend": {
-      "id": "studio",
-      "source": ".",
-      "discover": {
-        "npm": "npm install && npm run build"
-      }
-    }
+    ]
   }
 }
