@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InvoicingList } from "@/components/dashboard/invoicing-list";
+import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 
 interface EnrolledClass {
   programName: string;
@@ -330,10 +331,7 @@ export default function GuardianDashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Welcome, {user?.displayName}!</h1>
-        <p className="text-muted-foreground">This is the portal for your children's academic information.</p>
-      </div>
+      <WelcomeHeader userRole="Guardian" userName={user?.displayName || undefined} />
 
        <Tabs defaultValue="academics">
           <div className="flex justify-between items-center mb-4">

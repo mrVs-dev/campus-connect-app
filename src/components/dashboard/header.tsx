@@ -20,15 +20,11 @@ export function Header({ userRole }: { userRole: UserRole | null }) {
   const isGenericPortal = isTeacherDashboard || isStudentPortal;
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <Link
-        href="/dashboard"
-        className="flex items-center gap-2 text-lg font-semibold text-primary"
-      >
-        <Logo className="h-6 w-6" />
-        <span className="font-headline">CampusConnect</span>
-      </Link>
-      <div className="relative ml-auto flex-1 md:grow-0">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+      <div className="flex items-center gap-2">
+        <Logo userRole={userRole} className="h-7 w-7 text-primary" />
+      </div>
+      <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         {isAdmin && isGenericPortal && (
            <Button asChild variant="outline" size="sm">
             <Link href="/dashboard">View as Admin</Link>

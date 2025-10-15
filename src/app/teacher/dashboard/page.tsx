@@ -14,6 +14,7 @@ import { BarChart, UserCheck, TrendingUp, ArrowRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { calculateStudentAverage } from "@/lib/grades";
 import { Button } from "@/components/ui/button";
+import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 
 interface AssignedClass {
   classId: string;
@@ -183,10 +184,7 @@ export default function TeacherDashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Teacher Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's a summary of your classes.</p>
-      </div>
+      <WelcomeHeader userRole="Teacher" userName={loggedInTeacher?.firstName || undefined} />
 
       {error && (
          <Card className="border-destructive">
@@ -276,5 +274,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
-    

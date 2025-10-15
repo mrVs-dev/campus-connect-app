@@ -24,6 +24,7 @@ import { InvoicingList } from "@/components/dashboard/invoicing-list";
 import { InventoryList } from "@/components/dashboard/inventory-list";
 import type { User as AuthUser } from "firebase/auth";
 import { AppModule, initialPermissions, APP_MODULES } from "@/lib/modules";
+import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 
 function MissingFirebaseConfig() {
   return (
@@ -154,7 +155,6 @@ export default function DashboardPage() {
       const adminEmail = "vannak@api-school.com";
       if (user.email === adminEmail) {
           currentUserRole = 'Admin';
-          // Ensure admin user exists in teachers collection
           if (!currentTeacher) {
               const adminData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'> = {
                   firstName: 'Vannak',
@@ -188,7 +188,7 @@ export default function DashboardPage() {
         inventoryData,
         rolesData,
         permissionsData,
-        addressData,
+        fetchedAddressData,
       ] = await Promise.all([
         getStudents(),
         getAdmissions(),
@@ -219,7 +219,7 @@ export default function DashboardPage() {
       setInvoices(invoicesData);
       setInventoryItems(inventoryData);
       setAllSystemRoles(rolesData);
-      setAddressData(addressData);
+      setAddressData(fetchedAddressData);
       
       const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
       APP_MODULES.forEach(module => {
@@ -380,6 +380,7 @@ export default function DashboardPage() {
       <Header userRole={userRole} />
       <div className="flex min-h-screen w-full flex-col">
         <main className="flex flex-1 flex-col gap-4 bg-background p-4 md:gap-8 md:p-6">
+          <WelcomeHeader userRole={userRole} />
           <div className="mx-auto w-full max-w-full">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
                 <TabsList className="h-auto flex-wrap w-full">
@@ -510,7 +511,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-  
-
-    

@@ -15,6 +15,7 @@ import { calculateStudentAverage } from "@/lib/grades";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 
 interface EnrolledClass {
   programName: string;
@@ -178,10 +179,7 @@ export default function StudentDashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Welcome, {student?.firstName}!</h1>
-        <p className="text-muted-foreground">Here is your academic overview.</p>
-      </div>
+      <WelcomeHeader userRole="Student" userName={student.firstName} />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -285,5 +283,3 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
-
-    
