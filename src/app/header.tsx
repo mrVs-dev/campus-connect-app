@@ -22,7 +22,7 @@ export function Header() {
         href="/dashboard"
         className="flex items-center gap-2 text-lg font-semibold text-primary"
       >
-        <Logo className="h-6 w-6" />
+        <Logo className="h-8 w-8" />
         <span className="font-headline">CampusConnect</span>
       </Link>
       <div className="relative ml-auto flex-1 md:grow-0">

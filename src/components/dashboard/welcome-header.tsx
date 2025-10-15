@@ -40,13 +40,10 @@ export function WelcomeHeader({ userRole, userName }: WelcomeHeaderProps) {
     const { title, subtitle } = getWelcomeMessages(userRole, userName);
 
     return (
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col items-center justify-center text-center">
             <div>
                 <h1 className="text-3xl font-bold">{title}</h1>
                 <p className="text-muted-foreground">{subtitle}</p>
-            </div>
-            <div className="hidden sm:block">
-                <Logo userRole={userRole} className="h-16 w-16" />
             </div>
         </div>
     )
