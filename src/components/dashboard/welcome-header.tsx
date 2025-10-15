@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { UserRole } from "@/lib/types";
@@ -41,7 +40,7 @@ export function WelcomeHeader({ userRole, userName }: WelcomeHeaderProps) {
 
     return (
         <div className="mb-6 flex items-center gap-6">
-            <Logo userRole={userRole} className="h-16 w-16 text-primary" />
+            <Logo userRole={userRole} className="h-24 w-24 text-primary" />
             <div>
                 <h1 className="text-3xl font-bold">{title}</h1>
                 <p className="text-muted-foreground">{subtitle}</p>
