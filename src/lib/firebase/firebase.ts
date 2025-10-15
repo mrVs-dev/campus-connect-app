@@ -16,11 +16,7 @@ export const firebaseConfig = {
 // More robust check to ensure all necessary keys are present
 export const isFirebaseConfigured = 
     !!firebaseConfig.apiKey &&
-    !!firebaseConfig.authDomain &&
-    !!firebaseConfig.projectId &&
-    !!firebaseConfig.storageBucket &&
-    !!firebaseConfig.messagingSenderId &&
-    !!firebaseConfig.appId;
+    !!firebaseConfig.projectId;
 
 
 let app: FirebaseApp;
@@ -30,7 +26,8 @@ let messaging: Messaging | undefined;
 
 function initializeFirebase() {
     if (!isFirebaseConfigured) {
-        console.warn("Firebase configuration is missing or incomplete. The application will run in a limited mode.");
+        console.warn("Firebase configuration is missing or incomplete. Key properties like apiKey or projectId are missing.");
+        // Create dummy objects to prevent crashes in the app
         app = {} as FirebaseApp;
         auth = {} as Auth;
         db = {} as Firestore;
@@ -46,9 +43,14 @@ function initializeFirebase() {
     auth = getAuth(app);
     db = getFirestore(app);
     
-    // Check if window is defined (i.e., we are on the client-side)
+    // Check if window is defined (i.e., we are on the client-side) to initialize messaging
     if (typeof window !== 'undefined') {
-        messaging = getMessaging(app);
+        try {
+            messaging = getMessaging(app);
+        } catch (e) {
+            console.error("Could not initialize Firebase Messaging:", e);
+            messaging = undefined;
+        }
     }
 }
 
