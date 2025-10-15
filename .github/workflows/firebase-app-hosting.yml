@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy to App Hosting
-        uses: firebase/firebase-tools@v13.11.2
+        uses: firebase/firebase-tools@v13
         with:
           serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
