@@ -9,10 +9,6 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "frameworksBackend": {
-      "id": "studio-7466969346-9de5e",
-      "region": "asia-southeast1"
-    }
+    ]
   }
 }
