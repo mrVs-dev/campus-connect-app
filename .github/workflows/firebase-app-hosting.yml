@@ -22,8 +22,7 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Deploy to App Hosting
-        run: |
-          firebase apphosting:backends:update studio --project ${{ vars.FIREBASE_PROJECT_ID }} --channel ${{ github.event_name == 'push' && 'live' || 'preview' }}
+        run: firebase apphosting:deploy studio --project ${{ vars.FIREBASE_PROJECT_ID }} --channel ${{ github.event_name == 'push' && 'live' || 'preview' }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
