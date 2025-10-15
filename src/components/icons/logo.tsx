@@ -1,65 +1,76 @@
 
 import type { SVGProps } from "react";
+import Image from "next/image";
 import type { UserRole } from "@/lib/types";
 
-// This is a placeholder for your actual logos. 
-// You can replace the SVG content for each role with your own.
+// This component now loads logos from the /public/logos/ directory.
+// To add your logos, place files like 'admin-logo.png', 'teacher-logo.png', etc.
+// in the 'public/logos' folder. Recommended size is at least 64x64 pixels.
 
-function AdminLogo(props: SVGProps<SVGSVGElement>) {
+const LOGO_BASE_PATH = "/logos";
+const LOGO_SIZE = 64; // The base size for the logos, they will be scaled as needed.
+
+const logoConfig: Record<UserRole | 'default', { src: string, alt: string }> = {
+  Admin: {
+    src: `${LOGO_BASE_PATH}/admin-logo.png`,
+    alt: "Admin Logo"
+  },
+  Teacher: {
+    src: `${LOGO_BASE_PATH}/teacher-logo.png`,
+    alt: "Teacher Logo"
+  },
+  Student: {
+    src: `${LOGO_BASE_PATH}/student-logo.png`,
+    alt: "Student Logo"
+  },
+  Guardian: {
+    src: `${LOGO_BASE_PATH}/guardian-logo.png`,
+    alt: "Guardian Logo"
+  },
+  // A default logo if the role is not found or for general use.
+  default: {
+    src: `${LOGO_BASE_PATH}/default-logo.png`,
+    alt: "CampusConnect Logo"
+  },
+};
+
+// Fallback SVG to display if an image is missing
+function FallbackLogo(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
     </svg>
   );
 }
 
-function TeacherLogo(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4" />
-      <path d="M18 22v-4a6 6 0 0 0-12 0v4" />
-      <circle cx="12" cy="4" r="2" />
-      <path d="M12 6v10" />
-    </svg>
-  );
-}
-
-function StudentLogo(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--accent))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-        <path d="M12 14.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9z" />
-        <path d="M18 20a6 6 0 0 0-12 0" />
-    </svg>
-  );
-}
-
-function GuardianLogo(props: SVGProps<SVGSVGElement>) {
-  return (
-     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M17 20a5 5 0 0 0-10 0" />
-      <path d="M12 14a5 5 0 0 0 5-5V7a5 5 0 0 0-10 0v2a5 5 0 0 0 5 5Z" />
-      <path d="M12 4a2 2 0 0 1 2 2v0a2 2 0 0 1-4 0v0a2 2 0 0 1 2-2Z" />
-      <path d="M8 20a2 2 0 0 0-2-2h0a2 2 0 0 0-2 2" />
-      <path d="M16 20a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2" />
-    </svg>
-  );
-}
-
-
-interface LogoProps extends SVGProps<SVGSVGElement> {
+interface LogoProps {
   userRole?: UserRole | null;
+  className?: string;
 }
 
-export function Logo({ userRole, ...props }: LogoProps) {
-  switch (userRole) {
-    case 'Teacher':
-      return <TeacherLogo {...props} />;
-    case 'Student':
-      return <StudentLogo {...props} />;
-    case 'Guardian':
-      return <GuardianLogo {...props} />;
-    case 'Admin':
-    default:
-      return <AdminLogo {...props} />;
-  }
+export function Logo({ userRole, className, ...props }: LogoProps) {
+  const roleKey = userRole && (userRole in logoConfig) ? userRole : 'default';
+  const { src, alt } = logoConfig[roleKey] || logoConfig.default;
+
+  return (
+    <div className={className} style={{ width: props.width, height: props.height }}>
+       <Image
+          src={src}
+          alt={alt}
+          width={LOGO_SIZE}
+          height={LOGO_SIZE}
+          // In case the logo is missing, show a fallback and log an error
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'; // Hide the broken image
+            const fallback = e.currentTarget.nextElementSibling;
+            if (fallback) {
+              fallback.style.display = 'block';
+            }
+          }}
+       />
+       <div style={{ display: 'none' }}>
+         <FallbackLogo {...props} />
+       </div>
+    </div>
+  );
 }
