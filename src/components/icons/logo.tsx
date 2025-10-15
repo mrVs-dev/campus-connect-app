@@ -3,6 +3,7 @@ import type { SVGProps } from "react";
 import type { UserRole } from "@/lib/types";
 
 function AdminLogo(props: SVGProps<SVGSVGElement>) {
+  const { fill, ...otherProps } = props;
   return (
     <svg
       version="1.0"
@@ -11,7 +12,7 @@ function AdminLogo(props: SVGProps<SVGSVGElement>) {
       height="4829.000000pt"
       viewBox="0 0 7891.000000 4829.000000"
       preserveAspectRatio="xMidYMid meet"
-      {...props}
+      {...otherProps}
     >
       <g
         transform="translate(0.000000,4829.000000) scale(0.100000,-0.100000)"
@@ -134,6 +135,7 @@ function GuardianLogo(props: SVGProps<SVGSVGElement>) {
 }
 
 function DefaultLogo(props: SVGProps<SVGSVGElement>) {
+  const { fill, ...otherProps } = props;
   return (
     <svg
       version="1.0"
@@ -142,7 +144,7 @@ function DefaultLogo(props: SVGProps<SVGSVGElement>) {
       height="4829.000000pt"
       viewBox="0 0 7891.000000 4829.000000"
       preserveAspectRatio="xMidYMid meet"
-      {...props}
+      {...otherProps}
     >
       <g
         transform="translate(0.000000,4829.000000) scale(0.100000,-0.100000)"
