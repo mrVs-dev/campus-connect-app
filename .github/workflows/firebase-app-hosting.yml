@@ -35,6 +35,6 @@ jobs:
         with:
           serviceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: '${{ vars.FIREBASE_PROJECT_ID }}'
-          backendId: studio-7466969346-9de5e
+          backendId: studio
           channelId: ${{ github.event_name == 'push' && 'live' || 'preview' }}
           expires: 30d
