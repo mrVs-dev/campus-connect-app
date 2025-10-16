@@ -10,7 +10,7 @@
       "**/node_modules/**"
     ],
     "apphosting": {
-      "backend": "campus-connect-app"
+      "backend": "studio-7466969346-9de5e"
     }
   }
 }
