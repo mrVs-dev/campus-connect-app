@@ -47,7 +47,7 @@ export default function HomePage() {
 
   }, [router, user, loading]);
 
-  // Display a loading indicator while checking auth and role state.
+  // Display a full-screen loading indicator while checking auth and role state.
   return (
      <div className="flex min-h-screen w-full items-center justify-center bg-background">
       Loading...

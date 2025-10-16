@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup, GoogleAuthProvider, User, getAuth } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { getOrCreateUser } from "@/lib/firebase/firestore";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,7 +12,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -83,7 +82,7 @@ export default function LoginPage() {
   };
   
   if (authLoading || user) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-background">Loading...</div>;
   }
   
   // Only show the login page if we are done loading and there is no user.
