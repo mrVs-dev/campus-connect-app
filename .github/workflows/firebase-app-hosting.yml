@@ -37,3 +37,4 @@ jobs:
           NEXT_PUBLIC_FIREBASE_VAPID_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_VAPID_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_APPLICATION_CREDENTIALS: service-account.json
+
