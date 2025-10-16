@@ -56,13 +56,17 @@ export default function LoginPage() {
   const { user, loading: authLoading } = useAuth();
 
   React.useEffect(() => {
-    // If auth is no longer loading and we have a user, redirect to the dashboard.
+    // If we've finished loading and there's a user, redirect.
     if (!authLoading && user) {
-      router.replace('/dashboard');
+      router.replace('/');
     }
   }, [user, authLoading, router]);
 
   const handleSignIn = async () => {
+    if (!isFirebaseConfigured) {
+        setError("Firebase is not configured. Please check the README and your environment variables.");
+        return;
+    }
     setError(null);
     setIsSigningIn(true);
     const provider = new GoogleAuthProvider();
@@ -78,19 +82,16 @@ export default function LoginPage() {
     }
   };
   
-  if (!isFirebaseConfigured) {
-    return <MissingFirebaseConfig />;
-  }
-
-  // Show a loading screen while auth state is being determined.
-  if (authLoading) {
-    return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
+  if (authLoading || user) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
   }
   
-  // If we are done with all loading and there's still no user, it's safe to show the login form.
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+  // Only show the login page if we are done loading and there is no user.
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      {!isFirebaseConfigured ? (
+        <MissingFirebaseConfig />
+      ) : (
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
@@ -112,12 +113,9 @@ export default function LoginPage() {
             </Button>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
-
-  // Fallback: If there is a user, show a redirecting message.
-  return <div className="flex min-h-screen items-center justify-center">Redirecting to dashboard...</div>;
+      )}
+    </div>
+  );
 }
 
 

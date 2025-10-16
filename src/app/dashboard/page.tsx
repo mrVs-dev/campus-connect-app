@@ -16,7 +16,6 @@ import { StatusHistoryList } from "@/components/dashboard/status-history-list";
 import { SettingsPage } from "@/components/dashboard/settings-page";
 import { getStudents, addStudent, updateStudent, getAdmissions, saveAdmission, deleteStudent, importStudents, getAssessments, saveAssessment, deleteAllStudents as deleteAllStudentsFromDB, getTeachers, addTeacher, deleteSelectedStudents, moveStudentsToClass, getStudentStatusHistory, updateStudentStatus, getSubjects, getAssessmentCategories, saveSubjects, saveAssessmentCategories, updateTeacher, getFees, saveFee, deleteFee, getInvoices, saveInvoice, deleteInvoice, importAdmissions, getPermissions, getRoles, saveRoles, deleteTeacher, deleteMainUser, getGradeScale, saveGradeScale, getInventoryItems, saveInventoryItem, deleteInventoryItem, getTeacherForUser, getAddressData, saveAddressData } from "@/lib/firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { isFirebaseConfigured } from "@/lib/firebase/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FeesList } from "@/components/dashboard/fees-list";
@@ -25,33 +24,6 @@ import { InventoryList } from "@/components/dashboard/inventory-list";
 import type { User as AuthUser } from "firebase/auth";
 import { AppModule, initialPermissions, APP_MODULES } from "@/lib/modules";
 import { WelcomeHeader } from "@/components/dashboard/welcome-header";
-
-function MissingFirebaseConfig() {
-  return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle>Firebase Configuration Missing</CardTitle>
-          <CardDescription>
-            Your application is not connected to Firebase, which is required for storing and managing data.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">
-            To get started, you need to create a Firebase project and add its configuration to this application.
-          </p>
-          <p>
-            Please follow the instructions in the <code className="bg-muted px-2 py-1 rounded-md text-sm">README.md</code> file
-            to set up your <code className="bg-muted px-2 py-1 rounded-md text-sm">.env.local</code> file with the necessary Firebase keys.
-          </p>
-          <p className="mt-4 text-sm text-muted-foreground">
-            After adding the configuration, you will need to restart the development server for the changes to take effect.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 function PendingApproval() {
   return (
@@ -148,64 +120,54 @@ export default function DashboardPage() {
     
     setLoading(true);
     setError(null);
+    
+    const adminEmail = "vannak@api-school.com";
+    let currentUserRole: UserRole | null = null;
+    let currentTeacher: Teacher | null = null;
+
     try {
-      let currentTeacher = await getTeacherForUser(user.uid);
-      let currentUserRole: UserRole | null = null;
-      
-      const adminEmail = "vannak@api-school.com";
-      if (user.email === adminEmail) {
-          currentUserRole = 'Admin';
-          if (!currentTeacher) {
-              const adminData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'> = {
-                  firstName: 'Vannak',
-                  lastName: 'Admin',
-                  email: adminEmail,
-                  role: 'Admin',
-              };
-              await addTeacher(adminData);
-              currentTeacher = await getTeacherForUser(user.uid);
-          } else if (currentTeacher.role !== 'Admin') {
-              await updateTeacher(currentTeacher.teacherId, { role: 'Admin' });
-              currentTeacher.role = 'Admin';
-          }
-      } else if (currentTeacher) {
-          currentUserRole = currentTeacher.role;
-      }
-      
-      setUserRole(currentUserRole);
+        currentTeacher = await getTeacherForUser(user.uid);
+        if (user.email === adminEmail) {
+            currentUserRole = 'Admin';
+            if (!currentTeacher) {
+                const adminData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'> = { firstName: 'Vannak', lastName: 'Admin', email: adminEmail, role: 'Admin' };
+                await addTeacher(adminData);
+                currentTeacher = await getTeacherForUser(user.uid);
+            } else if (currentTeacher.role !== 'Admin') {
+                await updateTeacher(currentTeacher.teacherId, { role: 'Admin' });
+                currentTeacher.role = 'Admin';
+            }
+        } else if (currentTeacher) {
+            currentUserRole = currentTeacher.role;
+        }
+    } catch (e) {
+        console.error("Error determining user role:", e);
+        setError("Failed to determine user role.");
+        setLoading(false);
+        return;
+    }
+    
+    setUserRole(currentUserRole);
 
+    if (!currentUserRole) {
+        setLoading(false);
+        return; // Stop here if user isn't approved.
+    }
+    
+    try {
+      const dataPromises = [
+        getStudents(), getAdmissions(), getAssessments(), getTeachers(),
+        getStudentStatusHistory(), getSubjects(), getAssessmentCategories(),
+        getGradeScale(), getFees(), getInvoices(), getInventoryItems(),
+        getRoles(), getPermissions(), getAddressData()
+      ];
+      
       const [
-        studentsData,
-        admissionsData, 
-        assessmentsData,
-        teachersData, 
-        statusHistoryData, 
-        subjectsData,
-        categoriesData,
-        gradeScaleData,
-        feesData,
-        invoicesData,
-        inventoryData,
-        rolesData,
-        permissionsData,
-        fetchedAddressData,
-      ] = await Promise.all([
-        getStudents(),
-        getAdmissions(),
-        getAssessments(),
-        getTeachers(),
-        getStudentStatusHistory(),
-        getSubjects(),
-        getAssessmentCategories(),
-        getGradeScale(),
-        getFees(),
-        getInvoices(),
-        getInventoryItems(),
-        getRoles(),
-        getPermissions(),
-        getAddressData(),
-      ]);
-
+        studentsData, admissionsData, assessmentsData, teachersData,
+        statusHistoryData, subjectsData, categoriesData, gradeScaleData,
+        feesData, invoicesData, inventoryData, rolesData,
+        permissionsData, fetchedAddressData
+      ] = await Promise.all(dataPromises);
 
       setStudents(studentsData);
       setAdmissions(admissionsData);
@@ -358,154 +320,158 @@ export default function DashboardPage() {
     await deleteInventoryItem(itemId);
     await fetchData(true);
   };
+
+  if (authLoading) {
+    return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
+  }
   
-  if (!isFirebaseConfigured) {
-    return <MissingFirebaseConfig />;
+  if (!loading && !userRole) {
+    return <PendingApproval />;
   }
 
-  if (authLoading || loading) {
+  if (loading && !userRole) {
     return <div className="flex min-h-screen items-center justify-center">Loading Dashboard...</div>;
   }
-  
+
   if (error) {
       return <div className="flex min-h-screen items-center justify-center text-red-500">{error}</div>;
   }
   
-  if (!userRole) {
-    return <PendingApproval />;
-  }
-
   return (
     <>
       <Header userRole={userRole} />
       <div className="flex min-h-screen w-full flex-col">
         <main className="flex flex-1 flex-col gap-4 bg-background p-4 md:gap-8 md:p-6">
           <WelcomeHeader userRole={userRole} />
-          <div className="mx-auto w-full max-w-full">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-                <TabsList className="h-auto flex-wrap w-full">
-                  {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
-                      <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
-                        {tab.label}
-                      </TabsTrigger>
-                    ))}
-                </TabsList>
-                <TabsContent value="dashboard" className="space-y-4">
-                  <Overview students={studentsWithLatestEnrollments} admissions={admissions || []} />
-                </TabsContent>
-                <TabsContent value="students" className="space-y-4">
-                  <StudentList 
-                    userRole={userRole as UserRole}
-                    students={studentsWithLatestEnrollments}
-                    assessments={assessments}
-                    admissions={admissions}
-                    subjects={subjects}
-                    assessmentCategories={assessmentCategories}
-                    onUpdateStudent={handleUpdateStudent}
-                    onUpdateStudentStatus={handleUpdateStudentStatus}
-                    onImportStudents={async (importedStudents) => { await importStudents(importedStudents); await fetchData(true); }}
-                    onDeleteStudent={async (studentId) => { await deleteStudent(studentId); await fetchData(true); }}
-                    onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); await fetchData(true); }}
-                    onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); await fetchData(true); }}
-                    gradeScale={gradeScale}
-                    hasPermission={hasPermission}
-                    addressData={addressData}
-                    />
-                </TabsContent>
-                <TabsContent value="users" className="space-y-4">
-                  <TeacherList 
+          {loading && !permissions ? (
+            <div className="text-center">Loading data, please wait...</div>
+          ) : (
+            <div className="mx-auto w-full max-w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+                  <TabsList className="h-auto flex-wrap w-full">
+                    {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
+                        <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
+                          {tab.label}
+                        </TabsTrigger>
+                      ))}
+                  </TabsList>
+                  <TabsContent value="dashboard" className="space-y-4">
+                    <Overview students={studentsWithLatestEnrollments} admissions={admissions || []} />
+                  </TabsContent>
+                  <TabsContent value="students" className="space-y-4">
+                    <StudentList 
                       userRole={userRole as UserRole}
-                      initialTeachers={teachers}
-                      onAddTeacher={async (teacher) => { await addTeacher(teacher); await fetchData(true); }}
-                      onDeleteTeacher={handleDeleteTeacher}
-                      onUpdateTeacher={handleUpdateTeacher}
-                      onRefreshData={() => fetchData(true)}
+                      students={studentsWithLatestEnrollments}
+                      assessments={assessments}
+                      admissions={admissions}
+                      subjects={subjects}
+                      assessmentCategories={assessmentCategories}
+                      onUpdateStudent={handleUpdateStudent}
+                      onUpdateStudentStatus={handleUpdateStudentStatus}
+                      onImportStudents={async (importedStudents) => { await importStudents(importedStudents); await fetchData(true); }}
+                      onDeleteStudent={async (studentId) => { await deleteStudent(studentId); await fetchData(true); }}
+                      onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); await fetchData(true); }}
+                      onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); await fetchData(true); }}
+                      gradeScale={gradeScale}
+                      hasPermission={hasPermission}
+                      addressData={addressData}
+                      />
+                  </TabsContent>
+                  <TabsContent value="users" className="space-y-4">
+                    <TeacherList 
+                        userRole={userRole as UserRole}
+                        initialTeachers={teachers}
+                        onAddTeacher={async (teacher) => { await addTeacher(teacher); await fetchData(true); }}
+                        onDeleteTeacher={handleDeleteTeacher}
+                        onUpdateTeacher={handleUpdateTeacher}
+                        onRefreshData={() => fetchData(true)}
+                        hasPermission={hasPermission}
+                      />
+                  </TabsContent>
+                  <TabsContent value="assessments" className="space-y-4">
+                    <AssessmentList 
+                      userRole={userRole as UserRole}
+                      assessments={assessments}
+                      students={students}
+                      subjects={subjects}
+                      assessmentCategories={assessmentCategories}
+                      admissions={admissions}
+                      teachers={teachers}
+                      onSaveAssessment={handleSaveAssessment}
+                      hasPermission={hasPermission}
+                      />
+                  </TabsContent>
+                  <TabsContent value="fees" className="space-y-4">
+                    <FeesList
+                      fees={fees}
+                      onSaveFee={async (fee) => { const success = await saveFee(fee); if (success) await fetchData(true); return success; }}
+                      onDeleteFee={async (feeId) => { await deleteFee(feeId); await fetchData(true); }}
+                      hasPermission={hasPermission}
+                      />
+                  </TabsContent>
+                   <TabsContent value="invoicing" className="space-y-4">
+                    <InvoicingList
+                      invoices={invoices}
+                      students={students}
+                      fees={fees}
+                      onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) await fetchData(true); return success; }}
+                      onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); await fetchData(true); }}
+                      hasPermission={hasPermission}
+                      />
+                  </TabsContent>
+                   <TabsContent value="inventory" className="space-y-4">
+                    <InventoryList
+                      inventoryItems={inventoryItems}
+                      onSaveItem={handleSaveItem}
+                      onDeleteItem={handleDeleteItem}
                       hasPermission={hasPermission}
                     />
-                </TabsContent>
-                <TabsContent value="assessments" className="space-y-4">
-                  <AssessmentList 
-                    userRole={userRole as UserRole}
-                    assessments={assessments}
-                    students={students}
-                    subjects={subjects}
-                    assessmentCategories={assessmentCategories}
-                    admissions={admissions}
-                    teachers={teachers}
-                    onSaveAssessment={handleSaveAssessment}
-                    hasPermission={hasPermission}
+                  </TabsContent>
+                  <TabsContent value="admissions" className="space-y-4">
+                    <AdmissionsList 
+                      admissions={admissions}
+                      students={students}
+                      teachers={teachers}
+                      onSave={handleSaveAdmission}
+                      onImport={async (data) => { await importAdmissions(data); await fetchData(true); }}
+                      activeAccordion={activeAdmissionsAccordion}
+                      onAccordionChange={setActiveAdmissionsAccordion}
+                      hasPermission={hasPermission}
+                      />
+                  </TabsContent>
+                  <TabsContent value="enrollment" className="space-y-4">
+                    <EnrollmentForm 
+                      onEnroll={async (student) => { await addStudent(student); await fetchData(true); }}
+                      addressData={addressData}
                     />
-                </TabsContent>
-                <TabsContent value="fees" className="space-y-4">
-                  <FeesList
-                    fees={fees}
-                    onSaveFee={async (fee) => { const success = await saveFee(fee); if (success) await fetchData(true); return success; }}
-                    onDeleteFee={async (feeId) => { await deleteFee(feeId); await fetchData(true); }}
-                    hasPermission={hasPermission}
+                  </TabsContent>
+                  <TabsContent value="statusHistory" className="space-y-4">
+                    <StatusHistoryList
+                      history={statusHistory}
+                      students={students}
+                      onUpdateStatus={handleUpdateStudentStatus}
+                      canChangeStatus={hasPermission('Status History', 'Update')}
                     />
-                </TabsContent>
-                 <TabsContent value="invoicing" className="space-y-4">
-                  <InvoicingList
-                    invoices={invoices}
-                    students={students}
-                    fees={fees}
-                    onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) await fetchData(true); return success; }}
-                    onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); await fetchData(true); }}
-                    hasPermission={hasPermission}
+                  </TabsContent>
+                  <TabsContent value="settings" className="space-y-4">
+                    <SettingsPage 
+                      userRole={userRole}
+                      subjects={subjects}
+                      assessmentCategories={assessmentCategories}
+                      onSaveSubjects={async (s) => { await saveSubjects(s); await fetchData(true); }}
+                      onSaveCategories={async (c) => { await saveAssessmentCategories(c); await fetchData(true); }}
+                      allRoles={allSystemRoles}
+                      onSaveRoles={handleSaveRoles}
+                      initialPermissions={permissions}
+                      gradeScale={gradeScale}
+                      onSaveGradeScale={async (g) => { await saveGradeScale(g); await fetchData(true); }}
+                      addressData={addressData}
+                      onSaveAddressData={async (a) => { await saveAddressData(a); await fetchData(true); }}
                     />
-                </TabsContent>
-                 <TabsContent value="inventory" className="space-y-4">
-                  <InventoryList
-                    inventoryItems={inventoryItems}
-                    onSaveItem={handleSaveItem}
-                    onDeleteItem={handleDeleteItem}
-                    hasPermission={hasPermission}
-                  />
-                </TabsContent>
-                <TabsContent value="admissions" className="space-y-4">
-                  <AdmissionsList 
-                    admissions={admissions}
-                    students={students}
-                    teachers={teachers}
-                    onSave={handleSaveAdmission}
-                    onImport={async (data) => { await importAdmissions(data); await fetchData(true); }}
-                    activeAccordion={activeAdmissionsAccordion}
-                    onAccordionChange={setActiveAdmissionsAccordion}
-                    hasPermission={hasPermission}
-                    />
-                </TabsContent>
-                <TabsContent value="enrollment" className="space-y-4">
-                  <EnrollmentForm 
-                    onEnroll={async (student) => { await addStudent(student); await fetchData(true); }}
-                    addressData={addressData}
-                  />
-                </TabsContent>
-                <TabsContent value="statusHistory" className="space-y-4">
-                  <StatusHistoryList
-                    history={statusHistory}
-                    students={students}
-                    onUpdateStatus={handleUpdateStudentStatus}
-                    canChangeStatus={hasPermission('Status History', 'Update')}
-                  />
-                </TabsContent>
-                <TabsContent value="settings" className="space-y-4">
-                  <SettingsPage 
-                    userRole={userRole}
-                    subjects={subjects}
-                    assessmentCategories={assessmentCategories}
-                    onSaveSubjects={async (s) => { await saveSubjects(s); await fetchData(true); }}
-                    onSaveCategories={async (c) => { await saveAssessmentCategories(c); await fetchData(true); }}
-                    allRoles={allSystemRoles}
-                    onSaveRoles={handleSaveRoles}
-                    initialPermissions={permissions}
-                    gradeScale={gradeScale}
-                    onSaveGradeScale={async (g) => { await saveGradeScale(g); await fetchData(true); }}
-                    addressData={addressData}
-                    onSaveAddressData={async (a) => { await saveAddressData(a); await fetchData(true); }}
-                  />
-                </TabsContent>
-              </Tabs>
-          </div>
+                  </TabsContent>
+                </Tabs>
+            </div>
+          )}
         </main>
       </div>
     </>
