@@ -39,11 +39,11 @@ export function WelcomeHeader({ userRole, userName }: WelcomeHeaderProps) {
     const { title, subtitle } = getWelcomeMessages(userRole, userName);
 
     return (
-        <div className="flex items-center gap-4">
-            <Logo userRole={userRole} className="h-[18rem] w-[18rem] text-primary" />
+        <div className="flex items-center gap-4 my-0">
+            <Logo userRole={userRole} className="h-[27rem] w-[27rem] text-primary" />
             <div>
-                <h1 className="text-3xl font-bold">{title}</h1>
-                <p className="text-muted-foreground">{subtitle}</p>
+                <h1 className="text-5xl font-bold">{title}</h1>
+                <p className="text-lg text-muted-foreground">{subtitle}</p>
             </div>
         </div>
     )
