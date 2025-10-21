@@ -341,7 +341,7 @@ export default function DashboardPage() {
     <>
       <Header userRole={userRole} />
       <div className="flex min-h-screen w-full flex-col">
-        <main className="flex flex-1 flex-col gap-4 bg-background p-4 md:gap-8 md:p-6">
+        <main className="flex flex-1 flex-col gap-4 bg-background px-4 md:gap-8 md:px-6">
           <WelcomeHeader userRole={userRole} />
           {loading && !permissions ? (
             <div className="text-center">Loading data, please wait...</div>
