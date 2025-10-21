@@ -25,9 +25,23 @@ const getWelcomeMessages = (role: UserRole | null, name?: string) => {
         case 'Teacher':
              return {
                 title: `Welcome to the Teacher Dashboard${welcomeName}!`,
-                subtitle: 'Here is a summary of your classes and student performance.'
+                subtitle: 'This is the Teacher Portal.'
+            };
+        case 'Receptionist':
+            return {
+                title: 'Welcome to CampusConnect!',
+                subtitle: 'This is the Front Office Portal.'
+            };
+        case 'Head of Department':
+            return {
+                title: 'Welcome to CampusConnect!',
+                subtitle: 'This is the Admin Portal.'
             };
         case 'Admin':
+             return {
+                title: 'Welcome to CampusConnect!',
+                subtitle: 'This is the Administrator Portal.'
+            };
         default:
             return {
                 title: 'Welcome to CampusConnect!',
@@ -41,10 +55,10 @@ export function WelcomeHeader({ userRole, userName }: WelcomeHeaderProps) {
 
     return (
         <div className="flex items-center gap-4">
-            <Logo userRole={userRole} className="h-24 w-24 text-primary" />
+            <Logo userRole={userRole} className="h-16 w-16 text-primary" />
             <div>
-                <h1 className="text-3xl font-bold">{title}</h1>
-                <p className="text-lg text-muted-foreground">{subtitle}</p>
+                <h1 className="text-4xl font-bold">{title}</h1>
+                <p className="text-xl text-muted-foreground">{subtitle}</p>
             </div>
         </div>
     )
