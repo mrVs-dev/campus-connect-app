@@ -41,7 +41,7 @@ export function WelcomeHeader({ userRole, userName }: WelcomeHeaderProps) {
 
     return (
         <div className="mb-6 flex items-center gap-4">
-            <Logo userRole={userRole} className="h-10 w-10 text-primary" />
+            <Logo userRole={userRole} className="h-20 w-20 text-primary" />
             <div>
                 <h1 className="text-3xl font-bold">{title}</h1>
                 <p className="text-muted-foreground">{subtitle}</p>
