@@ -12,10 +12,11 @@ let messaging: Messaging | undefined;
 let isFirebaseConfigured = false;
 
 function initFirebase(config: any) {
-    isFirebaseConfigured = !!config.apiKey && !!config.projectId;
+    // A check to see if the config is populated, but also not with placeholder values.
+    isFirebaseConfigured = !!config.apiKey && config.apiKey.includes('AIza');
 
     if (!isFirebaseConfigured) {
-        console.warn("Firebase configuration is missing or incomplete.");
+        console.warn("Firebase configuration is missing or incomplete. Please check your environment variables.");
         return { app: {} as FirebaseApp, auth: {} as Auth, db: {} as Firestore, messaging: undefined, isFirebaseConfigured: false };
     }
 
