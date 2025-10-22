@@ -3,8 +3,8 @@
 
 import Link from "next/link";
 import { UserNav } from "./user-nav";
-import { Logo } from "../icons/logo";
-import { Button } from "../ui/button";
+import { Logo } from "@/components/icons/logo";
+import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -23,7 +23,7 @@ export function Header() {
         className="flex items-center gap-2 text-lg font-semibold text-primary"
       >
         <Logo className="h-8 w-8" />
-        <span className="font-headline">CampusConnect</span>
+        <span className="font-headline sr-only">CampusConnect</span>
       </Link>
       <div className="relative ml-auto flex-1 md:grow-0">
         {isAdmin && isStudentPortal && (
