@@ -12,16 +12,16 @@ export function Logo({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
         xmlns="http://www.w3.org/2000/svg"
       >
         <g transform="translate(25, 60) scale(1.2)">
-          {/* Shape 1 (left) - now dark blue */}
-          <path d="M 53.5,69.25 C 57,65.5 61.25,62.75 66.5,61.25 C 71.75,59.75 77,59 82.5,59 C 85,59 87,60.75 93.25,64" fill="none" stroke="#1c5f90" strokeWidth="6" />
+          {/* Shape 1 (left) - controlled by CSS */}
+          <path d="M 53.5,69.25 C 57,65.5 61.25,62.75 66.5,61.25 C 71.75,59.75 77,59 82.5,59 C 85,59 87,60.75 93.25,64" fill="none" stroke="var(--logo-swoosh-color)" strokeWidth="6" />
           
-          {/* Shape 2 (right) - now dark blue */}
-          <path d="M 141.5,112.5 C 148,121.25 142.75,124.75 136.75,127.25 C 130.75,129.75 124.25,131 117.5,131 C 110.5,131 104.25,129.75 98.5,127.25" fill="none" stroke="#1c5f90" strokeWidth="6" />
+          {/* Shape 2 (right) - controlled by CSS */}
+          <path d="M 141.5,112.5 C 148,121.25 142.75,124.75 136.75,127.25 C 130.75,129.75 124.25,131 117.5,131 C 110.5,131 104.25,129.75 98.5,127.25" fill="none" stroke="var(--logo-swoosh-color)" strokeWidth="6" />
 
-          {/* "API" letters - all black */}
-          <text x="50" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="#000000">A</text>
-          <text x="70" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="#000000">P</text>
-          <text x="95" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="#000000">I</text>
+          {/* "API" letters - controlled by CSS */}
+          <text x="50" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="var(--logo-text-color)">A</text>
+          <text x="70" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="var(--logo-text-color)">P</text>
+          <text x="95" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="var(--logo-text-color)">I</text>
         </g>
       </svg>
     </div>
