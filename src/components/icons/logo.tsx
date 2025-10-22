@@ -6,8 +6,8 @@ export function Logo({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn('relative', className)} {...props}>
       <Image
-        src="/logo.svg"
-        alt="CampusConnect Logo"
+        src="/API_Round_Logo.svg"
+        alt="API School Logo"
         fill
         sizes="100%"
         priority
