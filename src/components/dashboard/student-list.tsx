@@ -459,8 +459,19 @@ export function StudentList({
                     </SelectContent>
                   </Select>
               </div>
-            <div className="text-sm font-medium">
-              Page {currentPage} of {totalPages}
+            <div className="flex items-center gap-2 text-sm font-medium">
+              Page
+              <Select value={`${currentPage}`} onValueChange={(value) => setCurrentPage(Number(value))}>
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={currentPage} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <SelectItem key={page} value={`${page}`}>{page}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              of {totalPages}
             </div>
             <div className="flex items-center gap-2">
               <Button
