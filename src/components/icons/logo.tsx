@@ -19,9 +19,9 @@ export function Logo(props: SVGProps<SVGSVGElement>) {
       {/* Frame/Border */}
       <rect x="0" y="0" width="100" height="100" rx="15" ry="15" fill="#808080" />
 
-      {/* Black background */}
+      {/* Content with transparent background */}
       <g clipPath="url(#rounded-corners)">
-        <rect x="5" y="5" width="90" height="90" fill="#000000" />
+        <rect x="5" y="5" width="90" height="90" fill="transparent" />
         
         {/* API Text */}
         <text 
