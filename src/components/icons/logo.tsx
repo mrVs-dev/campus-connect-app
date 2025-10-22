@@ -3,7 +3,7 @@ import type { SVGProps } from "react";
 export function Logo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
-      version="1.0"
+      version="1.1"
       xmlns="http://www.w3.org/2000/svg"
       width="3360.000000pt"
       height="3360.000000pt"
