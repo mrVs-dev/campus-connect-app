@@ -1,16 +1,49 @@
-import Image from 'next/image';
-import type { HTMLAttributes } from 'react';
+import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-export function Logo({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function Logo({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn('relative h-12 w-12', className)} {...props}>
-      <Image
-        src="/API_Round_Logo.svg"
-        alt="CampusConnect Logo"
-        layout="fill"
-        className="rounded-full"
-      />
+      <svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 152 152"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M79.8333 63.8333L70.5 82.5H89.1667L79.8333 63.8333Z"
+          fill="black"
+        />
+        <path
+          d="M102.571 82.5L102.021 81.4C98.3963 73.8 95.0463 65.95 89.1713 65.95C83.2213 65.95 79.8713 73.8 76.2463 81.4L75.6963 82.5H62.5963L79.7963 48.55L97.0713 82.5H102.571Z"
+          fill="black"
+        />
+        <path
+          d="M62.625 106.25C62.625 108.733 60.5583 110.8 58.075 110.8C55.5917 110.8 53.525 108.733 53.525 106.25C53.525 103.767 55.5917 101.7 58.075 101.7C60.5583 101.7 62.625 103.767 62.625 106.25Z"
+          fill="#1c5f90"
+        />
+        <path
+          d="M102.167 96.8333C87.8333 94.3333 69.6667 91.6667 58.5 84.8333C52.5 81.1667 49.3333 74.6667 53.1667 69.3333C48.3333 73.5 45.3333 80.5 50.3333 86C60.5 96.5 83.3333 99.8333 99.1667 102.167C107.5 103.5 116.333 102.5 123.5 98.6667C121.333 102.5 111.167 105.333 102.167 96.8333Z"
+          fill="#1c5f90"
+        />
+        <path
+          d="M102.75 48.5H111.5V82.5H102.75V48.5Z"
+          fill="black"
+        />
+        <path
+          d="M141 48.5H118.5V55.5H141V48.5Z"
+          fill="black"
+        />
+        <path
+          d="M118.5 62.5H134.5V69.5H118.5V62.5Z"
+          fill="black"
+        />
+        <path
+          d="M118.5 75.5H141V82.5H118.5V75.5Z"
+          fill="black"
+        />
+      </svg>
     </div>
   );
 }
