@@ -372,12 +372,12 @@ export default function DashboardPage() {
       <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} tabs={visibleTabs} />
       <div className="flex flex-col w-full">
         <Header userRole={userRole} />
-        <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="p-4 md:p-8 space-y-4">
           <WelcomeHeader userRole={userRole} />
-          <div className="space-y-4">
-             {contentMap[activeTab]}
-          </div>
-        </main>
+          <main className="flex-1 space-y-4">
+            {contentMap[activeTab]}
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   );
