@@ -10,6 +10,7 @@ export function Logo({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
         height="100%"
         viewBox="0 0 100 100"
         xmlns="http://www.w3.org/2000/svg"
+        xmlnsXlink="http://www.w3.org/1999/xlink"
       >
         <defs>
           <clipPath id="rounded-corners">
@@ -20,10 +21,15 @@ export function Logo({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
         {/* Background */}
         <rect x="5" y="5" width="90" height="90" rx="15" ry="15" fill="black" />
 
-        {/* The two blue swooshes */}
+        {/* The two blue swooshes - using an embedded image for reliability */}
         <g clipPath="url(#rounded-corners)">
-            <path d="M 5,65 C 25,50 60,65 95,50 L 95,100 L 5,100 Z" fill="#1c5f90" />
-            <path d="M 5,85 C 30,70 70,85 95,70 L 95,100 L 5,100 Z" fill="#1c5f90" />
+           <image 
+              href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHBhdGggZD0iTSA1LDY1IEMgMjUsNTAgNjAsNjUgOTUsNTAgTCA5NSwxMDAgTCA1LDEwMCBaIiBmaWxsPSIjMWM1ZjkwIiAvPgogIDxwYXRoIGQ9Ik0gNSw4NSBDIDMwLDcwIDcwLDg1IDk1LDcwIEwgOTUsMTAwIEwgNSwxMDAgWiIgZmlsbD0iIzFjNWY5MCIgLz4KPC9zdmc+Cg=="
+              x="0"
+              y="0"
+              height="100"
+              width="100"
+            />
         </g>
         
         {/* "API" letters */}
