@@ -4,20 +4,11 @@
 import * as React from "react";
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
   SidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  useSidebar,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarSeparator,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
   Users,
@@ -31,7 +22,6 @@ import {
   UserPlus,
   BookUser,
 } from "lucide-react";
-import { Logo } from "@/components/icons/logo";
 import { useAuth } from "@/hooks/use-auth";
 import { UserNav } from "./user-nav";
 import type { AppModule } from "@/lib/modules";
@@ -62,14 +52,7 @@ export function DashboardSidebar({ activeTab, setActiveTab, tabs }: DashboardSid
 
   return (
     <Sidebar variant="floating" collapsible="icon">
-      <SidebarHeader>
-        <Logo className="h-10 w-10" />
-        <div className="flex-1 grow">
-          <p className="text-lg font-semibold text-sidebar-foreground">CampusConnect</p>
-        </div>
-        <SidebarTrigger className="hidden lg:flex" />
-      </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="pt-8">
         <SidebarMenu>
           {tabs.map((tab) => (
             <SidebarMenuItem key={tab.value}>
