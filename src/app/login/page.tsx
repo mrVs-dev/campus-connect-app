@@ -94,7 +94,7 @@ export default function LoginPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <Logo className="h-8 w-8 text-primary" />
+              <Logo className="h-12 w-12" />
             </div>
             <CardTitle>Welcome to CampusConnect</CardTitle>
             <CardDescription>Sign in to access your dashboard</CardDescription>
