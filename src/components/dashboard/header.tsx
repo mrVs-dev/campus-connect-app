@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -20,9 +21,7 @@ export function Header({ userRole }: { userRole: UserRole | null }) {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-end gap-4 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
       <div className="flex-1">
-        <Link href="/" className="text-2xl font-bold text-foreground">
-          CampusConnect
-        </Link>
+        
       </div>
       <div className="relative flex items-center gap-2">
         {isAdmin && isGenericPortal && (
