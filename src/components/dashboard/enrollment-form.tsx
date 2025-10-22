@@ -34,13 +34,12 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import type { Student } from "@/lib/types";
+import type { Student, AddressData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ImageCropDialog } from "./image-crop-dialog";
 import 'react-image-crop/dist/ReactCrop.css';
 import { Avatar } from "../ui/avatar";
 import { getNextStudentIdAction } from "@/app/actions";
-import { addressData } from "@/lib/address-data";
 
 const formSchema = z.object({
   familyId: z.string().optional(),
@@ -91,9 +90,10 @@ type EnrollmentFormValues = z.infer<typeof formSchema>;
 
 type EnrollmentFormProps = {
   onEnroll: (student: Omit<Student, 'studentId' | 'status'>) => Promise<any>;
+  addressData: AddressData | null;
 };
 
-export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
+export function EnrollmentForm({ onEnroll, addressData }: EnrollmentFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [photoToCrop, setPhotoToCrop] = React.useState<string | null>(null);
   const [cropTarget, setCropTarget] = React.useState<string | null>(null);
@@ -154,10 +154,12 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
   }, [fetchNextId, form]);
 
   const watchedCommune = form.watch("address.commune");
+  
   const villages = React.useMemo(() => {
+    if (!addressData) return [];
     const commune = addressData.communes.find(c => c.name === watchedCommune);
     return commune ? commune.villages : [];
-  }, [watchedCommune]);
+  }, [watchedCommune, addressData]);
 
   const studentAvatarUrl = form.watch("avatarUrl");
   const guardianAvatars = form.watch("guardians");
@@ -437,7 +439,7 @@ export function EnrollmentForm({ onEnroll }: EnrollmentFormProps) {
                                     <SelectTrigger><SelectValue placeholder="Select a commune" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {addressData.communes.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                                    {addressData?.communes.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />

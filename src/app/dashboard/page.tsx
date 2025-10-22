@@ -67,41 +67,123 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = React.useState("dashboard");
   const [activeAdmissionsAccordion, setActiveAdmissionsAccordion] = React.useState<string | undefined>(undefined);
   
-  const [students, setStudents] = React.useState<Student[]>([]);
-  const [admissions, setAdmissions] = React.useState<Admission[]>([]);
-  const [assessments, setAssessments] = React.useState<Assessment[]>([]);
-  const [teachers, setTeachers] = React.useState<Teacher[]>([]);
-  const [statusHistory, setStatusHistory] = React.useState<StudentStatusHistory[]>([]);
-  const [subjects, setSubjects] = React.useState<Subject[]>([]);
-  const [assessmentCategories, setAssessmentCategories] = React.useState<AssessmentCategory[]>([]);
-  const [gradeScale, setGradeScale] = React.useState<LetterGrade[]>([]);
-  const [fees, setFees] = React.useState<Fee[]>([]);
-  const [invoices, setInvoices] = React.useState<Invoice[]>([]);
-  const [inventoryItems, setInventoryItems] = React.useState<InventoryItem[]>([]);
-  const [addressData, setAddressData] = React.useState<AddressData | null>(null);
-  
-  const [allSystemRoles, setAllSystemRoles] = React.useState<UserRole[]>([]);
-  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
-  const [permissions, setPermissions] = React.useState<Permissions | null>(null);
+  const [data, setData] = React.useState<{
+    students: Student[];
+    admissions: Admission[];
+    assessments: Assessment[];
+    teachers: Teacher[];
+    statusHistory: StudentStatusHistory[];
+    subjects: Subject[];
+    assessmentCategories: AssessmentCategory[];
+    gradeScale: LetterGrade[];
+    fees: Fee[];
+    invoices: Invoice[];
+    inventoryItems: InventoryItem[];
+    addressData: AddressData | null;
+    allSystemRoles: UserRole[];
+    permissions: Permissions | null;
+  } | null>(null);
 
+  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
+  
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   
   const hasPermission = (module: AppModule, action: 'Read' | 'Create' | 'Update' | 'Delete'): boolean => {
-    if (!permissions || !userRole) return false;
+    if (!data?.permissions || !userRole) return false;
     if (userRole === 'Admin') return true;
 
-    return permissions[module]?.[userRole]?.[action] ?? false;
+    return data.permissions[module]?.[userRole]?.[action] ?? false;
   };
+  
+  const fetchData = React.useCallback(async (showToast = false) => {
+    if (!user) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const adminEmail = "vannak@api-school.com";
+      const [currentTeacher, existingRoles] = await Promise.all([
+          getTeacherForUser(user.uid),
+          getRoles()
+      ]);
+      let currentUserRole: UserRole | null = null;
+      let finalTeacherData = currentTeacher;
+
+      if (user.email === adminEmail) {
+          currentUserRole = 'Admin';
+          if (!finalTeacherData) {
+              const adminData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'> = { firstName: 'Vannak', lastName: 'Admin', email: adminEmail, role: 'Admin' };
+              await addTeacher(adminData);
+              finalTeacherData = await getTeacherForUser(user.uid);
+          } else if (finalTeacherData.role !== 'Admin') {
+              await updateTeacher(finalTeacherData.teacherId, { role: 'Admin' });
+              finalTeacherData.role = 'Admin';
+          }
+      } else if (finalTeacherData) {
+          currentUserRole = finalTeacherData.role;
+      }
+
+      setUserRole(currentUserRole);
+
+      if (!currentUserRole) {
+          setLoading(false);
+          return;
+      }
+      
+      const [
+        students, admissions, assessments, teachers, statusHistory,
+        subjects, assessmentCategories, gradeScale, fees, invoices,
+        inventoryItems, permissions, addressData
+      ] = await Promise.all([
+        getStudents(), getAdmissions(), getAssessments(), getTeachers(),
+        getStudentStatusHistory(), getSubjects(), getAssessmentCategories(),
+        getGradeScale(), getFees(), getInvoices(), getInventoryItems(),
+        getPermissions(), getAddressData()
+      ]);
+      
+      const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
+      APP_MODULES.forEach(module => {
+        if (!completePermissions[module]) completePermissions[module] = {};
+        existingRoles.forEach(role => {
+          if (!completePermissions[module][role]) {
+            completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
+          }
+          if (permissions[module]?.[role]) {
+            completePermissions[module][role] = { ...completePermissions[module][role], ...permissions[module][role] };
+          }
+        });
+      });
+
+      setData({
+        students, admissions, assessments, teachers, statusHistory,
+        subjects, assessmentCategories, gradeScale, fees, invoices,
+        inventoryItems, addressData, allSystemRoles: existingRoles,
+        permissions: completePermissions,
+      });
+
+      if (showToast) {
+        toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
+      }
+
+    } catch (e: any) {
+      console.error("Error fetching dashboard data:", e);
+      setError(e.message || "Failed to load application data.");
+    } finally {
+        setLoading(false);
+    }
+  }, [user, toast]);
 
   const studentsWithLatestEnrollments = React.useMemo(() => {
-    if (!admissions || admissions.length === 0) {
-        return students.map(s => ({ ...s, enrollments: [] }));
+    if (!data) return [];
+    if (!data.admissions || data.admissions.length === 0) {
+        return data.students.map(s => ({ ...s, enrollments: [] }));
     }
 
-    const sortedAdmissions = [...admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
+    const sortedAdmissions = [...data.admissions].sort((a, b) => b.schoolYear.localeCompare(a.schoolYear));
 
-    return students.map(student => {
+    return data.students.map(student => {
         for (const admission of sortedAdmissions) {
             const studentAdmission = admission.students.find(sa => sa.studentId === student.studentId);
             if (studentAdmission && studentAdmission.enrollments.length > 0) {
@@ -110,104 +192,7 @@ export default function DashboardPage() {
         }
         return { ...student, enrollments: [] };
     });
-  }, [students, admissions]);
-  
-  const fetchData = React.useCallback(async (showToast = false) => {
-    if (!user) {
-      console.warn("FetchData called without user.");
-      return;
-    };
-    
-    setLoading(true);
-    setError(null);
-    
-    const adminEmail = "vannak@api-school.com";
-    let currentUserRole: UserRole | null = null;
-    let currentTeacher: Teacher | null = null;
-
-    try {
-        currentTeacher = await getTeacherForUser(user.uid);
-        if (user.email === adminEmail) {
-            currentUserRole = 'Admin';
-            if (!currentTeacher) {
-                const adminData: Omit<Teacher, 'teacherId' | 'status' | 'joinedDate'> = { firstName: 'Vannak', lastName: 'Admin', email: adminEmail, role: 'Admin' };
-                await addTeacher(adminData);
-                currentTeacher = await getTeacherForUser(user.uid);
-            } else if (currentTeacher.role !== 'Admin') {
-                await updateTeacher(currentTeacher.teacherId, { role: 'Admin' });
-                currentTeacher.role = 'Admin';
-            }
-        } else if (currentTeacher) {
-            currentUserRole = currentTeacher.role;
-        }
-    } catch (e) {
-        console.error("Error determining user role:", e);
-        setError("Failed to determine user role.");
-        setLoading(false);
-        return;
-    }
-    
-    setUserRole(currentUserRole);
-
-    if (!currentUserRole) {
-        setLoading(false);
-        return; // Stop here if user isn't approved.
-    }
-    
-    try {
-      const dataPromises = [
-        getStudents(), getAdmissions(), getAssessments(), getTeachers(),
-        getStudentStatusHistory(), getSubjects(), getAssessmentCategories(),
-        getGradeScale(), getFees(), getInvoices(), getInventoryItems(),
-        getRoles(), getPermissions(), getAddressData()
-      ];
-      
-      const [
-        studentsData, admissionsData, assessmentsData, teachersData,
-        statusHistoryData, subjectsData, categoriesData, gradeScaleData,
-        feesData, invoicesData, inventoryData, rolesData,
-        permissionsData, fetchedAddressData
-      ] = await Promise.all(dataPromises);
-
-      setStudents(studentsData);
-      setAdmissions(admissionsData);
-      setAssessments(assessmentsData);
-      setTeachers(teachersData);
-      setStatusHistory(statusHistoryData);
-      setSubjects(subjectsData);
-      setAssessmentCategories(categoriesData);
-      setGradeScale(gradeScaleData);
-      setFees(feesData);
-      setInvoices(invoicesData);
-      setInventoryItems(inventoryData);
-      setAllSystemRoles(rolesData);
-      setAddressData(fetchedAddressData);
-      
-      const completePermissions = JSON.parse(JSON.stringify(initialPermissions)) as Permissions;
-      APP_MODULES.forEach(module => {
-        if (!completePermissions[module]) completePermissions[module] = {};
-        rolesData.forEach(role => {
-          if (!completePermissions[module][role]) {
-            completePermissions[module][role] = { Create: false, Read: false, Update: false, Delete: false };
-          }
-          if (permissionsData[module]?.[role]) {
-            completePermissions[module][role] = { ...completePermissions[module][role], ...permissionsData[module][role] };
-          }
-        });
-      });
-      setPermissions(completePermissions);
-      
-      if (showToast) {
-        toast({ title: "Data Refreshed", description: "The latest data has been loaded." });
-      }
-
-    } catch (error: any) {
-      console.error("Error fetching main data:", error);
-      setError(error.message || "Failed to load all application data. Please try again.");
-    } finally {
-        setLoading(false);
-    }
-  }, [user, toast]);
+  }, [data]);
   
   React.useEffect(() => {
     if (authLoading) return;
@@ -218,123 +203,70 @@ export default function DashboardPage() {
     fetchData();
   }, [user, authLoading, fetchData, router]);
 
-
   const handleUpdateStudent = async (studentId: string, updatedData: Partial<Student>) => {
     await updateStudent(studentId, updatedData);
-    await fetchData(true);
-    toast({
-        title: "Student Updated",
-        description: "The student's profile has been saved.",
-    });
+    fetchData(true);
   };
 
   const handleSaveRoles = async (newRoles: UserRole[]) => {
     await saveRoles(newRoles);
-    await fetchData(true);
-    toast({ title: "Roles updated", description: "The list of system roles has been saved." });
+    fetchData(true);
   };
   
   const handleUpdateStudentStatus = async (student: Student, newStatus: Student['status'], reason: string) => {
     if (!user) return;
     await updateStudentStatus(student, newStatus, reason, user);
-    await fetchData(true);
-    toast({
-      title: "Status Updated",
-      description: `${student.firstName}'s status has been changed to ${newStatus}.`,
-    });
+    fetchData(true);
   }
 
   const handleDeleteTeacher = async (teacher: Teacher) => {
     if (!user) return;
-    try {
-        await deleteTeacher(teacher.teacherId);
-        
-        await fetchData(true);
-
-        toast({
-            title: "Staff Deleted",
-            description: `${teacher.firstName} ${teacher.lastName} has been removed.`,
-        });
-    } catch (error) {
-        console.error("Error deleting teacher:", error);
-        toast({
-            title: "Delete Failed",
-            description: "Could not remove the staff member.",
-            variant: "destructive",
-        });
-    }
+    await deleteTeacher(teacher.teacherId);
+    fetchData(true);
   };
 
   const handleUpdateTeacher = async (teacherId: string, updatedData: Partial<Teacher>) => {
     await updateTeacher(teacherId, updatedData);
-    await fetchData(true);
-    toast({
-        title: "Teacher Updated",
-        description: "The teacher's profile has been saved.",
-    });
+    fetchData(true);
   };
   
   const handleSaveAdmission = async (admission: Admission, isNewClass: boolean) => {
     const success = await saveAdmission(admission, isNewClass);
-    if (success) {
-      await fetchData(true);
-      toast({
-        title: "Admissions Updated",
-        description: "The admission records have been saved.",
-      });
-    } else {
-       toast({
-        title: "Save Failed",
-        description: "Could not save admission changes.",
-        variant: "destructive"
-      });
-    }
+    if (success) fetchData(true);
     return success;
   };
   
   const handleSaveAssessment = async (assessment: Assessment) => {
     const result = await saveAssessment(assessment);
-    if(result) {
-        await fetchData(true);
-        toast({
-          title: "Assessment Saved",
-          description: "The assessment has been successfully saved.",
-        });
-    } else {
-       toast({
-        title: "Save Failed",
-        description: "Could not save the assessment.",
-        variant: "destructive"
-      });
-    }
+    if(result) fetchData(true);
     return result;
   }
 
   const handleSaveItem = async (item: Omit<InventoryItem, 'itemId'> | InventoryItem) => {
     const success = await saveInventoryItem(item);
-    if (success) await fetchData(true);
+    if (success) fetchData(true);
     return success;
   };
 
   const handleDeleteItem = async (itemId: string) => {
     await deleteInventoryItem(itemId);
-    await fetchData(true);
+    fetchData(true);
   };
 
-  if (authLoading) {
-    return <div className="flex min-h-screen items-center justify-center">Authenticating...</div>;
+  if (authLoading || (loading && !data)) {
+    return <div className="flex min-h-screen items-center justify-center">Loading Dashboard...</div>;
   }
   
   if (!loading && !userRole) {
     return <PendingApproval />;
   }
 
-  if (loading && !userRole) {
-    return <div className="flex min-h-screen items-center justify-center">Loading Dashboard...</div>;
-  }
-
   if (error) {
       return <div className="flex min-h-screen items-center justify-center text-red-500">{error}</div>;
+  }
+
+  if (!data) {
+    return <div className="flex min-h-screen items-center justify-center">Preparing dashboard...</div>;
   }
   
   return (
@@ -343,135 +275,131 @@ export default function DashboardPage() {
       <div className="flex min-h-screen w-full flex-col">
         <main className="flex flex-1 flex-col gap-4 bg-background px-4 md:gap-8 md:px-6">
           <WelcomeHeader userRole={userRole} />
-          {loading && !permissions ? (
-            <div className="text-center">Loading data, please wait...</div>
-          ) : (
-            <div className="mx-auto w-full max-w-full">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-                  <TabsList className="h-auto flex-wrap w-full">
-                    {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
-                        <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
-                          {tab.label}
-                        </TabsTrigger>
-                      ))}
-                  </TabsList>
-                  <TabsContent value="dashboard" className="space-y-4">
-                    <Overview students={studentsWithLatestEnrollments} admissions={admissions || []} />
-                  </TabsContent>
-                  <TabsContent value="students" className="space-y-4">
-                    <StudentList 
-                      userRole={userRole as UserRole}
-                      students={studentsWithLatestEnrollments}
-                      assessments={assessments}
-                      admissions={admissions}
-                      subjects={subjects}
-                      assessmentCategories={assessmentCategories}
-                      onUpdateStudent={handleUpdateStudent}
-                      onUpdateStudentStatus={handleUpdateStudentStatus}
-                      onImportStudents={async (importedStudents) => { await importStudents(importedStudents); await fetchData(true); }}
-                      onDeleteStudent={async (studentId) => { await deleteStudent(studentId); await fetchData(true); }}
-                      onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); await fetchData(true); }}
-                      onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); await fetchData(true); }}
-                      gradeScale={gradeScale}
-                      hasPermission={hasPermission}
-                      addressData={addressData}
-                      />
-                  </TabsContent>
-                  <TabsContent value="users" className="space-y-4">
-                    <TeacherList 
-                        userRole={userRole as UserRole}
-                        initialTeachers={teachers}
-                        onAddTeacher={async (teacher) => { await addTeacher(teacher); await fetchData(true); }}
-                        onDeleteTeacher={handleDeleteTeacher}
-                        onUpdateTeacher={handleUpdateTeacher}
-                        onRefreshData={() => fetchData(true)}
-                        hasPermission={hasPermission}
-                      />
-                  </TabsContent>
-                  <TabsContent value="assessments" className="space-y-4">
-                    <AssessmentList 
-                      userRole={userRole as UserRole}
-                      assessments={assessments}
-                      students={students}
-                      subjects={subjects}
-                      assessmentCategories={assessmentCategories}
-                      admissions={admissions}
-                      teachers={teachers}
-                      onSaveAssessment={handleSaveAssessment}
-                      hasPermission={hasPermission}
-                      />
-                  </TabsContent>
-                  <TabsContent value="fees" className="space-y-4">
-                    <FeesList
-                      fees={fees}
-                      onSaveFee={async (fee) => { const success = await saveFee(fee); if (success) await fetchData(true); return success; }}
-                      onDeleteFee={async (feeId) => { await deleteFee(feeId); await fetchData(true); }}
-                      hasPermission={hasPermission}
-                      />
-                  </TabsContent>
-                   <TabsContent value="invoicing" className="space-y-4">
-                    <InvoicingList
-                      invoices={invoices}
-                      students={students}
-                      fees={fees}
-                      onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) await fetchData(true); return success; }}
-                      onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); await fetchData(true); }}
-                      hasPermission={hasPermission}
-                      />
-                  </TabsContent>
-                   <TabsContent value="inventory" className="space-y-4">
-                    <InventoryList
-                      inventoryItems={inventoryItems}
-                      onSaveItem={handleSaveItem}
-                      onDeleteItem={handleDeleteItem}
-                      hasPermission={hasPermission}
+          <div className="mx-auto w-full max-w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+                <TabsList className="h-auto flex-wrap w-full">
+                  {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
+                      <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                </TabsList>
+                <TabsContent value="dashboard" className="space-y-4">
+                  <Overview students={studentsWithLatestEnrollments} admissions={data.admissions} />
+                </TabsContent>
+                <TabsContent value="students" className="space-y-4">
+                  <StudentList 
+                    userRole={userRole}
+                    students={studentsWithLatestEnrollments}
+                    assessments={data.assessments}
+                    admissions={data.admissions}
+                    subjects={data.subjects}
+                    assessmentCategories={data.assessmentCategories}
+                    onUpdateStudent={handleUpdateStudent}
+                    onUpdateStudentStatus={handleUpdateStudentStatus}
+                    onImportStudents={async (importedStudents) => { await importStudents(importedStudents); fetchData(true); }}
+                    onDeleteStudent={async (studentId) => { await deleteStudent(studentId); fetchData(true); }}
+                    onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); fetchData(true); }}
+                    onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); fetchData(true); }}
+                    gradeScale={data.gradeScale}
+                    hasPermission={hasPermission}
+                    addressData={data.addressData}
                     />
-                  </TabsContent>
-                  <TabsContent value="admissions" className="space-y-4">
-                    <AdmissionsList 
-                      admissions={admissions}
-                      students={students}
-                      teachers={teachers}
-                      onSave={handleSaveAdmission}
-                      onImport={async (data) => { await importAdmissions(data); await fetchData(true); }}
-                      activeAccordion={activeAdmissionsAccordion}
-                      onAccordionChange={setActiveAdmissionsAccordion}
-                      hasPermission={hasPermission}
-                      />
-                  </TabsContent>
-                  <TabsContent value="enrollment" className="space-y-4">
-                    <EnrollmentForm 
-                      onEnroll={async (student) => { await addStudent(student); await fetchData(true); }}
-                      addressData={addressData}
-                    />
-                  </TabsContent>
-                  <TabsContent value="statusHistory" className="space-y-4">
-                    <StatusHistoryList
-                      history={statusHistory}
-                      students={students}
-                      onUpdateStatus={handleUpdateStudentStatus}
-                      canChangeStatus={hasPermission('Status History', 'Update')}
-                    />
-                  </TabsContent>
-                  <TabsContent value="settings" className="space-y-4">
-                    <SettingsPage 
+                </TabsContent>
+                <TabsContent value="users" className="space-y-4">
+                  <TeacherList 
                       userRole={userRole}
-                      subjects={subjects}
-                      assessmentCategories={assessmentCategories}
-                      onSaveSubjects={async (s) => { await saveSubjects(s); await fetchData(true); }}
-                      onSaveCategories={async (c) => { await saveAssessmentCategories(c); await fetchData(true); }}
-                      allRoles={allSystemRoles}
-                      onSaveRoles={handleSaveRoles}
-                      initialPermissions={permissions}
-                      gradeScale={gradeScale}
-                      onSaveGradeScale={async (g) => { await saveGradeScale(g); await fetchData(true); }}
-                      addressData={addressData}
-                      onSaveAddressData={async (a) => { await saveAddressData(a); await fetchData(true); }}
+                      initialTeachers={data.teachers}
+                      onAddTeacher={async (teacher) => { await addTeacher(teacher); fetchData(true); }}
+                      onDeleteTeacher={handleDeleteTeacher}
+                      onUpdateTeacher={handleUpdateTeacher}
+                      onRefreshData={() => fetchData(true)}
+                      hasPermission={hasPermission}
                     />
-                  </TabsContent>
-                </Tabs>
-            </div>
-          )}
+                </TabsContent>
+                <TabsContent value="assessments" className="space-y-4">
+                  <AssessmentList 
+                    userRole={userRole}
+                    assessments={data.assessments}
+                    students={data.students}
+                    subjects={data.subjects}
+                    assessmentCategories={data.assessmentCategories}
+                    admissions={data.admissions}
+                    teachers={data.teachers}
+                    onSaveAssessment={handleSaveAssessment}
+                    hasPermission={hasPermission}
+                    />
+                </TabsContent>
+                <TabsContent value="fees" className="space-y-4">
+                  <FeesList
+                    fees={data.fees}
+                    onSaveFee={async (fee) => { const success = await saveFee(fee); if (success) fetchData(true); return success; }}
+                    onDeleteFee={async (feeId) => { await deleteFee(feeId); fetchData(true); }}
+                    hasPermission={hasPermission}
+                    />
+                </TabsContent>
+                 <TabsContent value="invoicing" className="space-y-4">
+                  <InvoicingList
+                    invoices={data.invoices}
+                    students={data.students}
+                    fees={data.fees}
+                    onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) fetchData(true); return success; }}
+                    onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); fetchData(true); }}
+                    hasPermission={hasPermission}
+                    />
+                </TabsContent>
+                 <TabsContent value="inventory" className="space-y-4">
+                  <InventoryList
+                    inventoryItems={data.inventoryItems}
+                    onSaveItem={handleSaveItem}
+                    onDeleteItem={handleDeleteItem}
+                    hasPermission={hasPermission}
+                  />
+                </TabsContent>
+                <TabsContent value="admissions" className="space-y-4">
+                  <AdmissionsList 
+                    admissions={data.admissions}
+                    students={data.students}
+                    teachers={data.teachers}
+                    onSave={handleSaveAdmission}
+                    onImport={async (importData) => { await importAdmissions(importData); fetchData(true); }}
+                    activeAccordion={activeAdmissionsAccordion}
+                    onAccordionChange={setActiveAdmissionsAccordion}
+                    hasPermission={hasPermission}
+                    />
+                </TabsContent>
+                <TabsContent value="enrollment" className="space-y-4">
+                  <EnrollmentForm 
+                    onEnroll={async (student) => { await addStudent(student); fetchData(true); }}
+                    addressData={data.addressData}
+                  />
+                </TabsContent>
+                <TabsContent value="statusHistory" className="space-y-4">
+                  <StatusHistoryList
+                    history={data.statusHistory}
+                    students={data.students}
+                    onUpdateStatus={handleUpdateStudentStatus}
+                    canChangeStatus={hasPermission('Status History', 'Update')}
+                  />
+                </TabsContent>
+                <TabsContent value="settings" className="space-y-4">
+                  <SettingsPage 
+                    userRole={userRole}
+                    subjects={data.subjects}
+                    assessmentCategories={data.assessmentCategories}
+                    onSaveSubjects={async (s) => { await saveSubjects(s); fetchData(true); }}
+                    onSaveCategories={async (c) => { await saveAssessmentCategories(c); fetchData(true); }}
+                    allRoles={data.allSystemRoles}
+                    onSaveRoles={handleSaveRoles}
+                    initialPermissions={data.permissions}
+                    gradeScale={data.gradeScale}
+                    onSaveGradeScale={async (g) => { await saveGradeScale(g); fetchData(true); }}
+                    addressData={data.addressData}
+                    onSaveAddressData={async (a) => { await saveAddressData(a); fetchData(true); }}
+                  />
+                </TabsContent>
+              </Tabs>
+          </div>
         </main>
       </div>
     </>
