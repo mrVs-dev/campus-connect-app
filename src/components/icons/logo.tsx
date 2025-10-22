@@ -8,21 +8,41 @@ export function Logo({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
       <svg
         width="100%"
         height="100%"
-        viewBox="0 0 200 200"
+        viewBox="0 0 100 100"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <g transform="translate(25, 60) scale(1.2)">
-          {/* Shape 1 (left) - dark blue */}
-          <path d="M 53.5,69.25 C 57,65.5 61.25,62.75 66.5,61.25 C 71.75,59.75 77,59 82.5,59 C 85,59 87,60.75 93.25,64" fill="none" stroke="#1c5f90" strokeWidth="6" />
-          
-          {/* Shape 2 (right) - dark blue */}
-          <path d="M 141.5,112.5 C 148,121.25 142.75,124.75 136.75,127.25 C 130.75,129.75 124.25,131 117.5,131 C 110.5,131 104.25,129.75 98.5,127.25" fill="none" stroke="#1c5f90" strokeWidth="6" />
+        <defs>
+          <clipPath id="rounded-corners">
+            <rect x="5" y="5" width="90" height="90" rx="15" ry="15" />
+          </clipPath>
+        </defs>
+        
+        {/* Background */}
+        <rect x="5" y="5" width="90" height="90" rx="15" ry="15" fill="black" />
 
-          {/* "API" letters - black */}
-          <text x="50" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="#000000">A</text>
-          <text x="70" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="#000000">P</text>
-          <text x="95" y="85" fontFamily="Arial, Helvetica, sans-serif" fontSize="40" fill="#000000">I</text>
+        {/* The two blue swooshes */}
+        <g clipPath="url(#rounded-corners)">
+            <path d="M 5,65 C 25,50 60,65 95,50 L 95,100 L 5,100 Z" fill="#1c5f90" />
+            <path d="M 5,85 C 30,70 70,85 95,70 L 95,100 L 5,100 Z" fill="#1c5f90" />
         </g>
+        
+        {/* "API" letters */}
+        <text 
+            x="50" 
+            y="45" 
+            fontFamily="Arial, Helvetica, sans-serif" 
+            fontSize="30" 
+            fill="#000000" 
+            textAnchor="middle" 
+            dominantBaseline="middle"
+            fontWeight="bold"
+        >
+            API
+        </text>
+
+        {/* Grey Border */}
+        <rect x="5" y="5" width="90" height="90" rx="15" ry="15" fill="none" stroke="#808080" strokeWidth="3" />
+
       </svg>
     </div>
   );
