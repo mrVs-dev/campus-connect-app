@@ -142,13 +142,13 @@ export function Overview({ students, admissions }: OverviewProps) {
     });
   }, []);
   
-  const enrollmentFilteredStudents = React.useMemo(() => {
+  const { enrollmentFilteredStudents, enrollmentGenderDistribution } = React.useMemo(() => {
     if (!dateRange?.from) {
-      return [];
+      return { enrollmentFilteredStudents: [], enrollmentGenderDistribution: {} };
     }
     const toDate = dateRange.to ? addDays(dateRange.to, 1) : undefined;
     
-    return students.filter(student => {
+    const filtered = students.filter(student => {
       if (!student.enrollmentDate) return false;
       const enrollmentDate = new Date(student.enrollmentDate);
       if (!toDate) {
@@ -156,7 +156,16 @@ export function Overview({ students, admissions }: OverviewProps) {
       }
       return isWithinInterval(enrollmentDate, { start: dateRange.from!, end: toDate });
     });
+
+    const genderDistribution = filtered.reduce((acc, student) => {
+      const sex = student.sex || 'Other';
+      acc[sex] = (acc[sex] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return { enrollmentFilteredStudents: filtered, enrollmentGenderDistribution: genderDistribution };
   }, [dateRange, students]);
+
 
   const populationStudents = React.useMemo(() => {
     if (statusFilter === 'All') {
@@ -174,14 +183,6 @@ export function Overview({ students, admissions }: OverviewProps) {
       return acc;
     }, {} as Record<string, number>);
   }, [populationStudents]);
-
-  const enrollmentGenderDistribution = React.useMemo(() => {
-     return enrollmentFilteredStudents.reduce((acc, student) => {
-      const sex = student.sex || 'Other';
-      acc[sex] = (acc[sex] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-  }, [enrollmentFilteredStudents]);
 
   const enrollmentsByProgramAndLevel = React.useMemo(() => {
     if (!admissions) {
