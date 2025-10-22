@@ -223,6 +223,12 @@ export default function DashboardPage() {
   const handleDeleteTeacher = async (teacher: Teacher) => {
     if (!user) return;
     await deleteTeacher(teacher.teacherId);
+    if(teacher.email) {
+      const userToDelete = await getDocs(query(collection(db, "users"), where("email", "==", teacher.email)));
+      if (!userToDelete.empty) {
+        await deleteMainUser(userToDelete.docs[0].id);
+      }
+    }
     fetchData(true);
   };
 
@@ -373,7 +379,7 @@ export default function DashboardPage() {
       <div className="flex flex-col w-full">
         <Header userRole={userRole} />
         <div className="p-4 md:p-8 space-y-4">
-          <WelcomeHeader userRole={userRole} />
+          <WelcomeHeader userRole={userRole} className="-mt-5" />
           <main className="flex-1 space-y-4">
             {contentMap[activeTab]}
           </main>

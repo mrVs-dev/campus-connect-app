@@ -1,11 +1,14 @@
+
 "use client";
 
 import type { UserRole } from "@/lib/types";
 import { Logo } from "../icons/logo";
+import { cn } from "@/lib/utils";
 
 interface WelcomeHeaderProps {
     userRole: UserRole | null;
     userName?: string;
+    className?: string;
 }
 
 const getWelcomeMessages = (role: UserRole | null, name?: string) => {
@@ -49,11 +52,11 @@ const getWelcomeMessages = (role: UserRole | null, name?: string) => {
     }
 };
 
-export function WelcomeHeader({ userRole, userName }: WelcomeHeaderProps) {
+export function WelcomeHeader({ userRole, userName, className }: WelcomeHeaderProps) {
     const { title, subtitle } = getWelcomeMessages(userRole, userName);
 
     return (
-        <div className="flex items-center gap-4">
+        <div className={cn("flex items-center gap-4", className)}>
             <Logo className="h-12 w-12" />
             <div>
                 <h1 className="text-3xl font-bold">{title}</h1>
