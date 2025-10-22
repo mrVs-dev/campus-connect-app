@@ -281,7 +281,6 @@ export default function DashboardPage() {
   const contentMap: { [key: string]: React.ReactNode } = {
     dashboard: <Overview students={studentsWithLatestEnrollments} admissions={data.admissions} />,
     students: <StudentList 
-        userRole={userRole}
         students={studentsWithLatestEnrollments}
         assessments={data.assessments}
         admissions={data.admissions}
@@ -294,6 +293,7 @@ export default function DashboardPage() {
         onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); fetchData(true); }}
         onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); fetchData(true); }}
         gradeScale={data.gradeScale}
+        userRole={userRole}
         hasPermission={hasPermission}
         addressData={data.addressData}
         />,

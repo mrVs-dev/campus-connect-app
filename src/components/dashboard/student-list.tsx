@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -11,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Table,
@@ -31,6 +31,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,6 +101,10 @@ export function StudentList({
   const [studentsToDelete, setStudentsToDelete] = React.useState<string[]>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+
+
   const canCreate = hasPermission('Students', 'Create');
   const canUpdate = hasPermission('Students', 'Update');
   const canDelete = hasPermission('Students', 'Delete');
@@ -122,7 +133,6 @@ export function StudentList({
         return 0;
       });
     } else {
-      // Default sort: Active first, then by the highest student ID
       sortableStudents.sort((a, b) => {
         if (a.status === 'Active' && b.status !== 'Active') return -1;
         if (b.status === 'Active' && a.status !== 'Active') return 1;
@@ -132,6 +142,13 @@ export function StudentList({
     return sortableStudents;
   }, [filteredStudents, sortConfig]);
   
+  const totalPages = Math.ceil(sortedStudents.length / rowsPerPage);
+  const paginatedStudents = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return sortedStudents.slice(startIndex, startIndex + rowsPerPage);
+  }, [sortedStudents, currentPage, rowsPerPage]);
+
+
   const requestSort = (key: SortableKey) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -202,10 +219,13 @@ export function StudentList({
     setStudentToEdit(null); // Close the sheet on save
   };
 
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [rowsPerPage, searchQuery]);
 
   const numSelected = selectedStudentIds.length;
-  const numStudents = sortedStudents.length;
-  const areAllSelected = numStudents > 0 && numSelected === numStudents;
+  const areAllSelected = paginatedStudents.length > 0 && selectedStudentIds.length === paginatedStudents.length;
+
 
   return (
     <>
@@ -312,7 +332,7 @@ export function StudentList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedStudents.map((student) => {
+              {paginatedStudents.map((student) => {
                 const isSelected = selectedStudentIds.includes(student.studentId);
                 const enrollments = student.enrollments || [];
                 const programNames = enrollments.map(e => programs.find(p => p.id === e.programId)?.name || 'Unknown');
@@ -414,6 +434,54 @@ export function StudentList({
             </TableBody>
           </Table>
         </CardContent>
+        <CardFooter className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Total {sortedStudents.length}
+          </div>
+          <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Rows per page</span>
+                 <Select
+                    value={`${rowsPerPage}`}
+                    onValueChange={(value) => {
+                      setRowsPerPage(Number(value));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue placeholder={rowsPerPage} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[10, 20, 30, 40, 50].map((size) => (
+                        <SelectItem key={size} value={`${size}`}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+              </div>
+            <div className="text-sm font-medium">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </CardFooter>
       </Card>
       <StudentPerformanceSheet
         student={selectedStudent}
@@ -488,7 +556,3 @@ export function StudentList({
     </>
   );
 }
-
-    
-
-    
