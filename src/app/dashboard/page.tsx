@@ -4,7 +4,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { Student, Admission, Assessment, Teacher, Enrollment, StudentStatusHistory, Subject, AssessmentCategory, UserRole, Fee, Invoice, Permissions, LetterGrade, InventoryItem, AddressData } from "@/lib/types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/dashboard/header";
 import { Overview } from "@/app/dashboard/overview";
 import { StudentList } from "@/components/dashboard/student-list";
@@ -24,6 +23,8 @@ import { InventoryList } from "@/components/dashboard/inventory-list";
 import type { User as AuthUser } from "firebase/auth";
 import { AppModule, initialPermissions, APP_MODULES } from "@/lib/modules";
 import { WelcomeHeader } from "@/components/dashboard/welcome-header";
+import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
+import { DashboardSidebar } from "@/components/dashboard/sidebar";
 
 function PendingApproval() {
   return (
@@ -45,7 +46,7 @@ function PendingApproval() {
   );
 }
 
-const TABS_CONFIG: { value: string, label: string, module: AppModule }[] = [
+export const TABS_CONFIG: { value: string, label: string, module: AppModule }[] = [
   { value: "dashboard", label: "Dashboard", module: "Dashboard" },
   { value: "students", label: "Students", module: "Students" },
   { value: "users", label: "Users", module: "Users" },
@@ -268,140 +269,116 @@ export default function DashboardPage() {
   if (!data) {
     return <div className="flex min-h-screen items-center justify-center">Preparing dashboard...</div>;
   }
+
+  const visibleTabs = TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read'));
   
+  const contentMap: { [key: string]: React.ReactNode } = {
+    dashboard: <Overview students={studentsWithLatestEnrollments} admissions={data.admissions} />,
+    students: <StudentList 
+        userRole={userRole}
+        students={studentsWithLatestEnrollments}
+        assessments={data.assessments}
+        admissions={data.admissions}
+        subjects={data.subjects}
+        assessmentCategories={data.assessmentCategories}
+        onUpdateStudent={handleUpdateStudent}
+        onUpdateStudentStatus={handleUpdateStudentStatus}
+        onImportStudents={async (importedStudents) => { await importStudents(importedStudents); fetchData(true); }}
+        onDeleteStudent={async (studentId) => { await deleteStudent(studentId); fetchData(true); }}
+        onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); fetchData(true); }}
+        onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); fetchData(true); }}
+        gradeScale={data.gradeScale}
+        hasPermission={hasPermission}
+        addressData={data.addressData}
+        />,
+    users: <TeacherList 
+        userRole={userRole}
+        initialTeachers={data.teachers}
+        onAddTeacher={async (teacher) => { await addTeacher(teacher); fetchData(true); }}
+        onDeleteTeacher={handleDeleteTeacher}
+        onUpdateTeacher={handleUpdateTeacher}
+        onRefreshData={() => fetchData(true)}
+        hasPermission={hasPermission}
+      />,
+    assessments: <AssessmentList 
+        userRole={userRole}
+        assessments={data.assessments}
+        students={data.students}
+        subjects={data.subjects}
+        assessmentCategories={data.assessmentCategories}
+        admissions={data.admissions}
+        teachers={data.teachers}
+        onSaveAssessment={handleSaveAssessment}
+        hasPermission={hasPermission}
+        />,
+    fees: <FeesList
+        fees={data.fees}
+        onSaveFee={async (fee) => { const success = await saveFee(fee); if (success) fetchData(true); return success; }}
+        onDeleteFee={async (feeId) => { await deleteFee(feeId); fetchData(true); }}
+        hasPermission={hasPermission}
+        />,
+    invoicing: <InvoicingList
+        invoices={data.invoices}
+        students={data.students}
+        fees={data.fees}
+        onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) fetchData(true); return success; }}
+        onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); fetchData(true); }}
+        hasPermission={hasPermission}
+        />,
+    inventory: <InventoryList
+        inventoryItems={data.inventoryItems}
+        onSaveItem={handleSaveItem}
+        onDeleteItem={handleDeleteItem}
+        hasPermission={hasPermission}
+      />,
+    admissions: <AdmissionsList 
+        admissions={data.admissions}
+        students={data.students}
+        teachers={data.teachers}
+        onSave={handleSaveAdmission}
+        onImport={async (importData) => { await importAdmissions(importData); fetchData(true); }}
+        activeAccordion={activeAdmissionsAccordion}
+        onAccordionChange={setActiveAdmissionsAccordion}
+        hasPermission={hasPermission}
+        />,
+    enrollment: <EnrollmentForm 
+        onEnroll={async (student) => { await addStudent(student); fetchData(true); }}
+        addressData={data.addressData}
+      />,
+    statusHistory: <StatusHistoryList
+        history={data.statusHistory}
+        students={data.students}
+        onUpdateStatus={handleUpdateStudentStatus}
+        canChangeStatus={hasPermission('Status History', 'Update')}
+      />,
+    settings: <SettingsPage 
+        userRole={userRole}
+        subjects={data.subjects}
+        assessmentCategories={data.assessmentCategories}
+        onSaveSubjects={async (s) => { await saveSubjects(s); fetchData(true); }}
+        onSaveCategories={async (c) => { await saveAssessmentCategories(c); fetchData(true); }}
+        allRoles={data.allSystemRoles}
+        onSaveRoles={handleSaveRoles}
+        initialPermissions={data.permissions}
+        gradeScale={data.gradeScale}
+        onSaveGradeScale={async (g) => { await saveGradeScale(g); fetchData(true); }}
+        addressData={data.addressData}
+        onSaveAddressData={async (a) => { await saveAddressData(a); fetchData(true); }}
+      />,
+  }
+
   return (
-    <>
-      <Header userRole={userRole} />
-      <div className="flex min-h-screen w-full flex-col">
-        <main className="flex flex-1 flex-col gap-4 bg-background px-4 md:gap-8 md:px-6">
+    <SidebarProvider>
+      <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} tabs={visibleTabs} />
+      <div className="flex flex-col w-full">
+        <Header userRole={userRole} />
+        <main className="flex-1 space-y-4 p-4 md:p-8 pt-6">
           <WelcomeHeader userRole={userRole} />
-          <div className="mx-auto w-full max-w-full">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-                <TabsList className="h-auto flex-wrap w-full">
-                  {TABS_CONFIG.filter(tab => hasPermission(tab.module, 'Read')).map((tab) => (
-                      <TabsTrigger key={tab.value} value={tab.value} className="capitalize">
-                        {tab.label}
-                      </TabsTrigger>
-                    ))}
-                </TabsList>
-                <TabsContent value="dashboard" className="space-y-4">
-                  <Overview students={studentsWithLatestEnrollments} admissions={data.admissions} />
-                </TabsContent>
-                <TabsContent value="students" className="space-y-4">
-                  <StudentList 
-                    userRole={userRole}
-                    students={studentsWithLatestEnrollments}
-                    assessments={data.assessments}
-                    admissions={data.admissions}
-                    subjects={data.subjects}
-                    assessmentCategories={data.assessmentCategories}
-                    onUpdateStudent={handleUpdateStudent}
-                    onUpdateStudentStatus={handleUpdateStudentStatus}
-                    onImportStudents={async (importedStudents) => { await importStudents(importedStudents); fetchData(true); }}
-                    onDeleteStudent={async (studentId) => { await deleteStudent(studentId); fetchData(true); }}
-                    onDeleteSelectedStudents={async (studentIds) => { await deleteSelectedStudents(studentIds); fetchData(true); }}
-                    onMoveStudents={async (studentIds, schoolYear, fromClass, toClass) => { await moveStudentsToClass(studentIds, schoolYear, fromClass, toClass); fetchData(true); }}
-                    gradeScale={data.gradeScale}
-                    hasPermission={hasPermission}
-                    addressData={data.addressData}
-                    />
-                </TabsContent>
-                <TabsContent value="users" className="space-y-4">
-                  <TeacherList 
-                      userRole={userRole}
-                      initialTeachers={data.teachers}
-                      onAddTeacher={async (teacher) => { await addTeacher(teacher); fetchData(true); }}
-                      onDeleteTeacher={handleDeleteTeacher}
-                      onUpdateTeacher={handleUpdateTeacher}
-                      onRefreshData={() => fetchData(true)}
-                      hasPermission={hasPermission}
-                    />
-                </TabsContent>
-                <TabsContent value="assessments" className="space-y-4">
-                  <AssessmentList 
-                    userRole={userRole}
-                    assessments={data.assessments}
-                    students={data.students}
-                    subjects={data.subjects}
-                    assessmentCategories={data.assessmentCategories}
-                    admissions={data.admissions}
-                    teachers={data.teachers}
-                    onSaveAssessment={handleSaveAssessment}
-                    hasPermission={hasPermission}
-                    />
-                </TabsContent>
-                <TabsContent value="fees" className="space-y-4">
-                  <FeesList
-                    fees={data.fees}
-                    onSaveFee={async (fee) => { const success = await saveFee(fee); if (success) fetchData(true); return success; }}
-                    onDeleteFee={async (feeId) => { await deleteFee(feeId); fetchData(true); }}
-                    hasPermission={hasPermission}
-                    />
-                </TabsContent>
-                 <TabsContent value="invoicing" className="space-y-4">
-                  <InvoicingList
-                    invoices={data.invoices}
-                    students={data.students}
-                    fees={data.fees}
-                    onSaveInvoice={async (invoice) => { const success = await saveInvoice(invoice); if (success) fetchData(true); return success; }}
-                    onDeleteInvoice={async (invoiceId) => { await deleteInvoice(invoiceId); fetchData(true); }}
-                    hasPermission={hasPermission}
-                    />
-                </TabsContent>
-                 <TabsContent value="inventory" className="space-y-4">
-                  <InventoryList
-                    inventoryItems={data.inventoryItems}
-                    onSaveItem={handleSaveItem}
-                    onDeleteItem={handleDeleteItem}
-                    hasPermission={hasPermission}
-                  />
-                </TabsContent>
-                <TabsContent value="admissions" className="space-y-4">
-                  <AdmissionsList 
-                    admissions={data.admissions}
-                    students={data.students}
-                    teachers={data.teachers}
-                    onSave={handleSaveAdmission}
-                    onImport={async (importData) => { await importAdmissions(importData); fetchData(true); }}
-                    activeAccordion={activeAdmissionsAccordion}
-                    onAccordionChange={setActiveAdmissionsAccordion}
-                    hasPermission={hasPermission}
-                    />
-                </TabsContent>
-                <TabsContent value="enrollment" className="space-y-4">
-                  <EnrollmentForm 
-                    onEnroll={async (student) => { await addStudent(student); fetchData(true); }}
-                    addressData={data.addressData}
-                  />
-                </TabsContent>
-                <TabsContent value="statusHistory" className="space-y-4">
-                  <StatusHistoryList
-                    history={data.statusHistory}
-                    students={data.students}
-                    onUpdateStatus={handleUpdateStudentStatus}
-                    canChangeStatus={hasPermission('Status History', 'Update')}
-                  />
-                </TabsContent>
-                <TabsContent value="settings" className="space-y-4">
-                  <SettingsPage 
-                    userRole={userRole}
-                    subjects={data.subjects}
-                    assessmentCategories={data.assessmentCategories}
-                    onSaveSubjects={async (s) => { await saveSubjects(s); fetchData(true); }}
-                    onSaveCategories={async (c) => { await saveAssessmentCategories(c); fetchData(true); }}
-                    allRoles={data.allSystemRoles}
-                    onSaveRoles={handleSaveRoles}
-                    initialPermissions={data.permissions}
-                    gradeScale={data.gradeScale}
-                    onSaveGradeScale={async (g) => { await saveGradeScale(g); fetchData(true); }}
-                    addressData={data.addressData}
-                    onSaveAddressData={async (a) => { await saveAddressData(a); fetchData(true); }}
-                  />
-                </TabsContent>
-              </Tabs>
+          <div className="space-y-4">
+             {contentMap[activeTab]}
           </div>
         </main>
       </div>
-    </>
+    </SidebarProvider>
   );
 }
