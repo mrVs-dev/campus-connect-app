@@ -379,7 +379,7 @@ export default function DashboardPage() {
       <div className="flex flex-col w-full">
         <Header userRole={userRole} />
         <div className="p-4 md:p-8 space-y-4">
-          <WelcomeHeader userRole={userRole} className="-mt-5" />
+          <WelcomeHeader userRole={userRole} className="-mt-10" />
           <main className="flex-1 space-y-4">
             {contentMap[activeTab]}
           </main>
