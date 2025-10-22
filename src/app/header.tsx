@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -18,14 +17,10 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-      <Link
-        href="/dashboard"
-        className="flex items-center gap-2 text-lg font-semibold text-primary"
-      >
-        <Logo className="h-8 w-8" />
-        <span className="font-headline sr-only">CampusConnect</span>
-      </Link>
-      <div className="relative ml-auto flex-1 md:grow-0">
+      <div className="flex-1">
+        {/* The welcome message will now appear in its own component */}
+      </div>
+      <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         {isAdmin && isStudentPortal && (
            <Button asChild variant="outline" size="sm">
             <Link href="/dashboard">View as Admin</Link>

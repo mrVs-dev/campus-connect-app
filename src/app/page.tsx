@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect } from 'react';
@@ -25,6 +24,12 @@ export default function HomePage() {
       try {
         const staffMember: Teacher | null = await getTeacherForUser(user.uid);
         
+        // This is a special case for the initial admin user who might not have a teacher record yet.
+        if (user.email === 'vannak@api-school.com') {
+          router.replace('/dashboard');
+          return;
+        }
+
         if (staffMember?.role === 'Admin') {
             router.replace('/dashboard');
         } else if (staffMember?.role === 'Teacher') {
