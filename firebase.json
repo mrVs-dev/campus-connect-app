@@ -10,7 +10,7 @@
       "**/node_modules/**"
     ],
     "apphosting": {
-      "backend": "studio-7466969346-9de5e",
+      "backend": "studio",
       "runtime": "nodejs20"
     }
   }
